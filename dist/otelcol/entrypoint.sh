@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # set default configuration settings
-OTELCOL_CONFIG_PATH="${OTELCOL_CONFIG_PATH:-/etc/neblic/otelcol/config.yaml}"
+OTELCOL_CONFIG_PATH="${OTELCOL_CONFIG_PATH:-/etc/neblic/otelcol/otelcol.yaml}"
 
 # Neblic
 export NEBLIC_DATA_PLANE_ENDPOINT="${NEBLIC_DATA_PLANE_ENDPOINT:-0.0.0.0:4317}"

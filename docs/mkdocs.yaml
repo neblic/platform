@@ -1,0 +1,68 @@
+site_name: Documentation
+site_url: https://docs.neblic.com/
+copyright: Copyright &copy; 2023 - Neblic
+docs_dir: content
+nav:
+    - 'Introduction':
+      - 'What is Neblic': introduction/what-is-neblic.md
+      - 'How does Neblic work': introduction/how-does-neblic-work.md
+      - 'Use cases': introduction/use-cases.md
+    - 'Quick start':
+      - 'Try neblic': 'quick-start/try-neblic.md'
+    - 'Getting started': 
+      - 'Concepts': 'getting-started/concepts.md'
+      - 'Deployment': 'getting-started/deployment.md'
+    - 'Learn':
+      - 'Collector': 'learn/collector.md'
+      - 'Stores': 'learn/stores.md'
+      - 'Samplers': 'learn/samplers.md'
+      # - 'Protocol': 'learn/protocol.md'
+    - 'How-to guides':
+      - 'Get data from Go services': 'how-to/data-from-go-svc.md'
+      - 'Get data from Apache Kafka': 'how-to/data-from-kafka.md'
+      - 'Configure Samplers': 'how-to/configure-samplers-using-neblictl.md'
+      - 'Build your own collector': 'how-to/build-your-own-collector.md'
+    - 'Reference':
+      - 'Sampling rules': 'reference/sampling-rules.md'
+      - 'Collector': 'reference/collector.md'
+      - 'Neblictl': 'reference/neblictl.md'
+      - 'Kafka Sampler': 'reference/kafka-sampler.md'
+      - 'Go Sampler': https://pkg.go.dev/ # TBD
+theme: 
+  name: material
+  logo: assets/neblic-logo-white.png
+  favicon: assets/neblic-favicon.png
+  features:
+    - content.code.copy
+    - content.code.annotate
+    - navigation.footer
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/neblichq
+    - icon: fontawesome/brands/github
+      link: https://github.com/neblic
+  version:
+    provider: mike
+extra_css:
+  - assets/extra.css
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      use_pygments: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+          markdown_extensions:
+plugins:
+  - glightbox
+  - include-markdown

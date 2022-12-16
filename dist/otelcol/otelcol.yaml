@@ -1,0 +1,81 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        # Required: Data plane endpoint.
+        endpoint: "${env:NEBLIC_DATA_PLANE_ENDPOINT}" 
+
+        # Uncomment to enable TLS
+        # tls:
+        #   cert_file: /etc/otelcol/ca/otelcol.crt
+        #   key_file: /etc/otelcol/ca/otelcol.key
+
+        # To use Bearer authentication TLS needs to be enabled
+        # auth:
+        #   authenticator: bearerauth
+processors:
+  resource:
+    # Required if using Loki as a store
+    # Attributes processor: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/attributesprocessor
+    # can create a new attribute that Loki will pick as a label using the sampler_name label
+    attributes:
+    - action: insert
+      key: loki.resource.labels
+      value: sampler_name
+
+exporters:
+  # Uncomment to enable simple summary messages witht the amount of `Data Samples` exported
+  # logging:
+
+  # Grafana Loki exporter: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/lokiexporter
+  loki:
+    # Where Loki will receive `Data Samples` (Loki push endpoint: https://grafana.com/docs/loki/latest/api/#push-log-entries-to-loki)
+    endpoint: "${env:LOKI_LOG_PUSH_ENDPOINT}"
+
+extensions:
+  # Required: Neblic extension configuration
+  neblic:
+    # Collector id, if not provided, a random uid is used
+    # uid: <unique collector id>
+
+    # Required: Control Plane endpoint
+    endpoint: "${env:NEBLIC_CONTROL_PLANE_ENDPOINT}"
+
+    # Where will be configurations persisted on disk. If unset, configurations will be only kept in memory and lost when the collector restarts
+    storage_path: "${env:NEBLIC_STORAGE_PATH}"
+
+    # Uncomment to enable TLS
+    # tls:
+    #   cert_file: /etc/otelcol/ca/otelcol.crt
+    #   key_file: /etc/otelcol/ca/otelcol.key
+
+    # To use Bearer authentication TLS needs to be enabled
+    # auth:
+    #  type: bearer
+    #  bearer:
+    #     token: some_secret_token
+
+  # Bearer authentication configuration. If the OTLP receiver has Bearer authentication enabled, it needs to be configured.
+  # bearerauth:
+    # Bearer authentication token
+    # token: some_secret_token
+
+service:
+  # Collector configuration
+  # telemetry:
+  #   logs:
+  #     level: "debug"
+
+  # Required: A pipeline consisting of at least a receiver and an exporter must be configured
+  pipelines:
+    logs:
+      receivers:
+      - otlp
+      processors:
+      - resource
+      exporters:
+      # - logging
+      - loki
+
+  # Required: Enables the Neblic extension
+  extensions: [neblic]

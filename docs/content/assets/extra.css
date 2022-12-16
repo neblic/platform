@@ -1,0 +1,26 @@
+:root {
+  --md-primary-fg-color: #4856F6;
+  --md-primary-fg-color--light: #7A7D9C;
+  --md-primary-fg-color--dark: #0B0A33;
+  --md-primary-bg-color: hsla(0, 0%, 100%, 1);
+  --md-primary-bg-color--light: hsla(0, 0%, 100%, 0.7);
+  --md-text-link-color: hsla(231, 48%, 48%, 1);
+
+  /* Accent color shades */
+  --md-accent-fg-color: #4856F6;
+  --md-accent-fg-color--transparent: hsla(189, 100%, 37%, 0.1);
+  --md-accent-bg-color: hsla(0, 0%, 100%, 1);
+  --md-accent-bg-color--light: hsla(0, 0%, 100%, 0.7);
+}
+
+:root>* {
+  /* Code block color shades */
+  --md-code-bg-color: hsla(0, 0%, 96%, 1);
+  --md-code-fg-color: hsla(200, 18%, 26%, 1);
+
+  /* Footer */
+  --md-footer-fg-color: hsla(0, 0%, 100%, 1);
+  --md-footer-bg-color: #4856F6;
+  --md-footer-bg-color--light: #7A7D9C;
+  --md-footer-bg-color--dark: #0B0A33;
+}

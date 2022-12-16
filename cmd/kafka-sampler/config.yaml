@@ -1,5 +1,0 @@
-verbose: true
-kafka:
-  servers: localhost:29092
-neblic:
-  resourcename: kafka-sampler

@@ -1,5 +1,35 @@
 verbose: true
+
+# optional: Topic list refresh period. In each refresh it will create/delete `Samplers` based on the cluster existing topics
+# reconcileperiod: 1m
+
+# Kafka related options
 kafka:
+  # required: Kafka bootstrap addresses, format "url1:port,url2:port".
   servers: kafka:9092
+
+  # optional: consumer group that the Kafka consumers will use
+  # consumergroup: kafkasampler
+
+  # https://pkg.go.dev/github.com/shopify/sarama#Config
+  # all lowercase and nested structs divided with `_`
+  # sarama:  (...)
+
+  # optional: if unset, it will create a Sampler per each topic found in the Kafka cluster
+  # topicfilter: 
+  #   allowlist:
+  #   denylist:
+
+# Neblic related options
 neblic:
-  resourcename: kafka-sampler
+  # optional: `Sampler` resource name set to created `Samplers` 
+  # resourcename: kafka-sampler
+
+  # optional: `Control Plane` server address
+  # controlserveraddr: localhost:8899
+
+  # optional: `Data Plane` server address
+  # dataserveraddrL localhost:4317
+
+  # optional: `Sampler` update stats period option
+  # updatestatsperiod: 15s
