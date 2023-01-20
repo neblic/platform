@@ -1,0 +1,6 @@
+.PHONY: gobuild
+	go build ./...
+
+.PHONY: gotest
+gotest:
+	go test -v ./...

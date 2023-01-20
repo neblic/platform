@@ -1,0 +1,61 @@
+dist: ./dist/release
+release:
+  target_commitish: '{{ .Commit }}'
+before:
+  hooks:
+    # generate otelcol sources
+    - go install go.opentelemetry.io/collector/cmd/builder@v0.70.0
+    - builder --config=dist/otelcol/ocb.yaml --skip-compilation=true
+builds:
+  - id: otelcol
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+    dir: ./dist/otelcol/build
+    binary: otelcol
+  - id: kafka-sampler
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+    dir: ./cmd/kafka-sampler
+    binary: kafka-sampler
+archives:
+  - id: otelcol
+    name_template: "otelcol_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    replacements:
+      amd64: x86_64
+  - id: kafka-sampler
+    name_template: "kafka-sampler_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    replacements:
+      amd64: x86_64
+dockers:
+  - id: otelcol
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - ghcr.io/neblic/otelcol:latest
+      - ghcr.io/neblic/otelcol:{{ .Tag }}
+    dockerfile: ./dist/otelcol/Dockerfile
+    extra_files:
+      - ./dist/otelcol/entrypoint.sh
+      - ./dist/otelcol/config.yaml
+  - id: kafka-sampler
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - ghcr.io/neblic/kafka-sampler:latest
+      - ghcr.io/neblic/kafka-sampler:{{ .Tag }}
+    dockerfile: ./dist/kafka-sampler/Dockerfile
+    extra_files:
+      - ./dist/kafka-sampler/config.yaml
+checksum:
+  name_template: 'checksums.txt'
+
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj

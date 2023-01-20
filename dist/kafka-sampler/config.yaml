@@ -1,0 +1,5 @@
+verbose: true
+kafka:
+  servers: kafka:9092
+neblic:
+  resourcename: kafka-sampler

@@ -1,0 +1,51 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "${env:NEBLIC_DATA_PLANE_ENDPOINT}" 
+        # Uncomment to enable TLS
+        # tls:
+        #   cert_file: /etc/otelcol/ca/otelcol.crt
+        #   key_file: /etc/otelcol/ca/otelcol.key
+        # auth:
+        #   authenticator: bearerauth
+processors:
+  resource:
+    attributes:
+    - action: insert
+      key: loki.resource.labels
+      value: sampler_name
+
+exporters:
+  logging:
+  loki:
+    endpoint: "${env:LOKI_LOG_PUSH_ENDPOINT}"
+
+extensions:
+  neblic:
+    endpoint: "${env:NEBLIC_CONTROL_PLANE_ENDPOINT}"
+  # Uncomment to enable TLS
+  #   tls:
+  #     cert_file: /etc/otelcol/ca/otelcol.crt
+  #     key_file: /etc/otelcol/ca/otelcol.key
+  #   auth:
+  #     type: bearer
+  #     bearer:
+  #       token: some_secret_token
+  # bearerauth:
+  #   token: some_secret_token
+
+service:
+  telemetry:
+    logs:
+      level: "debug"
+  pipelines:
+    logs:
+      receivers:
+      - otlp
+      processors:
+      - resource
+      exporters:
+      - logging
+      - loki
+  extensions: [neblic]

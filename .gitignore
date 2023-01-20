@@ -1,0 +1,10 @@
+
+# release
+dist/otelcol/build
+dist/release
+
+# editors
+*.swo
+*.swp
+.vscode
+.idea

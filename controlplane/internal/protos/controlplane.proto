@@ -1,0 +1,229 @@
+syntax = "proto3";
+option go_package = "github.com/neblic/platform/controlplane/protos";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+/** common **/
+
+message Status {
+  enum Type {
+    UNKNOWN = 0;
+    OK = 1;
+    BAD_REQUEST = 2;
+  }
+  Type type = 1;
+  string error_message = 2;
+}
+
+message SamplingRule {
+  enum Language {
+    UNKNOWN = 0;
+    CEL = 1;
+  }
+  string uid = 1;
+  Language language = 2;
+  string rule = 3;
+}
+
+message SamplingRate {
+  // limit determines the maximum number of exported samples per second.
+  // -1 means no exported samples limit
+  // 0 means no samples will be exporter
+  int64 limit = 1;
+  // burst sets the allowed sample burst
+  int64 burst = 2;
+}
+
+// Only the fields that are present are updated. If a field is present,
+// the previous value is replaced by the new one.
+message SamplerConfig {
+  repeated SamplingRule sampling_rules = 1;
+  SamplingRate sampling_rate = 2;
+}
+
+message SamplerSamplingStats {
+  uint64 samples_evaluated = 1;
+  uint64 samples_exported = 2;
+}
+
+message Schema {
+  enum Type {
+    SCHEMALESS = 0;
+    NATIVE = 1;
+    PROTOBUF = 2;
+  }
+  Type type = 1;
+  google.protobuf.Any schema = 2;
+}
+
+message Sampler {
+  // User-friendly and user-defined name to identify a Sampler. 
+  string name = 1;
+  // Defines the Sampler resource where it has been defined.
+  // Multiple samplers can have the same name and resource but will hav edifferent uids.
+  // e.g. multiple replicas of the same service will define multiple times the same sampler with different uids.
+  string resource = 3;
+  // Identifies a unique Sampler,
+  string uid = 2;
+  // Sampler schema information.
+  Schema schema = 4;
+  // The Sampler configuration,
+  SamplerConfig config = 5;
+  // Statistics related to the Sampler sampling.
+  SamplerSamplingStats sampling_stats = 6;
+}
+
+/** service **/
+
+message SamplerToServer {
+  google.protobuf.Timestamp timestamp = 1;
+  string sampler_uid = 2;
+  oneof Message {
+    // Messages
+    SamplerStatsMsg sampler_stats_msg = 3;
+    // Requests
+		SamplerRegisterReq register_req = 4;
+    // Responses
+    SamplerConfRes conf_res = 5;
+  }
+}
+
+message ServerToSampler {
+  google.protobuf.Timestamp timestamp = 1;
+  string server_uid = 2;
+  oneof Message {
+    // Responses
+		SamplerRegisterRes register_res = 3;
+    // Requests
+    SamplerConfReq conf_req = 4;
+  }
+}
+
+message ClientToServer {
+  google.protobuf.Timestamp timestamp = 1;
+  string client_uid = 2;
+  oneof Message {
+    // Requests
+    ClientRegisterReq register_req = 3;
+    ClientListSamplersReq list_samplers_req = 4;
+    ClientSamplerConfReq sampler_conf_req = 5;
+  }
+}
+
+message ServerToClient {
+  google.protobuf.Timestamp timestamp = 1;
+  string server_uid = 2;
+  oneof Message {
+    // Messages
+    ClientSamplerStatsMsg sampler_stats_msg = 3;
+    // Responses
+    ClientRegisterRes register_res = 4;
+    ClientListSamplersRes list_samplers_res = 5;
+    ClientSamplerConfRes sampler_conf_res = 6;
+  }
+}
+
+service ControlPlane {
+  rpc SamplerConn(stream SamplerToServer) returns (stream ServerToSampler);
+  rpc ClientConn(stream ClientToServer) returns (stream ServerToClient);
+}
+
+/** sampler messages **/
+
+// stats
+
+message SamplerStatsMsg {
+  SamplerSamplingStats sampling_stats = 2;
+}
+
+// register
+
+message SamplerRegisterReq {
+  string sampler_name = 1;
+  string resource = 2;
+  map<string, string> tags = 3;
+}
+
+message SamplerRegisterRes {
+	Status status = 1;
+}
+
+// configure sampling rules
+
+message SamplerConfReq {
+  // The Sampler configuration.
+  SamplerConfig sampler_config = 1;
+}
+
+message SamplerConfRes {
+  Status status = 1;
+}
+
+/** client messages **/
+
+// stats
+
+message ClientSamplerStats {
+  string sampler_uid = 1;
+  SamplerSamplingStats sampling_stats = 2;
+}
+
+message ClientSamplerStatsMsg {
+  repeated ClientSamplerStats sampler_stats = 1;
+}
+
+
+// register
+
+message ClientRegisterReq {
+  map<string, string> tags = 1;
+}
+
+message ClientRegisterRes {
+	Status status = 1;
+}
+
+// list samplers
+
+message ClientListSamplersReq {
+}
+
+message ClientListSamplersRes {
+	Status status = 1;
+  repeated Sampler samplers = 2;
+}
+
+// configure sampling list
+
+message ClientSamplingRuleUpdate {
+  enum Op {
+    UNKNOWN = 0;
+    UPSERT = 1;
+    DELETE = 2;
+  }
+
+  Op op = 1;
+  SamplingRule sampling_rule = 2;
+}
+
+message ClientSamplerConfigUpdate {
+  repeated ClientSamplingRuleUpdate sampling_rule_updates = 1;
+  SamplingRate sampling_rate = 2;
+}
+
+message ClientSamplerConfReq {
+  // Name of the Samplers to configure. All samplers with the provided name will receive this configuration.
+  // It is a mandatory field.
+  string sampler_name = 1;
+  // Name of the resource where the sampler is defined
+  string sampler_resource = 2;
+  // If sampler_uid is set, only the sampler with the specified uid will be configured.
+  string sampler_uid = 3;
+  // The Sampler configuration update.
+  ClientSamplerConfigUpdate sampler_config_update = 4;
+}
+
+message ClientSamplerConfRes {
+  Status status = 1;
+}
