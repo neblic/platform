@@ -184,6 +184,10 @@ func (s *Stream[FromS, ToS]) ToServerMsg() ToS {
 }
 
 func (s *Stream[FromS, ToS]) SendToS(ctx context.Context, toS ToS) error {
+	if s.state != Registered {
+		return fmt.Errorf("can't send message to server, stream not registered")
+	}
+
 	r := &req[FromS, ToS]{
 		toSReq: toS,
 	}
