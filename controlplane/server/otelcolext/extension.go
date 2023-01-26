@@ -71,5 +71,9 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 }
 
 func (n *neblic) Shutdown(ctx context.Context) error {
-	return n.s.Stop(time.Second)
+	if n.s != nil {
+		return n.s.Stop(time.Second)
+	}
+
+	return nil
 }
