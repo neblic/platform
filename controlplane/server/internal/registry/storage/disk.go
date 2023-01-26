@@ -17,7 +17,7 @@ type Disk[T any] struct {
 func NewDisk[T any](path string, name string) (*Disk[T], error) {
 	fullPath := filepath.Join(path, name)
 
-	err := os.Mkdir(fullPath, os.ModePerm)
+	err := os.MkdirAll(fullPath, os.ModePerm)
 	if err != nil {
 		return nil, fmt.Errorf("could not create storage directory: %v", err)
 	}
