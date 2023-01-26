@@ -24,6 +24,7 @@ exporters:
 extensions:
   neblic:
     endpoint: "${env:NEBLIC_CONTROL_PLANE_ENDPOINT}"
+    storage_path: "${env:NEBLIC_STORAGE_PATH}"
   # Uncomment to enable TLS
   #   tls:
   #     cert_file: /etc/otelcol/ca/otelcol.crt
