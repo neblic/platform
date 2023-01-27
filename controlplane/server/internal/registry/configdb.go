@@ -41,7 +41,7 @@ func NewConfigDB(store storage.Storage[*data.SamplerConfig], logger logging.Logg
 }
 
 func (s *ConfigDB) storageKey(samplerUID data.SamplerUID, samplerName, samplerResource string) string {
-	return fmt.Sprintf("%s#%s#%s", samplerName, samplerResource, samplerUID)
+	return fmt.Sprintf("%s#%s#%s", samplerUID, samplerName, samplerResource)
 }
 
 func (s *ConfigDB) parseKey(key string) (data.SamplerUID, string, string, error) {
