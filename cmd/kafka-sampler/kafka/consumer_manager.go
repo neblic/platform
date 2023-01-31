@@ -11,6 +11,8 @@ import (
 	"github.com/neblic/platform/logging"
 )
 
+var internalKafkaTopics = map[string]struct{}{"__consumer_offsets": {}, "__transaction_state": {}}
+
 type groupProvider func() (ConsumerGroup, error)
 
 type consumerInstance struct {
@@ -49,7 +51,7 @@ func NewConsumerManager(ctx context.Context, logger logging.Logger, config *Conf
 		client:      client,
 		topicFilter: filter,
 		groupProvider: func() (ConsumerGroup, error) {
-			return sarama.NewConsumerGroup(config.Servers, config.ConsumerGroup, &config.Sarama)
+			return sarama.NewConsumerGroup(logger, config.Servers, config.ConsumerGroup, &config.Sarama)
 		},
 		consumers: map[string]*consumerInstance{},
 	}, nil
@@ -148,7 +150,16 @@ func (m *ConsumerManager) Reconcile() error {
 		return err
 	}
 
-	filteredTopics := m.topicFilter.EvaluateList(topics)
+	// Remove internal kafka topics
+	externalTopics := make([]string, 0, len(topics))
+	for _, topic := range topics {
+		if _, ok := internalKafkaTopics[topic]; !ok {
+			externalTopics = append(externalTopics, topic)
+		}
+	}
+
+	// Filter topics based on the user provided rules.
+	filteredTopics := m.topicFilter.EvaluateList(externalTopics)
 
 	// Update internal status to reflect the list of pulled topics
 	err = m.reconcile(filteredTopics)

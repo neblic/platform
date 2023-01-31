@@ -5,17 +5,20 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/hashicorp/go-multierror"
+	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler/defs"
 	"github.com/neblic/platform/sampler/global"
 )
 
 // Handler represents a Sarama consumer group consumer
 type SamplerHandler struct {
+	logger   logging.Logger
 	samplers map[string]defs.Sampler
 }
 
-func NewSamplerHandler() *SamplerHandler {
+func NewSamplerHandler(logger logging.Logger) *SamplerHandler {
 	return &SamplerHandler{
+		logger:   logger,
 		samplers: map[string]defs.Sampler{},
 	}
 }
@@ -61,7 +64,7 @@ func (h *SamplerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 			}
 			_, err := sampler.SampleJSON(session.Context(), string(message.Value))
 			if err != nil {
-				fmt.Printf("Error sampling JSON: %v", err)
+				h.logger.Error("Error sampling kafka message in topic", "topic", message.Topic, "error", err)
 			}
 
 			session.MarkMessage(message, "")

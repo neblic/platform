@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Shopify/sarama"
+	"github.com/neblic/platform/logging"
 )
 
 type ConsumerGroup struct {
@@ -11,7 +12,7 @@ type ConsumerGroup struct {
 	handler *SamplerHandler
 }
 
-func NewConsumerGroup(servers []string, groupID string, config *Config) (*ConsumerGroup, error) {
+func NewConsumerGroup(logger logging.Logger, servers []string, groupID string, config *Config) (*ConsumerGroup, error) {
 	group, err := sarama.NewConsumerGroup(servers, groupID, config)
 	if err != nil {
 		return nil, err
@@ -19,7 +20,7 @@ func NewConsumerGroup(servers []string, groupID string, config *Config) (*Consum
 
 	return &ConsumerGroup{
 		group:   group,
-		handler: NewSamplerHandler(),
+		handler: NewSamplerHandler(logger),
 	}, nil
 }
 
