@@ -1,12 +1,16 @@
 package neblic
 
-import "github.com/neblic/platform/sampler"
+import (
+	"time"
+
+	"github.com/neblic/platform/sampler"
+)
 
 type Options struct {
-	Bearer             string
-	TLS                bool
-	SamplerLimit       uint
-	UpdateStatsSeconds uint
+	Bearer            string
+	TLS               bool
+	SamplerLimit      uint
+	UpdateStatsPeriod time.Duration
 }
 
 type Config struct {
@@ -22,7 +26,7 @@ func NewConfig() *Config {
 			DataServerAddr:    "localhost:4317",
 		},
 		Options: Options{
-			UpdateStatsSeconds: 60,
+			UpdateStatsPeriod: time.Second * 15,
 		},
 	}
 }

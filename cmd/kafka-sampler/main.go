@@ -26,6 +26,52 @@ func initViper() *Config {
 	viper.AddConfigPath("/etc/neblic/kafka-sampler/") // path to look for the config file in
 	viper.AddConfigPath(".")
 
+	// Configuration parameters read from a config file or an environment variable
+	// could mismatch the expected type in the configuration struct. A set of decode
+	// hook funcions are used to automatically convert between types:
+	// - string to time.Duration (e.g. 15s, 1m, etc.)
+	// - string to []string using "," to split
+	// - string to filter.Predicate
+	decodeHookFunc := mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+		func() mapstructure.DecodeHookFuncType {
+			return func(
+				f reflect.Type,
+				t reflect.Type,
+				data interface{},
+			) (interface{}, error) {
+				// Check that the data is string. Standard hook logic
+				if f.Kind() != reflect.String {
+					return data, nil
+				}
+
+				// Check that the target type is a filter.Predicate interface.
+				predicateType := reflect.TypeOf((*filter.Predicate)(nil)).Elem()
+				if !t.Implements(predicateType) {
+					return data, nil
+				}
+
+				var predicate filter.Predicate
+				before, after, found := strings.Cut(data.(string), ":")
+				if found && before == "regex" {
+					// The processed string contains a regex and it follows the 'regex:<regex>' pattern.
+					var err error
+					predicate, err = filter.NewRegex(after)
+					if err != nil {
+						return nil, fmt.Errorf("error parsing the regex predicate %s: %v", after, err)
+					}
+				} else {
+					// The processed string contains a simple string
+					predicate = filter.NewString(data.(string))
+				}
+
+				return predicate, nil
+			}
+		},
+	)
+	viper.DecodeHook(decodeHookFunc)
+
 	// Inject default values (that also enables the usage of env vars to override the value)
 	viper.SetDefault("verbose", false)
 	viper.SetDefault("kafka.servers", []string{"localhost:9092"})
@@ -33,7 +79,7 @@ func initViper() *Config {
 	viper.SetDefault("neblic.resourcename", "kafkasampler")
 	viper.SetDefault("neblic.controlserveraddr", "localhost:8899")
 	viper.SetDefault("neblic.dataserveraddr", "localhost:4317")
-	viper.SetDefault("neblic.updatestatsseconds", time.Minute)
+	viper.SetDefault("neblic.updatestatsperiod", "15s")
 	viper.SetDefault("reconcileperiod", time.Minute)
 
 	if err := viper.ReadInConfig(); err != nil {
@@ -49,46 +95,8 @@ func initViper() *Config {
 		}
 	}
 
-	// Predicates are read from plain config files. That funcion implements
-	// the mapstructure decoder to automatically convert the string predicates
-	// provided in the configuration to Predicate interfaces.
-	stringToPredicateHookFunc := func() mapstructure.DecodeHookFuncType {
-		return func(
-			f reflect.Type,
-			t reflect.Type,
-			data interface{},
-		) (interface{}, error) {
-			// Check that the data is string. Standard hook logic
-			if f.Kind() != reflect.String {
-				return data, nil
-			}
-
-			// Check that the target type is a filter.Predicate interface.
-			predicateType := reflect.TypeOf((*filter.Predicate)(nil)).Elem()
-			if !t.Implements(predicateType) {
-				return data, nil
-			}
-
-			var predicate filter.Predicate
-			before, after, found := strings.Cut(data.(string), ":")
-			if found && before == "regex" {
-				// The processed string contains a regex and it follows the 'regex:<regex>' pattern.
-				var err error
-				predicate, err = filter.NewRegex(after)
-				if err != nil {
-					return nil, fmt.Errorf("error parsing the regex predicate %s: %v", after, err)
-				}
-			} else {
-				// The processed string contains a simple string
-				predicate = filter.NewString(data.(string))
-			}
-
-			return predicate, nil
-		}
-	}
-
 	config := NewConfig()
-	if err := viper.Unmarshal(config, viper.DecodeHook(stringToPredicateHookFunc())); err != nil {
+	if err := viper.Unmarshal(config); err != nil {
 		log.Fatal("config: unable to decode into struct: " + err.Error())
 	}
 
@@ -108,8 +116,8 @@ func initNeblic(ctx context.Context, logger logging.Logger, config *neblic.Confi
 	if config.SamplerLimit != 0 {
 		options = append(options, sampler.WithSamplingRateBurst(int64(config.SamplerLimit)), sampler.WithSamplingRateLimit(int64(config.SamplerLimit)))
 	}
-	if config.UpdateStatsSeconds != 0 {
-		options = append(options, sampler.WithUpdateStatsPeriod(time.Duration(config.UpdateStatsSeconds)*time.Second))
+	if config.UpdateStatsPeriod != 0 {
+		options = append(options, sampler.WithUpdateStatsPeriod(config.UpdateStatsPeriod))
 	}
 
 	provider, err := sampler.NewProvider(ctx, config.Settings, options...)
