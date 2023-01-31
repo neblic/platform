@@ -20,3 +20,4 @@ extensions:
   - import: github.com/neblic/platform/controlplane/server/otelcolext/bearerauthextension
     gomod: github.com/neblic/platform v0.0.0
     path: .
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.70.0
