@@ -195,11 +195,16 @@ func (e *Executors) CreateRule(parameters interpoler.ParametersWithValue, writer
 	// Create rules one by one
 	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
 		// Check that the sampling rule does not exist
+		ruleExists := false
 		for _, samplingRule := range samplerData.Config.SamplingRules {
 			if samplingRule.Rule == samplingRuleParameter.Value {
-				writer.WriteStringf("%s.%s: Sampling rule already exists\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
-				continue
+				ruleExists = true
+				break
 			}
+		}
+		if ruleExists {
+			writer.WriteStringf("%s.%s: Sampling rule already exists\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+			continue
 		}
 
 		update := &data.SamplerConfigUpdate{
@@ -299,6 +304,7 @@ func (e *Executors) UpdateRule(parameters interpoler.ParametersWithValue, writer
 		for uid, samplingRule := range samplerData.Config.SamplingRules {
 			if samplingRule.Rule == oldSamplingRuleParameter.Value {
 				existingUID = uid
+				break
 			}
 		}
 
@@ -407,6 +413,7 @@ func (e *Executors) DeleteRule(parameters interpoler.ParametersWithValue, writer
 		for uid, samplingRule := range samplerData.Config.SamplingRules {
 			if samplingRule.Rule == samplingRuleParameter.Value {
 				existingUID = uid
+				break
 			}
 		}
 
