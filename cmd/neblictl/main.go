@@ -94,7 +94,7 @@ func main() {
 	// Parse arguments
 	host := flag.String("host", "localhost", "OpenTelemetry collector host")
 	controlPort := flag.Uint64("control-port", 8899, "OpenTelemetry collector control port")
-	tls := flag.Bool("tls", true, "Enable TLS encryption in the server connection")
+	tls := flag.Bool("tls", false, "Enable TLS encryption in the server connection")
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
 
