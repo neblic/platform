@@ -2,14 +2,12 @@ module github.com/neblic/platform/cmd/kafka-sampler
 
 go 1.19
 
-replace github.com/neblic/platform => ../../
-
 require (
 	github.com/Shopify/sarama v1.37.2
 	github.com/golang/mock v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/neblic/platform v0.0.6
+	github.com/neblic/platform v0.0.6-0.20230207091826-0731f95187bc
 	github.com/onsi/ginkgo/v2 v2.7.0
 	github.com/onsi/gomega v1.24.2
 	github.com/spf13/viper v1.14.0
