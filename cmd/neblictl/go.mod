@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/c-bata/go-prompt v0.2.5
 	github.com/google/uuid v1.3.0
-	github.com/neblic/platform v0.0.6-0.20230207091826-0731f95187bc
+	github.com/neblic/platform v0.0.7
 	github.com/olekukonko/tablewriter v0.0.5
 	golang.org/x/exp v0.0.0-20221026153819-32f3d567a233
 )
