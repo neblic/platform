@@ -67,3 +67,4 @@ Accepted scopes are:
 * controlplane: Internal control plane definition and implementation
 * neblictl: CLI client
 * sampler: Go sampler library
+* kafkasampler: Kafka sampler service
