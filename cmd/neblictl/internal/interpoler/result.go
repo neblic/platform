@@ -38,27 +38,29 @@ func (e *InterpolateError) WithDetails(details string) *InterpolateError {
 }
 
 type InterpolateResult struct {
-	Parents    []*Command
-	Target     *Command
+	Parents    CommandNodes
+	Target     *CommandNode
 	Parameters ParametersWithValue
+	Remaining  *TokanizedCommand
 	Error      *InterpolateError
 }
 
 func NewInterpolateResult() *InterpolateResult {
 	return &InterpolateResult{
-		Parents:    []*Command{},
+		Parents:    CommandNodes{},
 		Target:     nil,
 		Parameters: ParametersWithValue{},
+		Remaining:  nil,
 		Error:      nil,
 	}
 }
 
-func (r *InterpolateResult) PreappendParent(parent *Command) *InterpolateResult {
-	r.Parents = append([]*Command{parent}, r.Parents...)
+func (r *InterpolateResult) PreappendParent(parent *CommandNode) *InterpolateResult {
+	r.Parents = append([]*CommandNode{parent}, r.Parents...)
 	return r
 }
 
-func (r *InterpolateResult) WithTarget(target *Command) *InterpolateResult {
+func (r *InterpolateResult) WithTarget(target *CommandNode) *InterpolateResult {
 	r.Target = target
 	return r
 }
@@ -70,6 +72,11 @@ func (r *InterpolateResult) WithParameters(parameters ParametersWithValue) *Inte
 
 func (r *InterpolateResult) PreappendParameters(parameters ParametersWithValue) *InterpolateResult {
 	r.Parameters = append(parameters, r.Parameters...)
+	return r
+}
+
+func (r *InterpolateResult) WithRemaining(command *TokanizedCommand) *InterpolateResult {
+	r.Remaining = command
 	return r
 }
 

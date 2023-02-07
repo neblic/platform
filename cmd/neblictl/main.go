@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/neblic/platform/cmd/neblictl/internal"
 	"github.com/neblic/platform/cmd/neblictl/internal/controlplane"
+	"github.com/neblic/platform/cmd/neblictl/internal/interpoler"
 	promptImpl "github.com/neblic/platform/cmd/neblictl/internal/prompt"
 	"github.com/neblic/platform/controlplane/client"
 	"github.com/neblic/platform/logging"
@@ -24,6 +25,28 @@ var (
 	writer               *internal.Writer
 )
 
+func createTokanizedCommand(inputText string) *interpoler.TokanizedCommand {
+	parts := strings.Split(inputText, " ")
+
+	// Remove empty parts result of having multiple contiguous spaces
+	removedSpacesParts := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part == "" {
+			continue
+		}
+
+		removedSpacesParts = append(removedSpacesParts, part)
+	}
+
+	hasTrailingSpace := false
+	if len(parts) > 0 && parts[len(parts)-1] == "" {
+		hasTrailingSpace = true
+	}
+
+	return interpoler.NewTokanizedCommand(removedSpacesParts, hasTrailingSpace)
+
+}
+
 func executor(in string) {
 	// Don't print anything if input is empty
 	if in == "" {
@@ -31,11 +54,10 @@ func executor(in string) {
 	}
 
 	// Sanitize input
-	sanitizedIn := strings.TrimSpace(in)
-	parts := strings.Split(sanitizedIn, " ")
+	tokanizedCommand := createTokanizedCommand(in)
 
 	// Execute command and show output/error
-	err := promptImpl.Execute(controlPlaneCommands.Commands, parts, writer)
+	err := promptImpl.Execute(controlPlaneCommands.Commands, tokanizedCommand, writer)
 	if err != nil {
 		writer.WriteStringf("Error: %v\n", err)
 	}
@@ -43,16 +65,18 @@ func executor(in string) {
 }
 
 func completer(in prompt.Document) []prompt.Suggest {
+	inputText := in.TextBeforeCursor()
+
 	// Don't print anything if input is empty
-	if in.Text == "" {
+	if inputText == "" {
 		return []prompt.Suggest{}
 	}
 
-	// Sanitize input
-	parts := strings.Split(in.TextBeforeCursor(), " ")
+	// Tokanize the input
+	tokanizedCommand := createTokanizedCommand(inputText)
 
 	// Execute command and show output/error
-	suggestions := promptImpl.Suggestions(controlPlaneCommands.Commands, parts)
+	suggestions := promptImpl.Suggestions(controlPlaneCommands.Commands, tokanizedCommand)
 	return suggestions
 }
 

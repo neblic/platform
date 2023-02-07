@@ -43,10 +43,12 @@ type Parameter struct {
 	Completer   CompleterFunc
 }
 
-type Command struct {
+type CommandNodes []*CommandNode
+
+type CommandNode struct {
 	Name        string
 	Description string
-	Subcommands []*Command
+	Subcommands CommandNodes
 	Parameters  []Parameter
 	Executor    ExecutorFunc
 }

@@ -8,11 +8,11 @@ import (
 	"github.com/neblic/platform/cmd/neblictl/internal/interpoler"
 )
 
-var commands = []*interpoler.Command{
+var commands = interpoler.CommandNodes{
 	{
 		Name:        "list",
 		Description: "List elements",
-		Subcommands: []*interpoler.Command{
+		Subcommands: interpoler.CommandNodes{
 			{
 				Name:        "samplers",
 				Description: "List samplers",
@@ -91,8 +91,8 @@ var commands = []*interpoler.Command{
 
 func TestSuggestions(t *testing.T) {
 	type args struct {
-		commands     []*interpoler.Command
-		commandParts []string
+		commands         []*interpoler.CommandNode
+		tokanizedCommand *interpoler.TokanizedCommand
 	}
 	tests := []struct {
 		name string
@@ -102,55 +102,71 @@ func TestSuggestions(t *testing.T) {
 		{
 			name: "Empty command",
 			args: args{
-				commands:     commands,
-				commandParts: []string{},
+				commands:         commands,
+				tokanizedCommand: interpoler.NewTokanizedCommand([]string{}, false),
 			},
 			want: []prompt.Suggest{{Text: "list"}, {Text: "create"}, {Text: "update"}},
 		},
 		{
 			name: "Partial command",
 			args: args{
-				commands:     commands,
-				commandParts: []string{"li"},
+				commands:         commands,
+				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"li"}, false),
 			},
 			want: []prompt.Suggest{{Text: "list"}},
 		},
 		{
 			name: "Suggest subcommand",
 			args: args{
-				commands:     commands,
-				commandParts: []string{"list", ""},
+				commands:         commands,
+				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", ""}, false),
 			},
 			want: []prompt.Suggest{{Text: "samplers"}, {Text: "rules"}},
 		},
 		{
 			name: "Suggest partial subcommand",
 			args: args{
-				commands:     commands,
-				commandParts: []string{"list", "pr"},
+				commands:         commands,
+				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", "sa"}, false),
 			},
 			want: []prompt.Suggest{{Text: "samplers"}},
 		},
 		{
+			name: "Suggest partial subcommand with trailing space",
+			args: args{
+				commands:         commands,
+				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", "sa"}, true),
+			},
+			want: []prompt.Suggest{},
+		},
+		{
+			name: "Suggest partial subcommand with trailing space",
+			args: args{
+				commands:         commands,
+				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", "sa", "a"}, false),
+			},
+			want: []prompt.Suggest{},
+		},
+		{
 			name: "Suggest parameter value",
 			args: args{
-				commands:     commands,
-				commandParts: []string{"list", "rules", ""},
+				commands:         commands,
+				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", "rules", ""}, false),
 			},
 			want: []prompt.Suggest{{Text: "p1"}, {Text: "p2"}},
 		},
 		{
 			name: "Suggest partial parameter value",
 			args: args{
-				commands:     commands,
-				commandParts: []string{"list", "rules", "p"},
+				commands:         commands,
+				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", "rules", "p"}, false),
 			},
 			want: []prompt.Suggest{{Text: "p1"}, {Text: "p2"}},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Suggestions(tt.args.commands, tt.args.commandParts); !reflect.DeepEqual(got, tt.want) {
+			if got := Suggestions(tt.args.commands, tt.args.tokanizedCommand); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Suggestions() = %v, want %v", got, tt.want)
 			}
 		})

@@ -5,16 +5,16 @@ import (
 )
 
 type Commands struct {
-	Commands []*interpoler.Command
+	Commands interpoler.CommandNodes
 }
 
 func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Completers) *Commands {
 	return &Commands{
-		Commands: []*interpoler.Command{
+		Commands: interpoler.CommandNodes{
 			{
 				Name:        "list",
 				Description: "List elements",
-				Subcommands: []*interpoler.Command{
+				Subcommands: interpoler.CommandNodes{
 					{
 						Name:        "resources",
 						Description: "List resources",
@@ -47,7 +47,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 			{
 				Name:        "create",
 				Description: "Create sampling configuration for a specific resource and sampler",
-				Subcommands: []*interpoler.Command{
+				Subcommands: interpoler.CommandNodes{
 					{
 						Name:        "rule",
 						Description: "Create sampling rule for a specific resource and sampler",
@@ -95,7 +95,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 			{
 				Name:        "update",
 				Description: "Update sampling configuration for a specific resource and sampler",
-				Subcommands: []*interpoler.Command{
+				Subcommands: interpoler.CommandNodes{
 					{
 						Name:        "rule",
 						Description: "Update sampling rule for a specific resource and sampler",
@@ -147,7 +147,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 			{
 				Name:        "delete",
 				Description: "Update sampling configuration for a specific resource and sampler",
-				Subcommands: []*interpoler.Command{
+				Subcommands: interpoler.CommandNodes{
 					{
 						Name:        "rule",
 						Description: "Update sampling rule for a specific resource and sampler",

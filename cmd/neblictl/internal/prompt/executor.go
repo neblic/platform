@@ -12,14 +12,14 @@ var (
 	ErrEmptyComand = fmt.Errorf("empty command")
 )
 
-func generateGlobalHelp(targets []*interpoler.Command, writer *internal.Writer) {
+func generateGlobalHelp(targets interpoler.CommandNodes, writer *internal.Writer) {
 	writer.WriteString("Usage\n\t[command]\n\nCommands\n")
 	for _, target := range targets {
 		writer.WriteStringf("\t%s: %s\n", target.Name, target.Description)
 	}
 }
 
-func generateTargetHelp(parents []*interpoler.Command, target *interpoler.Command, err *interpoler.InterpolateError, writer *internal.Writer) {
+func generateTargetHelp(parents interpoler.CommandNodes, target *interpoler.CommandNode, err *interpoler.InterpolateError, writer *internal.Writer) {
 	// Build full command
 	commandBuffer := bytes.Buffer{}
 	for i, parent := range parents {
@@ -70,22 +70,22 @@ func generateTargetHelp(parents []*interpoler.Command, target *interpoler.Comman
 	}
 }
 
-func Execute(commands []*interpoler.Command, commandParts []string, writer *internal.Writer) error {
+func Execute(nodes interpoler.CommandNodes, command *interpoler.TokanizedCommand, writer *internal.Writer) error {
 	// Check the command parts is not empty
-	if len(commandParts) == 0 {
+	if command.Len() == 0 {
 		return ErrEmptyComand
 	}
 
 	isHelp := false
 
 	// Check if a help command was received
-	if commandParts[0] == "help" {
+	if command.Parts[0] == "help" {
 		// Strip help part from the command and force print help
-		commandParts = commandParts[1:]
+		command.Parts = command.Parts[1:]
 
 		// If the command just contains help, print global help
-		if len(commandParts) == 0 {
-			generateGlobalHelp(commands, writer)
+		if command.Len() == 0 {
+			generateGlobalHelp(nodes, writer)
 			return nil
 		}
 
@@ -93,7 +93,7 @@ func Execute(commands []*interpoler.Command, commandParts []string, writer *inte
 	}
 
 	// Find executor
-	result := interpoler.Interpolate(commandParts, commands)
+	result := interpoler.Interpolate(command, nodes)
 	if result.Error != nil {
 		// In case of processing a help command, do not show the error
 		err := result.Error
@@ -107,7 +107,7 @@ func Execute(commands []*interpoler.Command, commandParts []string, writer *inte
 				generateTargetHelp(result.Parents, result.Target, err, writer)
 				return nil
 			}
-			generateGlobalHelp(commands, writer)
+			generateGlobalHelp(nodes, writer)
 			return nil
 		case interpoler.ErrParameterNotProvided, interpoler.ErrPartialCommand, interpoler.ErrInvalidParameter:
 			generateTargetHelp(result.Parents, result.Target, err, writer)
