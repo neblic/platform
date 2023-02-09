@@ -1,13 +1,14 @@
 package interpoler
 
 import (
+	"context"
 	"strconv"
 
 	"github.com/neblic/platform/cmd/neblictl/internal"
 )
 
-type ExecutorFunc func(funcOptions ParametersWithValue, writer *internal.Writer) error
-type CompleterFunc func(funcOptions ParametersWithValue) []string
+type ExecutorFunc func(ctx context.Context, funcOptions ParametersWithValue, writer *internal.Writer) error
+type CompleterFunc func(ctx context.Context, funcOptions ParametersWithValue) []string
 
 type ParametersWithValue []*ParameterWithValue
 

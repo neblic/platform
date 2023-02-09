@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/neblic/platform/controlplane/client"
 	"github.com/neblic/platform/controlplane/data"
@@ -47,7 +48,9 @@ func NewClient(uuid string, address string, opts ...client.Option) (*Client, err
 	case <-notifyFirstRegistration:
 	}
 
-	err = client.pullSamplerConfigs()
+	// Perfrom initial pulling of config
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*30)
+	err = client.pullSamplerConfigs(ctx)
 
 	return client, err
 }
@@ -76,11 +79,11 @@ func (c *Client) handleStateChanges(notifyFirstRegistration chan struct{}) {
 	}
 }
 
-func (c *Client) pullSamplerConfigs() error {
+func (c *Client) pullSamplerConfigs(ctx context.Context) error {
 	// Get all samplers
-	samplers, err := c.internal.ListSamplers(context.Background())
+	samplers, err := c.internal.ListSamplers(ctx)
 	if err != nil {
-		return fmt.Errorf("error listing samplers: %v", err)
+		return err
 	}
 
 	c.samplers = map[resourceAndSampler]*data.Sampler{}
@@ -97,27 +100,28 @@ func (c *Client) pullSamplerConfigs() error {
 	return nil
 }
 
-func (c *Client) getSamplers(cached bool) map[resourceAndSampler]*data.Sampler {
+func (c *Client) getSamplers(ctx context.Context, cached bool) (map[resourceAndSampler]*data.Sampler, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
+	var err error
 	if !cached {
-		c.pullSamplerConfigs()
+		err = c.pullSamplerConfigs(ctx)
 	}
-	return c.samplers
+	return c.samplers, err
 }
 
-func (c *Client) getSampler(name, resource string, cached bool) *data.Sampler {
+func (c *Client) getSampler(ctx context.Context, name, resource string, cached bool) (*data.Sampler, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
-	samplerConfigs := c.getSamplers(cached)
-	return samplerConfigs[resourceAndSampler{resource, name}]
+	samplerConfigs, err := c.getSamplers(ctx, cached)
+	return samplerConfigs[resourceAndSampler{resource, name}], err
 }
 
-func (c *Client) setSamplerConfig(name, resource string, update *data.SamplerConfigUpdate) error {
+func (c *Client) setSamplerConfig(ctx context.Context, name, resource string, update *data.SamplerConfigUpdate) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	return c.internal.ConfigureSampler(context.Background(), name, resource, "", update)
+	return c.internal.ConfigureSampler(ctx, name, resource, "", update)
 }

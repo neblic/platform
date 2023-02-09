@@ -1,15 +1,16 @@
 package internal
 
 import (
+	"context"
 	"strings"
 
 	"github.com/c-bata/go-prompt"
 	"github.com/neblic/platform/cmd/neblictl/internal/interpoler"
 )
 
-func Suggestions(nodes interpoler.CommandNodes, command *interpoler.TokanizedCommand) []prompt.Suggest {
+func Suggestions(ctx context.Context, nodes interpoler.CommandNodes, command *interpoler.TokanizedCommand) []prompt.Suggest {
 	// Interpolate command
-	result := interpoler.Interpolate(command, nodes)
+	result := interpoler.Interpolate(ctx, command, nodes)
 
 	// Generate full list of suggestions. Populae the suggestion prefix if a partial command/parameter was provided
 	allSuggestions := []string{}
@@ -63,7 +64,7 @@ func Suggestions(nodes interpoler.CommandNodes, command *interpoler.TokanizedCom
 				parameter, _ := result.Parameters.GetLast()
 
 				if parameter.Completer != nil {
-					allSuggestions = parameter.Completer(result.Parameters)
+					allSuggestions = parameter.Completer(ctx, result.Parameters)
 				}
 			}
 
@@ -72,7 +73,7 @@ func Suggestions(nodes interpoler.CommandNodes, command *interpoler.TokanizedCom
 			parameter, _ := result.Parameters.GetLast()
 
 			if parameter.Completer != nil {
-				allSuggestions = parameter.Completer(result.Parameters)
+				allSuggestions = parameter.Completer(ctx, result.Parameters)
 			}
 			suggestionPrefix = result.Error.Details
 		}

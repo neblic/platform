@@ -1,6 +1,8 @@
 package controlplane
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -53,11 +55,13 @@ func (e *Executors) doesResourceAndSamplerMatch(resourceParameter, samplerParame
 
 }
 
-func (e *Executors) getMatchingSamplers(resourceParameter string, samplerParameter string, cached bool) (map[resourceAndSampler]*data.Sampler, error) {
+func (e *Executors) getMatchingSamplers(ctx context.Context, resourceParameter string, samplerParameter string, cached bool) (map[resourceAndSampler]*data.Sampler, error) {
+
+	samplers, err := e.controlPlaneClient.getSamplers(ctx, cached)
 
 	// Iterate over all samplers and select the ones matching the input
 	resourceAndSamplers := map[resourceAndSampler]*data.Sampler{}
-	for resourceAndSamplerEntry, samplerData := range e.controlPlaneClient.getSamplers(cached) {
+	for resourceAndSamplerEntry, samplerData := range samplers {
 		if e.doesResourceAndSamplerMatch(resourceParameter, samplerParameter, resourceAndSamplerEntry) {
 			resourceAndSamplers[resourceAndSampler{resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler}] = samplerData
 		}
@@ -74,12 +78,12 @@ func (e *Executors) getMatchingSamplers(resourceParameter string, samplerParamet
 		return resourceAndSamplers, err
 	}
 
-	return resourceAndSamplers, nil
+	return resourceAndSamplers, err
 }
 
-func (e *Executors) ListResources(parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) ListResources(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get all samplers
-	samplers := e.controlPlaneClient.getSamplers(false)
+	samplers, err := e.controlPlaneClient.getSamplers(ctx, false)
 
 	// Build deduplicated list of rows
 	header := []string{"Resource"}
@@ -100,12 +104,16 @@ func (e *Executors) ListResources(parameters interpoler.ParametersWithValue, wri
 	// Write table
 	writeTable(header, rows, nil, writer)
 
+	if err != nil && errors.Is(err, context.Canceled) {
+		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
+	}
+
 	return nil
 }
 
-func (e *Executors) ListSamplers(parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) ListSamplers(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get all samplers
-	samplers := e.controlPlaneClient.getSamplers(false)
+	samplers, err := e.controlPlaneClient.getSamplers(ctx, false)
 
 	// Build table rows
 	header := []string{"Resource", "Sampler", "Sampling Rate", "Samples Evaluated", "Samples Exported"}
@@ -142,19 +150,20 @@ func (e *Executors) ListSamplers(parameters interpoler.ParametersWithValue, writ
 	// Write table
 	writeTable(header, rows, []int{0}, writer)
 
+	if err != nil && errors.Is(err, context.Canceled) {
+		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
+	}
+
 	return nil
 }
 
-func (e *Executors) ListRules(parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) ListRules(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(resourceParameter.Value, samplerParameter.Value, false)
-	if err != nil {
-		return err
-	}
+	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 
 	// Build table rows
 	header := []string{"Resource", "Sampler", "Sampling Rule"}
@@ -177,17 +186,21 @@ func (e *Executors) ListRules(parameters interpoler.ParametersWithValue, writer 
 	// Write table
 	writeTable(header, rows, []int{0, 1}, writer)
 
+	if err != nil && errors.Is(err, context.Canceled) {
+		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
+	}
+
 	return nil
 }
 
-func (e *Executors) CreateRule(parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) CreateRule(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
 	samplingRuleParameter, _ := parameters.Get("sampling_rule")
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(resourceParameter.Value, samplerParameter.Value, false)
+	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
 		return err
 	}
@@ -221,9 +234,9 @@ func (e *Executors) CreateRule(parameters interpoler.ParametersWithValue, writer
 		}
 
 		// Propagate new configuration
-		err := e.controlPlaneClient.setSamplerConfig(resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
+		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Error creating the sampling rule: %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not create the sampling rule because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
@@ -234,7 +247,7 @@ func (e *Executors) CreateRule(parameters interpoler.ParametersWithValue, writer
 	return nil
 }
 
-func (e *Executors) CreateRate(parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) CreateRate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
@@ -247,7 +260,7 @@ func (e *Executors) CreateRate(parameters interpoler.ParametersWithValue, writer
 	}
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(resourceParameter.Value, samplerParameter.Value, false)
+	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
 		return err
 	}
@@ -270,9 +283,9 @@ func (e *Executors) CreateRate(parameters interpoler.ParametersWithValue, writer
 		}
 
 		// Propagate new configuration
-		err = e.controlPlaneClient.setSamplerConfig(resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
+		err = e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Error creating the sampling rate: %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not create the sampling rate because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
@@ -283,7 +296,7 @@ func (e *Executors) CreateRate(parameters interpoler.ParametersWithValue, writer
 	return nil
 }
 
-func (e *Executors) UpdateRule(parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) UpdateRule(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
@@ -291,7 +304,7 @@ func (e *Executors) UpdateRule(parameters interpoler.ParametersWithValue, writer
 	newSamplingRuleParameter, _ := parameters.Get("new_sampling_rule")
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(resourceParameter.Value, samplerParameter.Value, false)
+	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
 		return err
 	}
@@ -329,9 +342,9 @@ func (e *Executors) UpdateRule(parameters interpoler.ParametersWithValue, writer
 		}
 
 		// Propagate new configuration
-		err := e.controlPlaneClient.setSamplerConfig(resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
+		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Error updating the sampling rule: %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not update the sampling rule because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
@@ -342,7 +355,7 @@ func (e *Executors) UpdateRule(parameters interpoler.ParametersWithValue, writer
 	return nil
 }
 
-func (e *Executors) UpdateRate(parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) UpdateRate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
@@ -355,7 +368,7 @@ func (e *Executors) UpdateRate(parameters interpoler.ParametersWithValue, writer
 	}
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(resourceParameter.Value, samplerParameter.Value, false)
+	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
 		return err
 	}
@@ -380,9 +393,9 @@ func (e *Executors) UpdateRate(parameters interpoler.ParametersWithValue, writer
 		}
 
 		// Propagate new configuration
-		err = e.controlPlaneClient.setSamplerConfig(resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
+		err = e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Error updating the sampling rate: %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not update the sampling rate because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
@@ -393,14 +406,14 @@ func (e *Executors) UpdateRate(parameters interpoler.ParametersWithValue, writer
 	return nil
 }
 
-func (e *Executors) DeleteRule(parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) DeleteRule(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
 	samplingRuleParameter, _ := parameters.Get("sampling_rule")
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(resourceParameter.Value, samplerParameter.Value, false)
+	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
 		return err
 	}
@@ -435,9 +448,9 @@ func (e *Executors) DeleteRule(parameters interpoler.ParametersWithValue, writer
 		}
 
 		// Propagate new configuration
-		err := e.controlPlaneClient.setSamplerConfig(resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
+		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Error deleting the sampling rule: %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not delete the sampling rule because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
@@ -448,13 +461,13 @@ func (e *Executors) DeleteRule(parameters interpoler.ParametersWithValue, writer
 	return nil
 }
 
-func (e *Executors) DeleteRate(parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) DeleteRate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(resourceParameter.Value, samplerParameter.Value, false)
+	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
 		return err
 	}
@@ -480,9 +493,9 @@ func (e *Executors) DeleteRate(parameters interpoler.ParametersWithValue, writer
 		}
 
 		// Propagate new configuration
-		err := e.controlPlaneClient.setSamplerConfig(resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
+		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Error deleting the sampling rate: %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not delete the sampling rate because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 

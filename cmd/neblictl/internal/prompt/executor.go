@@ -2,6 +2,7 @@ package internal
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
 	"github.com/neblic/platform/cmd/neblictl/internal"
@@ -70,7 +71,7 @@ func generateTargetHelp(parents interpoler.CommandNodes, target *interpoler.Comm
 	}
 }
 
-func Execute(nodes interpoler.CommandNodes, command *interpoler.TokanizedCommand, writer *internal.Writer) error {
+func Execute(ctx context.Context, nodes interpoler.CommandNodes, command *interpoler.TokanizedCommand, writer *internal.Writer) error {
 	// Check the command parts is not empty
 	if command.Len() == 0 {
 		return ErrEmptyComand
@@ -93,7 +94,7 @@ func Execute(nodes interpoler.CommandNodes, command *interpoler.TokanizedCommand
 	}
 
 	// Find executor
-	result := interpoler.Interpolate(command, nodes)
+	result := interpoler.Interpolate(ctx, command, nodes)
 	if result.Error != nil {
 		// In case of processing a help command, do not show the error
 		err := result.Error
@@ -122,5 +123,6 @@ func Execute(nodes interpoler.CommandNodes, command *interpoler.TokanizedCommand
 	}
 
 	// Perfrom action
-	return result.Target.Executor(result.Parameters, writer)
+	err := result.Target.Executor(ctx, result.Parameters, writer)
+	return err
 }

@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	prompt "github.com/c-bata/go-prompt"
 	"github.com/google/uuid"
@@ -14,6 +17,8 @@ import (
 	promptImpl "github.com/neblic/platform/cmd/neblictl/internal/prompt"
 	"github.com/neblic/platform/controlplane/client"
 	"github.com/neblic/platform/logging"
+	"github.com/pkg/term/termios"
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -23,6 +28,8 @@ var (
 var (
 	controlPlaneCommands *controlplane.Commands
 	writer               *internal.Writer
+	fd                   int
+	originalTermios      *unix.Termios = &unix.Termios{}
 )
 
 func createTokanizedCommand(inputText string) *interpoler.TokanizedCommand {
@@ -48,6 +55,21 @@ func createTokanizedCommand(inputText string) *interpoler.TokanizedCommand {
 }
 
 func executor(in string) {
+	// restore the original settings to allow ctrl-c to generate signal
+	if err := termios.Tcsetattr(uintptr(fd), termios.TCSANOW, (*unix.Termios)(originalTermios)); err != nil {
+		panic(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	go func() {
+		for range c {
+			cancel()
+		}
+	}()
+
 	// Don't print anything if input is empty
 	if in == "" {
 		return
@@ -57,7 +79,7 @@ func executor(in string) {
 	tokanizedCommand := createTokanizedCommand(in)
 
 	// Execute command and show output/error
-	err := promptImpl.Execute(controlPlaneCommands.Commands, tokanizedCommand, writer)
+	err := promptImpl.Execute(ctx, controlPlaneCommands.Commands, tokanizedCommand, writer)
 	if err != nil {
 		writer.WriteStringf("Error: %v\n", err)
 	}
@@ -76,7 +98,7 @@ func completer(in prompt.Document) []prompt.Suggest {
 	tokanizedCommand := createTokanizedCommand(inputText)
 
 	// Execute command and show output/error
-	suggestions := promptImpl.Suggestions(controlPlaneCommands.Commands, tokanizedCommand)
+	suggestions := promptImpl.Suggestions(context.Background(), controlPlaneCommands.Commands, tokanizedCommand)
 	return suggestions
 }
 
@@ -132,6 +154,16 @@ func main() {
 		if err != nil {
 			fail("error writing configuration file: %v", err)
 		}
+	}
+
+	// Initialize terminal variables
+	fd, err = syscall.Open("/dev/tty", syscall.O_RDONLY, 0)
+	if err != nil {
+		panic(err)
+	}
+	err = termios.Tcgetattr(uintptr(fd), originalTermios)
+	if err != nil {
+		panic(err)
 	}
 
 	// Initialize control plane client

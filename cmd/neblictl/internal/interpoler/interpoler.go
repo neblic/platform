@@ -1,6 +1,8 @@
 package interpoler
 
-func Interpolate(command *TokanizedCommand, nodes CommandNodes) *InterpolateResult {
+import "context"
+
+func Interpolate(ctx context.Context, command *TokanizedCommand, nodes CommandNodes) *InterpolateResult {
 	// If the command parts is empty return an empty command error, this can only happen
 	// the first time the interpolate function is called
 	if command.Len() == 0 {
@@ -39,7 +41,7 @@ func Interpolate(command *TokanizedCommand, nodes CommandNodes) *InterpolateResu
 				// If a completer function exists, use it to check the parameter value is valid. If it's not valid throw and error
 				if parameter.Completer != nil {
 					validParameterValue := false
-					for _, entry := range parameter.Completer(parameters) {
+					for _, entry := range parameter.Completer(ctx, parameters) {
 						if part == entry {
 							validParameterValue = true
 							break
@@ -69,7 +71,7 @@ func Interpolate(command *TokanizedCommand, nodes CommandNodes) *InterpolateResu
 			}
 
 			// Recursive case
-			result := Interpolate(remainingCommand, node.Subcommands).
+			result := Interpolate(ctx, remainingCommand, node.Subcommands).
 				PreappendParameters(parameters)
 
 			// In case of the result not having a target, set the current command as target.

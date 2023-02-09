@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"context"
 	"sort"
 
 	"github.com/neblic/platform/cmd/neblictl/internal/interpoler"
@@ -16,9 +17,9 @@ func NewCompleters(controlPlaneClient *Client) *Completers {
 	}
 }
 
-func (c *Completers) ListResources(parameters interpoler.ParametersWithValue) []string {
+func (c *Completers) ListResources(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
 	// Get all samplers
-	samplers := c.controlPlaneClient.getSamplers(true)
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, true)
 
 	// Store resources in a map to remove duplicates
 	resourcesMap := map[string]bool{"*": true}
@@ -38,13 +39,14 @@ func (c *Completers) ListResources(parameters interpoler.ParametersWithValue) []
 
 // ListSamplers lists all the available samplers. If a resource parameter is provided, it will just
 // return the samplers that are part of the resource
-func (c *Completers) ListSamplers(parameters interpoler.ParametersWithValue) []string {
+func (c *Completers) ListSamplers(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
 	// Get options
 	resourceParameter, ok := parameters.Get("resource")
 
 	// Store samplers in a map to remove duplicates
 	samplersMap := map[string]bool{"*": true}
-	for resourceAndSamplerEntry := range c.controlPlaneClient.getSamplers(true) {
+	samplersFull, _ := c.controlPlaneClient.getSamplers(ctx, true)
+	for resourceAndSamplerEntry := range samplersFull {
 		if !ok || (ok && resourceAndSamplerEntry.resource == resourceParameter.Value) {
 			samplersMap[resourceAndSamplerEntry.sampler] = true
 		}
@@ -60,12 +62,12 @@ func (c *Completers) ListSamplers(parameters interpoler.ParametersWithValue) []s
 	return samplers
 }
 
-func (c *Completers) ListRules(parameters interpoler.ParametersWithValue) []string {
+func (c *Completers) ListRules(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
 	// Get options
 	resourceParameter, _ := parameters.Get("resource")
 	samplerParameter, _ := parameters.Get("sampler")
 
-	sampler := c.controlPlaneClient.getSampler(samplerParameter.Value, resourceParameter.Value, true)
+	sampler, _ := c.controlPlaneClient.getSampler(ctx, samplerParameter.Value, resourceParameter.Value, true)
 	if sampler == nil {
 		return []string{}
 	}
