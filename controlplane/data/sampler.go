@@ -215,6 +215,10 @@ func NewSamplerConfigFromProto(config *protos.SamplerConfig) SamplerConfig {
 	}
 }
 
+func (pc SamplerConfig) IsEmpty() bool {
+	return pc.SamplingRate == nil && len(pc.SamplingRules) == 0
+}
+
 func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
 	var protoSRules []*protos.SamplingRule
 	for _, samplingRule := range pc.SamplingRules {

@@ -3,7 +3,7 @@ package registry
 type StorageType int
 
 const (
-	NoopStorage = StorageType(iota)
+	MemoryStorage = StorageType(iota)
 	DiskStorage
 )
 
@@ -16,7 +16,7 @@ type Options struct {
 
 func NewOptionsDefault() *Options {
 	return &Options{
-		StorageType: NoopStorage,
+		StorageType: MemoryStorage,
 		Path:        "",
 	}
 }

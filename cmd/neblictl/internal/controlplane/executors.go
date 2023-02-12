@@ -455,7 +455,7 @@ func (e *Executors) DeleteRule(ctx context.Context, parameters interpoler.Parame
 		}
 
 		// Write output
-		writer.WriteStringf("%s.%s: Rate successfully deleted\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+		writer.WriteStringf("%s.%s: Rule successfully deleted\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
 	}
 
 	return nil

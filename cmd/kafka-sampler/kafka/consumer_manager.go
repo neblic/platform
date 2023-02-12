@@ -169,7 +169,7 @@ func (m *ConsumerManager) Reconcile() error {
 
 func (m *ConsumerManager) Topics() []string {
 	topics := make([]string, 0, len(m.consumers))
-	for topic, _ := range m.consumers {
+	for topic := range m.consumers {
 		topics = append(topics, topic)
 	}
 	return topics

@@ -12,7 +12,6 @@ import (
 	protocolclient "github.com/neblic/platform/controlplane/server/internal/protocol/client"
 	protocolsampler "github.com/neblic/platform/controlplane/server/internal/protocol/sampler"
 	"github.com/neblic/platform/controlplane/server/internal/registry"
-	"github.com/neblic/platform/controlplane/server/internal/registry/storage"
 	"github.com/neblic/platform/logging"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -57,23 +56,9 @@ func New(uid string, serverOptions ...Option) (*Server, error) {
 		logger: opts.logger,
 	}
 
-	// Initialize config storage
-	var configStorage storage.Storage[*data.SamplerConfig]
-	switch opts.registry.StorageType {
-	case registry.NoopStorage:
-		configStorage = storage.NewNoop[*data.SamplerConfig]()
-	case registry.DiskStorage:
-		var err error
-
-		configStorage, err = storage.NewDisk[*data.SamplerConfig](opts.registry.Path, "config")
-		if err != nil {
-			return nil, fmt.Errorf("error initializing client disk storage: %v", err)
-		}
-	}
-
 	// Initialize client registry
 	var err error
-	s.clientRegistry, err = registry.NewClient(s.logger, configStorage)
+	s.clientRegistry, err = registry.NewClient(s.logger, opts.registry)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client registry: %v", err)
 	}

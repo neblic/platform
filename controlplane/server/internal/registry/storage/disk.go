@@ -3,18 +3,17 @@ package storage
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
 )
 
-type Disk[T any] struct {
+type Disk[K Hasher, V any] struct {
 	mutex    sync.RWMutex
 	fullPath string
 }
 
-func NewDisk[T any](path string, name string) (*Disk[T], error) {
+func NewDisk[K Hasher, V any](path string, name string) (*Disk[K, V], error) {
 	fullPath := filepath.Join(path, name)
 
 	err := os.MkdirAll(fullPath, os.ModePerm)
@@ -22,23 +21,23 @@ func NewDisk[T any](path string, name string) (*Disk[T], error) {
 		return nil, fmt.Errorf("could not create storage directory: %v", err)
 	}
 
-	return &Disk[T]{
+	return &Disk[K, V]{
 		mutex:    sync.RWMutex{},
 		fullPath: fullPath,
 	}, nil
 }
 
-func (d *Disk[T]) keyPath(key string) string {
+func (d *Disk[K, V]) keyPath(key string) string {
 	return filepath.Join(d.fullPath, key)
 }
 
-func (d *Disk[T]) Get(key string) (T, error) {
-	var value T
+func (d *Disk[K, V]) Get(key K) (V, error) {
+	var value V
 
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 
-	data, err := os.ReadFile(d.keyPath(key))
+	data, err := os.ReadFile(d.keyPath(key.Hash()))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return value, ErrUnknownKey
@@ -46,7 +45,7 @@ func (d *Disk[T]) Get(key string) (T, error) {
 		return value, fmt.Errorf("could not read data from disk: %v", err)
 	}
 
-	err = json.Unmarshal(data, (*T)(&value))
+	err = json.Unmarshal(data, (*V)(&value))
 	if err != nil {
 		return value, fmt.Errorf("could not deserialize data: %v", err)
 	}
@@ -54,7 +53,7 @@ func (d *Disk[T]) Get(key string) (T, error) {
 	return value, nil
 }
 
-func (d *Disk[T]) Set(key string, value T) error {
+func (d *Disk[K, V]) Set(key K, value V) error {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
@@ -63,10 +62,12 @@ func (d *Disk[T]) Set(key string, value T) error {
 		return fmt.Errorf("could not serialize data: %v", err)
 	}
 
+	keyHash := key.Hash()
+
 	// Perform a two step write to avoid populating malformed configuration to disk in case
 	// of unexpected stop of the service at mid write. In order to achieve that, configuration
 	// is writen to a tmporary file and then moved to the final place.
-	tmpFile, err := os.CreateTemp(d.fullPath, key)
+	tmpFile, err := os.CreateTemp(d.fullPath, keyHash)
 	if err != nil {
 		return fmt.Errorf("could not create a temporary file: %v", err)
 	}
@@ -79,45 +80,23 @@ func (d *Disk[T]) Set(key string, value T) error {
 		return fmt.Errorf("could not close the temporary file: %v", err)
 	}
 
-	if err := os.Rename(tmpFile.Name(), d.keyPath(key)); err != nil {
+	if err := os.Rename(tmpFile.Name(), d.keyPath(keyHash)); err != nil {
 		return fmt.Errorf("could not rename the temporary file: %v", err)
 	}
 
 	return nil
 }
 
-func (d *Disk[T]) Delete(key string) error {
+func (d *Disk[K, V]) Delete(key K) error {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
-	err := os.Remove(d.keyPath(key))
+	err := os.Remove(d.keyPath(key.Hash()))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return ErrUnknownKey
 		}
 		return fmt.Errorf("could not delete data from disk: %v", err)
-	}
-
-	return err
-}
-
-func (d *Disk[T]) Range(callback func(key string, value T)) error {
-	d.mutex.RLock()
-	defer d.mutex.RUnlock()
-
-	files, err := ioutil.ReadDir(d.fullPath)
-	if err != nil {
-		return fmt.Errorf("could not read all the entries from disk: %v", err)
-	}
-
-	for _, f := range files {
-		key := f.Name()
-		value, err := d.Get(key)
-		if err != nil {
-			return err
-		}
-
-		callback(key, value)
 	}
 
 	return nil

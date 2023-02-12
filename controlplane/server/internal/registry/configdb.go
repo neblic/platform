@@ -1,8 +1,9 @@
 package registry
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/neblic/platform/controlplane/data"
@@ -10,140 +11,115 @@ import (
 	"github.com/neblic/platform/logging"
 )
 
-type storeKey struct {
-	samplerName     string
-	samplerResource string
+type samplerIdentifier struct {
+	Resource string
+	Name     string
+	UID      string
 }
 
-type storeValue struct {
-	config map[data.SamplerUID]*data.SamplerConfig
+func (si samplerIdentifier) Hash() string {
+	hasher := sha1.New()
+	hasher.Write([]byte(si.Resource))
+	hasher.Write([]byte(si.Name))
+	hasher.Write([]byte(si.UID))
+	hash := string(hex.EncodeToString(hasher.Sum(nil)))
+	return hash
+}
+
+type identifiedSamplerConfig struct {
+	samplerIdentifier
+	*data.SamplerConfig
+}
+
+func newIdentifiedSamplerConfig(samplerUID data.SamplerUID, samplerName, samplerResource string, config *data.SamplerConfig) *identifiedSamplerConfig {
+	samplerIdentifier := samplerIdentifier{
+		Resource: samplerResource,
+		Name:     samplerName,
+		UID:      string(samplerUID),
+	}
+
+	identifiedSamplerConfig := &identifiedSamplerConfig{
+		samplerIdentifier: samplerIdentifier,
+		SamplerConfig:     config,
+	}
+
+	return identifiedSamplerConfig
 }
 
 type ConfigDB struct {
-	db      map[storeKey]*storeValue
-	storage storage.Storage[*data.SamplerConfig]
+	storage storage.Storage[samplerIdentifier, *identifiedSamplerConfig]
 
 	logger logging.Logger
-	sync.Mutex
+	mutex  *sync.RWMutex
 }
 
-func NewConfigDB(store storage.Storage[*data.SamplerConfig], logger logging.Logger) (*ConfigDB, error) {
-	c := &ConfigDB{
-		db:      make(map[storeKey]*storeValue),
-		storage: store,
-
-		logger: logger,
+func NewConfigDB(logger logging.Logger, opts *Options) (*ConfigDB, error) {
+	// Initialize storage
+	var storageInstance storage.Storage[samplerIdentifier, *identifiedSamplerConfig]
+	switch opts.StorageType {
+	case MemoryStorage:
+		storageInstance = storage.NewMemory[samplerIdentifier, *identifiedSamplerConfig]()
+	case DiskStorage:
+		var err error
+		storageInstance, err = storage.NewDisk[samplerIdentifier, *identifiedSamplerConfig](opts.Path, "config")
+		if err != nil {
+			return nil, fmt.Errorf("error initializing client disk storage: %v", err)
+		}
 	}
 
-	c.loadFromStorage()
+	c := &ConfigDB{
+		storage: storageInstance,
+
+		logger: logger,
+		mutex:  new(sync.RWMutex),
+	}
 
 	return c, nil
 }
 
-func (s *ConfigDB) storageKey(samplerUID data.SamplerUID, samplerName, samplerResource string) string {
-	return fmt.Sprintf("%s#%s#%s", samplerUID, samplerName, samplerResource)
-}
-
-func (s *ConfigDB) parseKey(key string) (data.SamplerUID, string, string, error) {
-	parts := strings.Split(key, "#")
-	if len(parts) != 3 {
-		return "", "", "", fmt.Errorf("couldn't parse configuration key: %s", key)
-	}
-
-	return data.SamplerUID(parts[0]), parts[1], parts[2], nil
-}
-
-func (s *ConfigDB) loadFromStorage() {
-	s.storage.Range(func(key string, config *data.SamplerConfig) {
-		uid, name, resource, err := s.parseKey(key)
-		if err != nil {
-			s.logger.Error(fmt.Sprintf("Error loading configuration from storage: %s", err))
-		} else {
-			s.set(uid, name, resource, config)
-		}
-	})
-}
-
 func (s *ConfigDB) Get(samplerUID data.SamplerUID, samplerName, samplerResource string) *data.SamplerConfig {
-	s.Lock()
-	defer s.Unlock()
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
 
-	key := storeKey{samplerName, samplerResource}
+	samplerIdentifier := samplerIdentifier{
+		Resource: samplerResource,
+		Name:     samplerName,
+		UID:      string(samplerUID),
+	}
 
-	value, ok := s.db[key]
-	if !ok {
+	config, err := s.storage.Get(samplerIdentifier)
+	if err != nil {
+		if err != storage.ErrUnknownKey {
+			s.logger.Error(err.Error())
+		}
 		return nil
 	}
 
-	config, ok := value.config[samplerUID]
-	if !ok {
-		return nil
-	}
-
-	return config
-}
-
-func (s *ConfigDB) persist(samplerUID data.SamplerUID, samplerName, samplerResource string, config *data.SamplerConfig) error {
-	if config != nil {
-		if err := s.storage.Set(s.storageKey(samplerUID, samplerName, samplerResource), config); err != nil {
-			return fmt.Errorf("error persisting config to disk: %w", err)
-		}
-	} else {
-		if err := s.storage.Delete(s.storageKey(samplerUID, samplerName, samplerResource)); err != nil {
-			return fmt.Errorf("error persisting config to disk: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (s *ConfigDB) set(samplerUID data.SamplerUID, samplerName, samplerResource string, config *data.SamplerConfig) {
-	key := storeKey{samplerName, samplerResource}
-	value, ok := s.db[key]
-	if !ok {
-		value = &storeValue{
-			config: make(map[data.SamplerUID]*data.SamplerConfig),
-		}
-
-		s.db[key] = value
-	}
-
-	value.config[samplerUID] = config
+	return config.SamplerConfig
 }
 
 func (s *ConfigDB) Set(samplerUID data.SamplerUID, samplerName, samplerResource string, config *data.SamplerConfig) error {
-	s.Lock()
-	defer s.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	if err := s.persist(samplerUID, samplerName, samplerResource, config); err != nil {
-		return err
-	}
+	identifiedSamplerConfig := newIdentifiedSamplerConfig(samplerUID, samplerName, samplerResource, config)
+	samplerIdentifier := identifiedSamplerConfig.samplerIdentifier
 
-	s.set(samplerUID, samplerName, samplerResource, config)
+	// Set config to the storage
+	err := s.storage.Set(samplerIdentifier, identifiedSamplerConfig)
 
-	return nil
+	return err
 }
 
 func (s *ConfigDB) Delete(samplerUID data.SamplerUID, samplerName, samplerResource string) error {
-	s.Lock()
-	defer s.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	key := storeKey{samplerName, samplerResource}
+	identifiedSamplerConfig := newIdentifiedSamplerConfig(samplerUID, samplerName, samplerResource, nil)
+	samplerIdentifier := identifiedSamplerConfig.samplerIdentifier
 
-	value, ok := s.db[key]
-	if !ok {
-		return nil
-	}
+	// Remove config from storage
+	err := s.storage.Delete(samplerIdentifier)
 
-	if err := s.persist(samplerUID, samplerName, samplerResource, nil); err != nil {
-		return err
-	}
-
-	delete(value.config, samplerUID)
-
-	if len(value.config) == 0 {
-		delete(s.db, key)
-	}
-
-	return nil
+	return err
 }

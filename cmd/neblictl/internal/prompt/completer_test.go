@@ -25,7 +25,7 @@ var commands = interpoler.CommandNodes{
 					{
 						Name:        "sampler",
 						Description: "Name of an already configured sampler",
-						Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
+						Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
 							return []string{"p1", "p2"}
 						},
 					},
@@ -40,14 +40,14 @@ var commands = interpoler.CommandNodes{
 			{
 				Name:        "sampler",
 				Description: "Name of an already configured sampler",
-				Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
+				Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
 					return []string{"p1", "p2"}
 				},
 			},
 			{
 				Name:        "sampling_rule",
 				Description: "Sampling rule, format TBD",
-				Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
+				Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
 					return []string{}
 				},
 			},
@@ -60,14 +60,14 @@ var commands = interpoler.CommandNodes{
 			{
 				Name:        "sampler",
 				Description: "Name of an already configured sampler",
-				Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
+				Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
 					return []string{"p1", "p2"}
 				},
 			},
 			{
 				Name:        "old_sampling_rule",
 				Description: "Old sampling rule, format TBD",
-				Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
+				Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
 					samplerParameter, _ := funcOptions.Get("sampler")
 					switch samplerParameter.Value {
 					case "p1":
@@ -82,7 +82,7 @@ var commands = interpoler.CommandNodes{
 			{
 				Name:        "new_sampling_rule",
 				Description: "New sampling rule, format TBD",
-				Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
+				Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
 					return []string{}
 				},
 			},

@@ -7,7 +7,6 @@ import (
 
 	data "github.com/neblic/platform/controlplane/data"
 	internalclient "github.com/neblic/platform/controlplane/server/internal/defs/client"
-	"github.com/neblic/platform/controlplane/server/internal/registry/storage"
 	"github.com/neblic/platform/logging"
 )
 
@@ -24,12 +23,12 @@ type Client struct {
 	sync.Mutex
 }
 
-func NewClient(logger logging.Logger, configStorage storage.Storage[*data.SamplerConfig]) (*Client, error) {
+func NewClient(logger logging.Logger, opts *Options) (*Client, error) {
 	if logger == nil {
 		logger = logging.NewNopLogger()
 	}
 
-	configDB, err := NewConfigDB(configStorage, logger)
+	configDB, err := NewConfigDB(logger, opts)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing configuration database: %w", err)
 	}
@@ -71,6 +70,11 @@ func (c *Client) GetSamplerConfig(uid data.SamplerUID, name, resource string) *d
 	if config == nil {
 		// if no config for the specific uid, try to get a more generic config
 		config = c.configs.Get("", name, resource)
+
+		// if no config exists, return empty config
+		if config == nil {
+			config = &data.SamplerConfig{}
+		}
 	}
 
 	return config
@@ -149,10 +153,21 @@ func (c *Client) UpdateSamplerConfig(uid data.SamplerUID, name, resource string,
 		}
 	}
 
-	c.configs.Set(uid, name, resource, updatedConfig)
+	var action ConfigAction
+	var err error
+	if updatedConfig.IsEmpty() {
+		action = ConfigDeleted
+		err = c.configs.Delete(uid, name, resource)
+	} else {
+		action = ConfigUpdated
+		err = c.configs.Set(uid, name, resource, updatedConfig)
+	}
+	if err != nil {
+		c.logger.Error(err.Error())
+	}
 
 	c.sendEvent(&ConfigEvent{
-		Action:          ConfigUpdated,
+		Action:          action,
 		SamplerName:     name,
 		SamplerResource: resource,
 		SamplerUID:      uid,
@@ -165,7 +180,10 @@ func (c *Client) DeleteSamplerConfig(uid data.SamplerUID, name, resource string)
 	c.Lock()
 	defer c.Unlock()
 
-	c.configs.Delete(uid, name, resource)
+	err := c.configs.Delete(uid, name, resource)
+	if err != nil {
+		c.logger.Error(err.Error())
+	}
 
 	c.sendEvent(&ConfigEvent{
 		Action:          ConfigDeleted,
