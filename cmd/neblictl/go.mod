@@ -9,7 +9,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/term v1.1.0
 	golang.org/x/exp v0.0.0-20221026153819-32f3d567a233
-	golang.org/x/sys v0.4.0
+	golang.org/x/sys v0.5.0
 )
 
 require (
