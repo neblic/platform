@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/c-bata/go-prompt v0.2.5
 	github.com/google/uuid v1.3.0
-	github.com/neblic/platform v0.0.7
+	github.com/neblic/platform v0.0.8-0.20230215165648-4a5b9e18b6e1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/term v1.1.0
 	golang.org/x/exp v0.0.0-20221026153819-32f3d567a233
@@ -29,6 +29,6 @@ require (
 	golang.org/x/text v0.6.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20221202195650-67e5cbc046fd // indirect
-	google.golang.org/grpc v1.52.0 // indirect
+	google.golang.org/grpc v1.52.3 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )
