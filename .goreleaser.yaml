@@ -16,6 +16,15 @@ builds:
       - amd64
     dir: ./dist/otelcol/build
     binary: otelcol
+  - id: neblictl
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+    dir: ./cmd/neblictl
+    binary: neblictl
   - id: kafka-sampler
     env:
       - CGO_ENABLED=0
@@ -28,6 +37,10 @@ builds:
 archives:
   - id: otelcol
     name_template: "otelcol_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    replacements:
+      amd64: x86_64
+  - id: neblictl
+    name_template: "neblictl_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     replacements:
       amd64: x86_64
   - id: kafka-sampler
