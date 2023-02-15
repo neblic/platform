@@ -57,7 +57,7 @@ dockers:
     dockerfile: ./dist/otelcol/Dockerfile
     extra_files:
       - ./dist/otelcol/entrypoint.sh
-      - ./dist/otelcol/config.yaml
+      - ./dist/otelcol/otelcol.yaml
   - id: kafka-sampler
     goos: linux
     goarch: amd64
