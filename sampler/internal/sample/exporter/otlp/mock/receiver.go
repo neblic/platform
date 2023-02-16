@@ -38,6 +38,8 @@ func (r *mockReceiver) setExportError(err error) {
 type LogsReceiver struct {
 	mockReceiver
 	lastRequest plog.Logs
+
+	plogotlp.UnimplementedGRPCServer
 }
 
 func (r *LogsReceiver) Export(ctx context.Context, req plogotlp.ExportRequest) (plogotlp.ExportResponse, error) {
