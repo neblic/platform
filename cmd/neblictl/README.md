@@ -9,11 +9,7 @@ The `neblictl` command connects with the Neblic `Control Plane` server and allow
 
 ## Installation
 
-You can download a precompiled binary on the [releases](https://github.com/neblic/platform/releases) page or use the `Go` install command to install it:
-
-``` go
-go install github.com/neblic/platform/cmd/neblictl@latest
-```
+You can download a precompiled binary on the [releases](https://github.com/neblic/platform/releases) page. If you want to build it `go install` won't work because its `go.mod` has replace directives, so you need to clone the entire platform repository and build it in the `neblictl` folder.
 
 It is also bundled with the `otelcol` container image that Neblic distributes so you can run it from inside the container.
 
