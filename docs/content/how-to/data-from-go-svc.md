@@ -10,4 +10,4 @@ To get `Data Samples` from your Go services, you can use the `sampler` [module](
 
 ## Documentation
 
-Check the [Godoc](TBD) documentation to see the `sampler` module documentation.
+Check the [Godoc](https://pkg.go.dev) documentation to see the `sampler` module documentation.

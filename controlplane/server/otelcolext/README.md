@@ -16,5 +16,5 @@ extensions:
 
 You can use as a reference the [configuration file](https://github.com/neblic/platform/blob/main/dist/otelcol/ocb.yaml) used to build the collector that Neblic distributes.
 
-Once built, you can configure it as described [here](https://neblic.github.io/platform/learn/collector/)
+Once built, you can configure it as described [here](https://neblic.github.io/platform/latest/learn/collector/)
 <!--how-to-end-->

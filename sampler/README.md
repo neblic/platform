@@ -18,7 +18,7 @@ The Go library also provides a package to easily add `Samplers` as gRPC intercep
 <!--learn-end-->
 
 > **Warning**
-> The next section is better read in the [documentation page](https://neblic.github.io/platform/how-to/data-from-go-svc/) since it is post-processed to include code snippets from tests
+> The next section is better read in the [documentation page](https://neblic.github.io/platform/latest/how-to/data-from-go-svc/) since it is post-processed to include code snippets from tests
 
 <!--how-to-start-->
 ## Usage
@@ -36,7 +36,7 @@ import (
 --8<-- "./sampler/test/docs/provider_test.go:ProviderInit"
 ```
 
-To see details about the required settings and available options, see this [page](TBD).
+To see details about the required settings and available options, see this [page](https://pkg.go.dev).
 
 Once the `Provider` is initialized, you can use it to initialize `Samplers`. If you have registered the provider as global, you can simply call the `Sampler` method from anywhere in your application. If not, you will need to call the `Sampler` method of your provider. They both have the same signature so the following explanation works for both options.
 
@@ -51,14 +51,14 @@ import (
 --8<-- "./sampler/test/docs/sampler_test.go:SamplerInit"
 ```
 
-To see what other schemas the Go Sampler supports, check this [Godoc](TBD) page. 
+To see what other schemas the Go Sampler supports, check this [Godoc](https://pkg.go.dev) page.
 
 Once you have initialized the `Sampler`, you can call any of its methods to have it evaluate a `Data Sample`. It will then be evaluated by any configured `Sampling Rule` and exported if there is a match.
 
 !!! Warning
     You need to be mindful of what methods you use to sample data. Depending on the schema provided when the `Sampler` is initialized, some methods will work better or faster than others. 
     
-    As a rule of thumb, you want to provide a schema if you have it since this allows the `Sampler` to internally optimize how it evaluates the `Sampling Rules`. If you do not have it, a sampler configured with a `DynamicSchema` is capable of processing any type data using any of the sampling methods. See the [Godoc](TBD) documentation for details.
+    As a rule of thumb, you want to provide a schema if you have it since this allows the `Sampler` to internally optimize how it evaluates the `Sampling Rules`. If you do not have it, a sampler configured with a `DynamicSchema` is capable of processing any type data using any of the sampling methods. See the [Godoc](https://pkg.go.dev) documentation for details.
 
 ``` go
 --8<-- "./sampler/test/docs/sampler_test.go:SampleData"
