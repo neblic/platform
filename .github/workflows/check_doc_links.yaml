@@ -4,7 +4,7 @@ on:
 
 jobs:
   checklinks:
-    name: Check links
+    name: Check documentation links
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
