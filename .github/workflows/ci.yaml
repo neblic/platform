@@ -33,3 +33,5 @@ jobs:
         with:
           version: v1.50.1
           args: --timeout 300s
+  checklinks:
+    uses: ./.github/workflows/linkcheck.yaml

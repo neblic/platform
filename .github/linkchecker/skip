@@ -1,0 +1,16 @@
+# preload
+https://fonts.gstatic.com
+
+# fails to parse the css
+/.*/assets/stylesheets/
+
+# complains of missing anchors
+https://github.com/google/cel-spec/blob/master/doc/langdef.md
+
+# demo urls
+http://localhost:.*/
+
+# temporarily skip until the repos are public
+https://pkg.go.dev
+https://github.com/neblic/
+https://neblic.github.io/
