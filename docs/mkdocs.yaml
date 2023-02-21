@@ -8,8 +8,7 @@ nav:
       - 'What is Neblic': introduction/what-is-neblic.md
       - 'How does Neblic work': introduction/how-does-neblic-work.md
       - 'Use cases': introduction/use-cases.md
-    - 'Quick start':
-      - 'Try neblic': 'quick-start/try-neblic.md'
+    - 'Quickstart': 'quickstart.md'
     - 'Getting started': 
       - 'Concepts': 'getting-started/concepts.md'
       - 'Deployment': 'getting-started/deployment.md'
