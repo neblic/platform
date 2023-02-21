@@ -5,11 +5,11 @@ go 1.19
 replace github.com/neblic/platform => ../../
 
 require (
-	github.com/c-bata/go-prompt v0.2.6
+	github.com/c-bata/go-prompt v0.2.5
 	github.com/google/uuid v1.3.0
 	github.com/neblic/platform v0.0.0
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/pkg/term v1.2.0-beta.2
+	github.com/pkg/term v1.1.0
 	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
 	golang.org/x/sys v0.5.0
 )
@@ -35,3 +35,5 @@ require (
 	google.golang.org/grpc v1.53.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )
+
+exclude github.com/c-bata/go-prompt v0.2.6
