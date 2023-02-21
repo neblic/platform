@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -24,7 +25,7 @@ var commands = interpoler.CommandNodes{
 					{
 						Name:        "sampler",
 						Description: "Name of an already configured sampler",
-						Completer: func(funcOptions interpoler.ParametersWithValue) []string {
+						Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
 							return []string{"p1", "p2"}
 						},
 					},
@@ -39,14 +40,14 @@ var commands = interpoler.CommandNodes{
 			{
 				Name:        "sampler",
 				Description: "Name of an already configured sampler",
-				Completer: func(funcOptions interpoler.ParametersWithValue) []string {
+				Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
 					return []string{"p1", "p2"}
 				},
 			},
 			{
 				Name:        "sampling_rule",
 				Description: "Sampling rule, format TBD",
-				Completer: func(funcOptions interpoler.ParametersWithValue) []string {
+				Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
 					return []string{}
 				},
 			},
@@ -59,14 +60,14 @@ var commands = interpoler.CommandNodes{
 			{
 				Name:        "sampler",
 				Description: "Name of an already configured sampler",
-				Completer: func(funcOptions interpoler.ParametersWithValue) []string {
+				Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
 					return []string{"p1", "p2"}
 				},
 			},
 			{
 				Name:        "old_sampling_rule",
 				Description: "Old sampling rule, format TBD",
-				Completer: func(funcOptions interpoler.ParametersWithValue) []string {
+				Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
 					samplerParameter, _ := funcOptions.Get("sampler")
 					switch samplerParameter.Value {
 					case "p1":
@@ -81,7 +82,7 @@ var commands = interpoler.CommandNodes{
 			{
 				Name:        "new_sampling_rule",
 				Description: "New sampling rule, format TBD",
-				Completer: func(funcOptions interpoler.ParametersWithValue) []string {
+				Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
 					return []string{}
 				},
 			},
@@ -166,7 +167,7 @@ func TestSuggestions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Suggestions(tt.args.commands, tt.args.tokanizedCommand); !reflect.DeepEqual(got, tt.want) {
+			if got := Suggestions(context.Background(), tt.args.commands, tt.args.tokanizedCommand); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Suggestions() = %v, want %v", got, tt.want)
 			}
 		})
