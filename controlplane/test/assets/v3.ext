@@ -2,5 +2,5 @@ subjectKeyIdentifier   = hash
 authorityKeyIdentifier = keyid:always,issuer:always
 basicConstraints       = CA:TRUE
 keyUsage               = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment, keyAgreement, keyCertSign
-subjectAltName         = DNS:localhost
+subjectAltName         = DNS:localhost, IP:127.0.0.1
 issuerAltName          = issuer:copy

@@ -3,8 +3,6 @@ package test
 //revive:disable:dot-imports
 import (
 	"context"
-	"fmt"
-	"math/rand"
 	"testing"
 	"time"
 
@@ -93,16 +91,13 @@ func waitSamplerRegistered(p *sampler.Sampler) chan struct{} {
 var _ = Describe("ControlPlane", func() {
 	Describe("Encrypted connection", func() {
 		var (
-			logger         logging.Logger
-			s              *server.Server
-			testServerAddr string
+			logger logging.Logger
+			s      *server.Server
 		)
 
 		BeforeEach(func() {
-			rand.Seed(time.Now().UnixNano())
-			testServerAddr = fmt.Sprintf("localhost:%d", rand.Intn(10000)+1024)
-
 			var err error
+
 			logger, err = logging.NewZapDev()
 			Expect(err).ToNot(HaveOccurred())
 
@@ -113,11 +108,9 @@ var _ = Describe("ControlPlane", func() {
 
 			s, err = server.New("server_uid", opts...)
 			Expect(err).ToNot(HaveOccurred())
-			go func() {
-				defer GinkgoRecover()
-				err = s.Start(testServerAddr)
-				Expect(err).ToNot(HaveOccurred())
-			}()
+
+			err = s.Start("localhost:")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
@@ -131,7 +124,8 @@ var _ = Describe("ControlPlane", func() {
 					client.WithTLS(),
 					client.WithTLSCACert("./assets/localhost.crt"),
 					client.WithLogger(logger))
-				err := c.Connect(testServerAddr)
+
+				err := c.Connect(s.Addr().String())
 				registered := waitClientRegistered(c)
 
 				<-registered
@@ -148,7 +142,7 @@ var _ = Describe("ControlPlane", func() {
 					sampler.WithTLSCACert("./assets/localhost.crt"),
 					sampler.WithLogger(logger))
 
-				err := p.Connect(testServerAddr)
+				err := p.Connect(s.Addr().String())
 				registered := waitSamplerRegistered(p)
 
 				<-registered
@@ -161,16 +155,13 @@ var _ = Describe("ControlPlane", func() {
 
 	Describe("Encrypted connection with auth", func() {
 		var (
-			logger         logging.Logger
-			s              *server.Server
-			testServerAddr string
+			logger logging.Logger
+			s      *server.Server
 		)
 
 		BeforeEach(func() {
-			rand.Seed(time.Now().UnixNano())
-			testServerAddr = fmt.Sprintf("localhost:%d", rand.Intn(10000)+1024)
-
 			var err error
+
 			logger, err = logging.NewZapDev()
 			Expect(err).ToNot(HaveOccurred())
 
@@ -182,11 +173,9 @@ var _ = Describe("ControlPlane", func() {
 
 			s, err = server.New("server_uid", opts...)
 			Expect(err).ToNot(HaveOccurred())
-			go func() {
-				defer GinkgoRecover()
-				err = s.Start(testServerAddr)
-				Expect(err).ToNot(HaveOccurred())
-			}()
+
+			err = s.Start("localhost:")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
@@ -203,7 +192,7 @@ var _ = Describe("ControlPlane", func() {
 					client.WithAuthBearer("some_token"),
 				)
 
-				err := c.Connect(testServerAddr)
+				err := c.Connect(s.Addr().String())
 				registered := waitClientRegistered(c)
 
 				<-registered
@@ -222,7 +211,7 @@ var _ = Describe("ControlPlane", func() {
 					sampler.WithAuthBearer("some_token"),
 				)
 
-				err := p.Connect(testServerAddr)
+				err := p.Connect(s.Addr().String())
 				registered := waitSamplerRegistered(p)
 
 				<-registered
@@ -235,26 +224,21 @@ var _ = Describe("ControlPlane", func() {
 
 	Describe("Unencrypted connection", func() {
 		var (
-			logger         logging.Logger
-			s              *server.Server
-			testServerAddr string
+			logger logging.Logger
+			s      *server.Server
 		)
 
 		BeforeEach(func() {
-			rand.Seed(time.Now().UnixNano())
-			testServerAddr = fmt.Sprintf("localhost:%d", rand.Intn(10000)+1024)
-
 			var err error
+
 			logger, err = logging.NewZapDev()
 			Expect(err).ToNot(HaveOccurred())
 
 			s, err = server.New("server_uid", server.WithLogger(logger))
 			Expect(err).ToNot(HaveOccurred())
-			go func() {
-				defer GinkgoRecover()
-				err = s.Start(testServerAddr)
-				Expect(err).ToNot(HaveOccurred())
-			}()
+
+			err = s.Start("localhost:")
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
@@ -270,7 +254,7 @@ var _ = Describe("ControlPlane", func() {
 					c := client.New(uuid.New().String(), client.WithLogger(logger))
 					registered := waitClientRegistered(c)
 
-					err := c.Connect(testServerAddr)
+					err := c.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					<-registered
@@ -287,7 +271,7 @@ var _ = Describe("ControlPlane", func() {
 					p := sampler.New("sampler1", "resource1", sampler.WithLogger(logger))
 					registered := waitSamplerRegistered(p)
 
-					err := p.Connect(testServerAddr)
+					err := p.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					<-registered
@@ -303,12 +287,12 @@ var _ = Describe("ControlPlane", func() {
 				It("should be forwarded to the sampler", func() {
 					c := client.New(uuid.New().String(), client.WithLogger(logger))
 					clientRegistered := waitClientRegistered(c)
-					err := c.Connect(testServerAddr)
+					err := c.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					p := sampler.New("sampler1", "resource1", sampler.WithLogger(logger))
 					samplerRegistered := waitSamplerRegistered(p)
-					err = p.Connect(testServerAddr)
+					err = p.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					<-clientRegistered
@@ -349,12 +333,12 @@ var _ = Describe("ControlPlane", func() {
 				It("should be forwarded to the sampler", func() {
 					c := client.New(uuid.New().String(), client.WithLogger(logger))
 					clientRegistered := waitClientRegistered(c)
-					err := c.Connect(testServerAddr)
+					err := c.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					p := sampler.New("sampler1", "resource1", sampler.WithLogger(logger))
 					samplerRegistered := waitSamplerRegistered(p)
-					err = p.Connect(testServerAddr)
+					err = p.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					<-clientRegistered
@@ -396,17 +380,17 @@ var _ = Describe("ControlPlane", func() {
 				It("should receive all registered samplers", func() {
 					c := client.New(uuid.New().String(), client.WithLogger(logger))
 					clientRegistered := waitClientRegistered(c)
-					err := c.Connect(testServerAddr)
+					err := c.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					p1 := sampler.New("sampler1", "resource1", sampler.WithLogger(logger))
 					sampler1Registered := waitSamplerRegistered(p1)
-					err = p1.Connect(testServerAddr)
+					err = p1.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					p2 := sampler.New("sampler2", "resource2", sampler.WithLogger(logger))
 					sampler2Registered := waitSamplerRegistered(p2)
-					err = p2.Connect(testServerAddr)
+					err = p2.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					<-clientRegistered
@@ -429,12 +413,12 @@ var _ = Describe("ControlPlane", func() {
 				It("should recover the previous configuration", func() {
 					c := client.New(uuid.New().String(), client.WithLogger(logger))
 					clientRegistered := waitClientRegistered(c)
-					err := c.Connect(testServerAddr)
+					err := c.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					p := sampler.New("sampler1", "resource1", sampler.WithLogger(logger))
 					samplerRegistered := waitSamplerRegistered(p)
-					err = p.Connect(testServerAddr)
+					err = p.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					<-clientRegistered
@@ -473,7 +457,7 @@ var _ = Describe("ControlPlane", func() {
 
 					p2 := sampler.New("sampler1", "resource1", sampler.WithLogger(logger))
 					samplerRegistered2 := waitSamplerRegistered(p2)
-					err = p2.Connect(testServerAddr)
+					err = p2.Connect(s.Addr().String())
 
 					Expect(err).ToNot(HaveOccurred())
 

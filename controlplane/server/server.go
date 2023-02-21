@@ -30,6 +30,7 @@ const keepAliveMinPeriod = time.Duration(10) * time.Second
 type Server struct {
 	uid string
 
+	lis        net.Listener
 	grpcServer *grpc.Server
 	protos.UnimplementedControlPlaneServer
 
@@ -139,9 +140,14 @@ func (s *Server) Start(listenAddr string) error {
 		}
 	}()
 
+	s.lis = lis
 	s.grpcServer = grpcServer
 
 	return nil
+}
+
+func (s *Server) Addr() net.Addr {
+	return s.lis.Addr()
 }
 
 func (s *Server) SamplerConn(stream protos.ControlPlane_SamplerConnServer) error {
