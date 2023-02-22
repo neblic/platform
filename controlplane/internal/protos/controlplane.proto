@@ -29,7 +29,7 @@ message SamplingRule {
 message SamplingRate {
   // limit determines the maximum number of exported samples per second.
   // -1 means no exported samples limit
-  // 0 means no samples will be exporter
+  // 0 means no samples will be exported
   int64 limit = 1;
   // burst sets the allowed sample burst
   int64 burst = 2;
