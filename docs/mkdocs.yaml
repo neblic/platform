@@ -4,11 +4,10 @@ copyright: Copyright &copy; 2023 - Neblic
 docs_dir: content
 strict: true
 nav:
-    - 'Introduction':
-      - 'What is Neblic': introduction/what-is-neblic.md
-      - 'How does Neblic work': introduction/how-does-neblic-work.md
-      - 'Use cases': introduction/use-cases.md
-    - 'Quickstart': 'quickstart.md'
+    - 'What is Neblic': index.md
+    - 'Quickstart':
+        - 'How does Neblic work': 'quickstart/how-does-neblic-work.md'
+        - 'Sandbox': 'quickstart/sandbox.md'
     - 'Getting started': 
       - 'Concepts': 'getting-started/concepts.md'
       - 'Deployment': 'getting-started/deployment.md'

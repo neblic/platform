@@ -12,7 +12,7 @@ There are three types of messages:
 
 Each Sampler and Client has an exclusive bidirectional stream, and within that stream, requests are processed sequentially. This means that responses are sent following the order in which requests were received. Messages can be interleaved within requests and responses.
 
-In appendix A, you can find the Protobuf definitions used by the protocol implementation.
+In [appendix A](#appendix-a-protobuf-definitions), you can find the Protobuf definitions used by the protocol implementation.
 
 ## Registration
 

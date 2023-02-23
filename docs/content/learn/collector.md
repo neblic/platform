@@ -24,11 +24,11 @@ The collector is configured using a YAML configuration file. However, if you are
 otelcol --config /path/to/config.yaml
 ```
 
- [Here](../reference/collector.md) you can find an up-to-date complete configuration file that you can use as a reference, the reference configuration file is also the configuration that is shipped with the container. There are three main sections, one for configuring the `Data Plane`, one for configuring the `Control Plane`, and for configuring the `Data Samples` exporter.
+ [Here](../reference/collector.md) you can find an up-to-date complete configuration file that you can use as a reference, the reference configuration file is also the configuration that is shipped with the container. There are three main sections, configuring the `Data Plane`, configuring the `Control Plane`, and configuring the `Data Samples` exporter.
 
 ### Data Plane
 
-The `Data Plane` uses of the standard [OTLP logging receiver](https://github.com/open-telemetry/opentelemetry-collector/blob/main/receiver/otlpreceiver/README.md). Neblic doesn't require any special configuration, so it is enough to simply enable it by setting up an endpoint.
+The `Data Plane` uses the standard [OTLP logging receiver](https://github.com/open-telemetry/opentelemetry-collector/blob/main/receiver/otlpreceiver/README.md). Neblic doesn't require any special configuration, so it is enough to simply enable it by setting up an endpoint.
 
 Neblic also provides a custom Bearer authenticator that can be used to authenticate `Sampler` connections when TLS is enabled. You will only need it if you want to connect using a Bearer token to authenticate with the `Data Plane` server.
 
