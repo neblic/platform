@@ -7,7 +7,7 @@ An OpenTelemtry Collector with the `Control Plane` server built-in is provided i
 * Binaries can be found on the [GitHub releases](https://github.com/neblic/platform/releases) page.
 * Containers are available on the [GitHub packages](https://github.com/neblic/platform/pkgs/container/otelcol) page.
 
-You can see what other components are included in its [ocb configuration file](https://github.com/neblic/platform/blob/main/dist/otelcol/ocb.yaml). If you want to build your own OpenTelemetry Collector with the Neblic `Control Plane` server and additional components, you can check [this](../how-to/build-your-own-collector.md) page.
+You can see what other components are included in its ocb configuration file (see [Appendix A](#appendix-a)). If you want to build your own OpenTelemetry Collector with the Neblic `Control Plane` server and additional components, you can check [this](../how-to/build-your-own-collector.md) page.
 
 !!! note
     Since Neblic's `Control Plane` server is the central point where all `Samplers` register and where clients connect to configure them, it is not recommended to run multiple collectors (e.g. as an agent in each host) running in the same cluster. If you do so, you will have to connect to multiple locations to configure your `Samplers`.
@@ -48,3 +48,9 @@ In addition to configuring and enabling the [Loki exporter](https://github.com/o
 #### Other exporters
 
 Refer to your exporter documentation to learn how to configure it to save  `Data Samples` in your preferred store.
+
+## Appendix A:
+
+``` yaml
+--8<-- "./dist/otelcol/ocb.yaml"
+```
