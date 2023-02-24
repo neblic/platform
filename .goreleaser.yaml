@@ -67,6 +67,7 @@ dockers:
       - ghcr.io/neblic/otelcol:latest
       - ghcr.io/neblic/otelcol:{{ .Tag }}
     dockerfile: ./dist/otelcol/Dockerfile
+    use: buildx
     extra_files:
       - ./dist/otelcol/entrypoint.sh
       - ./dist/otelcol/otelcol.yaml
@@ -77,6 +78,7 @@ dockers:
       - ghcr.io/neblic/kafka-sampler:latest
       - ghcr.io/neblic/kafka-sampler:{{ .Tag }}
     dockerfile: ./dist/kafka-sampler/Dockerfile
+    use: buildx
     extra_files:
       - ./dist/kafka-sampler/config.yaml
 checksum:
