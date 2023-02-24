@@ -8,9 +8,12 @@ https://fonts.gstatic.com
 https://github.com/google/cel-spec/blob/master/doc/langdef.md
 
 # demo urls
-http://localhost:.*/
+http://localhost:.*
+
+# live doc
+https://docs.neblic.com
 
 # temporarily skip until the repos are public
 https://pkg.go.dev
-https://github.com/neblic/
-https://neblic.github.io/
+https://github.com/neblic
+https://neblic.github.io
