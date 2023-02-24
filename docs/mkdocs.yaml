@@ -7,7 +7,7 @@ nav:
     - 'What is Neblic': index.md
     - 'Quickstart':
         - 'How does Neblic work': 'quickstart/how-does-neblic-work.md'
-        - 'Sandbox': 'quickstart/sandbox.md'
+        - 'Playground': 'quickstart/playground.md'
     - 'Getting started': 
       - 'Concepts': 'getting-started/concepts.md'
       - 'Deployment': 'getting-started/deployment.md'

@@ -1,4 +1,4 @@
-# Sandbox
+# Playground
 
 ## How to locally try Neblic using Docker Compose
 
