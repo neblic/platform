@@ -83,6 +83,24 @@ dockers:
       - ./dist/kafka-sampler/config.yaml
 checksum:
   name_template: 'checksums.txt'
+changelog:
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: 'Bug fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
+  filters:
+    exclude:
+      - '^build'
+      - '^ci'
+      - '^doc'
+      - '^refactor'
+      - '^style'
+      - '^test'
 
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 # vim: set ts=2 sw=2 tw=0 fo=cnqoj
