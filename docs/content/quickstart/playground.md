@@ -13,7 +13,7 @@ The best way to get a feel of how Neblic can help you troubleshoot your distribu
 
 1. Clone the [`Neblic playground`](https://github.com/neblic/playground) repository
     ``` shell
-    git clone github.com/neblic/playground
+    git clone https://github.com/neblic/playground
     cd playground
     ```
 
@@ -56,7 +56,7 @@ As you can see in the architecture diagram, the `email` service (bottom-left cor
 
     The following `neblictl` command will create the `Sampling Rule`.
     ```
-    >>> create rule kafka-sampler order-confirmation true
+    >>> create rule kafkasampler order-confirmation true
     ```
     Less than a minute after adding the rule, you should see how the `Samples Exported` counter starts to increase.
 
