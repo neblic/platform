@@ -1,5 +1,4 @@
 site_name: Documentation
-site_url: https://docs.neblic.com/
 copyright: Copyright &copy; 2023 - Neblic
 docs_dir: content
 strict: true
