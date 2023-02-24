@@ -44,8 +44,8 @@ We are actively working on dedicated analysis and visualization tools for this k
 
 ## Learn more
 
-* Quickly spin up an instrumented e-commerce application and play with Neblic using our [playground](https://github.com/neblic/playground). See this [page](https://neblic.github.io/platform/latest/quickstart/playground/) for a step-by-step guide.
-* Check Neblic [documentation](https://neblic.github.io/platform) to learn more about how it works and how to use it.
+* Quickly spin up an instrumented e-commerce application and play with Neblic using our [playground](https://github.com/neblic/playground). See this [page](https://docs.neblic.com/latest/quickstart/playground/) for a step-by-step guide.
+* Check Neblic [documentation](https://docs.neblic.com) to learn more about how it works and how to use it.
 
 ## Contributing
 

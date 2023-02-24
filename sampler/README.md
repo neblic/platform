@@ -18,7 +18,7 @@ The Go library also provides a package to easily add `Samplers` as gRPC intercep
 <!--learn-end-->
 
 > **Warning**
-> The next section is better read in the [documentation page](https://neblic.github.io/platform/latest/how-to/data-from-go-svc/) since it is post-processed to include code snippets from tests
+> The next section is better read in the [documentation page](https://docs.neblic.com/latest/how-to/data-from-go-svc/) since it is post-processed to include code snippets from tests
 
 <!--how-to-start-->
 ## Usage

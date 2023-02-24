@@ -33,7 +33,7 @@ neblictl -host localhost -control-port 8899
 
 ### Configure a `Sampler`
 
-Before continuing there are two main concepts that you need to understand: `Samplers` and `Sampling Rules`. Check the concepts [page](https://neblic.github.io/platform/latest/getting-started/concepts/) to learn more about them.
+Before continuing there are two main concepts that you need to understand: `Samplers` and `Sampling Rules`. Check the concepts [page](https://docs.neblic.com/latest/getting-started/concepts/) to learn more about them.
 
 1. Run the command `list samplers`. This will show a list with all the `Samplers` available and some stats for each one of them.
 2. Create a rule using the commend `create rule <resource> <sampler> <sampling_rule>`.
