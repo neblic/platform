@@ -26,7 +26,7 @@ func NewConfigurationController() (*ConfigurationController, error) {
 	// Compute configuration directory. Create if needed
 	configDirPath := path.Join(userConfigDir, "neblic")
 	if _, err := os.Stat(configDirPath); os.IsNotExist(err) {
-		err := os.Mkdir(configDirPath, os.ModePerm)
+		err := os.MkdirAll(configDirPath, os.ModePerm)
 		if err != nil {
 			return nil, fmt.Errorf("error creating '%s' directory", configDirPath)
 		}
