@@ -7,10 +7,8 @@ https://fonts.gstatic.com
 # complains of missing anchors
 https://github.com/google/cel-spec/blob/master/doc/langdef.md
 
+# linkchecker fails
+https://pkg.go.dev
+
 # demo urls
 http://localhost:.*
-
-# temporarily skip until the repos are public
-https://pkg.go.dev
-https://github.com/neblic
-https://neblic.github.io
