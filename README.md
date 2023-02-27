@@ -1,7 +1,7 @@
 # Neblic Platform
 
 [![CI](https://github.com/neblic/platform/actions/workflows/ci_checks.yaml/badge.svg?branch=main)](https://github.com/neblic/platform/actions/workflows/ci_checks.yaml?query=branch%3Amain)
-[![PkgGoDev](https://pkg.go.dev/badge/platform)](https://pkg.go.dev)
+[![PkgGoDev](https://pkg.go.dev/badge/platform)](https://pkg.go.dev/github.com/neblic/platform)
 
 
 ## What is Neblic

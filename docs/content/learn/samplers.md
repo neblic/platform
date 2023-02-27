@@ -51,7 +51,7 @@ See this [how-to](../how-to/configure-samplers-using-neblictl.md) page to learn 
    end="<!--learn-end-->"
 %}
 
-Check [this guide](../how-to/data-from-go-svc.md) for an example of how to use it and the [Godoc](https://pkg.go.dev) page for reference.
+Check [this guide](../how-to/data-from-go-svc.md) for an example of how to use it and the [Godoc](https://pkg.go.dev/github.com/neblic/platform/sampler) page for reference.
 
 ### Kafka
 

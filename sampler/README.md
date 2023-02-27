@@ -36,7 +36,7 @@ import (
 --8<-- "./sampler/test/docs/provider_test.go:ProviderInit"
 ```
 
-To see details about the required settings and available options, see this [page](https://pkg.go.dev).
+To see details about the required settings and available options, see this [page](https://pkg.go.dev/github.com/neblic/platform/sampler#pkg-types).
 
 Once the `Provider` is initialized, you can use it to initialize `Samplers`. If you have registered the provider as global, you can simply call the `Sampler` method from anywhere in your application. If not, you will need to call the `Sampler` method of your provider. They both have the same signature so the following explanation works for both options.
 
@@ -58,7 +58,7 @@ Once you have initialized the `Sampler`, you can call any of its methods to have
 !!! Warning
     You need to be mindful of what methods you use to sample data. Depending on the schema provided when the `Sampler` is initialized, some methods will work better or faster than others. 
     
-    As a rule of thumb, you want to provide a schema if you have it since this allows the `Sampler` to internally optimize how it evaluates the `Sampling Rules`. If you do not have it, a sampler configured with a `DynamicSchema` is capable of processing any type data using any of the sampling methods. See the [Godoc](https://pkg.go.dev) documentation for details.
+    As a rule of thumb, you want to provide a schema if you have it since this allows the `Sampler` to internally optimize how it evaluates the `Sampling Rules`. If you do not have it, a sampler configured with a `DynamicSchema` is capable of processing any type data using any of the sampling methods. See the [Godoc](https://pkg.go.dev/github.com/neblic/platform/sampler/defs) documentation for details.
 
 ``` go
 --8<-- "./sampler/test/docs/sampler_test.go:SampleData"
