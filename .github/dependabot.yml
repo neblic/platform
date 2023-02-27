@@ -7,6 +7,7 @@ updates:
     commit-message:
       prefix: "build"
       include: "scope"
+
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
@@ -21,8 +22,23 @@ updates:
     commit-message:
       prefix: "build"
       include: "scope"
+  - package-ecosystem: "gomod"
+    directory: "/cmd/kafka-sampler"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "build"
+      include: "scope"
+
   - package-ecosystem: "docker"
-    directory: "/dist"
+    directory: "/dist/kafka-sampler"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "build"
+      include: "scope"
+  - package-ecosystem: "docker"
+    directory: "/dist/otelcol"
     schedule:
       interval: "weekly"
     commit-message:
