@@ -3,7 +3,9 @@ GOMODULES = . cmd/neblictl cmd/kafka-sampler
 .PHONY: gobuild
 gobuild:
 	for gomod in $(GOMODULES); do \
-		cd $$gomod && \
+		echo "Building $$gomod" && \
+			cd $$gomod && \
+			go mod tidy && \
 			go build ./... && \
 			cd -; \
 	done
@@ -11,7 +13,9 @@ gobuild:
 .PHONY: gotest
 gotest:
 	for gomod in $(GOMODULES); do \
-		cd $$gomod && \
+		echo "Testing $$gomod" && \
+			cd $$gomod && \
+			go mod tidy && \
 			go test ./... && \
 			cd -; \
 	done
@@ -19,7 +23,8 @@ gotest:
 .PHONY: gomod-update-all
 gomod-update-all:
 	for gomod in $(GOMODULES); do \
-		cd $$gomod && \
+		echo "Updating $$gomod" && \
+			cd $$gomod && \
 			go get -u ./... && \
 			go mod tidy && \
 			cd -; \
