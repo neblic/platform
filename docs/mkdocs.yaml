@@ -25,7 +25,7 @@ nav:
       - 'Collector': 'reference/collector.md'
       - 'Neblictl': 'reference/neblictl.md'
       - 'Kafka Sampler': 'reference/kafka-sampler.md'
-      - 'Go Sampler': https://pkg.go.dev/ # TBD
+      - 'Go Sampler': https://pkg.go.dev/github.com/neblic/platform/sampler
 theme: 
   name: material
   logo: assets/neblic-logo-white.png
