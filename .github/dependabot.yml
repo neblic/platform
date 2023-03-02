@@ -15,8 +15,6 @@ updates:
     commit-message:
       prefix: "build"
       include: "scope"
-    allow:
-      - dependency-type: "all"
   - package-ecosystem: "gomod"
     directory: "/cmd/neblictl"
     schedule:
@@ -24,8 +22,6 @@ updates:
     commit-message:
       prefix: "build"
       include: "scope"
-    allow:
-      - dependency-type: "all"
   - package-ecosystem: "gomod"
     directory: "/cmd/kafka-sampler"
     schedule:
@@ -33,8 +29,6 @@ updates:
     commit-message:
       prefix: "build"
       include: "scope"
-    allow:
-      - dependency-type: "all"
 
   - package-ecosystem: "docker"
     directory: "/dist/kafka-sampler"
