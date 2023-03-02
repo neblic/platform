@@ -7,10 +7,10 @@ replace github.com/neblic/platform => ../../
 require (
 	github.com/c-bata/go-prompt v0.2.5
 	github.com/google/uuid v1.3.0
-	github.com/neblic/platform v0.0.0
+	github.com/neblic/platform v0.0.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/term v1.1.0
-	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
+	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2
 	golang.org/x/sys v0.5.0
 )
 
@@ -31,7 +31,7 @@ require (
 	golang.org/x/oauth2 v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20230216225411-c8e22ba71e44 // indirect
+	google.golang.org/genproto v0.0.0-20230301171018-9ab4bdc49ad5 // indirect
 	google.golang.org/grpc v1.53.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )
