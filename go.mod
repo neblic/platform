@@ -15,7 +15,7 @@ require (
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.72.0
 	go.opentelemetry.io/collector/pdata v1.0.0-rc6
 	go.opentelemetry.io/collector/semconv v0.72.0
-	go.opentelemetry.io/otel/metric v0.36.0
+	go.opentelemetry.io/otel/metric v0.37.0
 	go.opentelemetry.io/otel/trace v1.14.0
 	go.uber.org/atomic v1.10.0
 	go.uber.org/zap v1.24.0
