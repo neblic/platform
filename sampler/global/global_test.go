@@ -24,6 +24,9 @@ func (p *mockSampler) SampleNative(ctx context.Context, nativeSample any) (bool,
 func (p *mockSampler) SampleProto(ctx context.Context, protoSample proto.Message) (bool, error) {
 	return true, nil
 }
+func (p *mockSampler) Close() error {
+	return nil
+}
 
 type mockProvider struct {
 }

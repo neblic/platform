@@ -16,4 +16,7 @@ type Sampler interface {
 	// SampleProto samples a data sampled encoded as a proto message. The protoSample parameter has to be the same
 	// type as the proto message provided as schema when creating the sampler.
 	SampleProto(ctx context.Context, protoSample proto.Message) (bool, error)
+	// Close closes all Sampler connections with the Control and Data planes. Once closed,
+	// the Sampler can't be reused and none of its methods can be called.
+	Close() error
 }

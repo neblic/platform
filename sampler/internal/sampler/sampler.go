@@ -240,3 +240,15 @@ func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample) (bool
 
 	return false, nil
 }
+
+func (p *Sampler) Close() error {
+	if err := p.controlPlaneClient.Close(closeTimeout); err != nil {
+		return fmt.Errorf("error closing control plane client: %w", err)
+	}
+
+	if err := p.exporter.Close(context.Background()); err != nil {
+		return fmt.Errorf("error closing samples exporter: %w", err)
+	}
+
+	return nil
+}
