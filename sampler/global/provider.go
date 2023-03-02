@@ -120,3 +120,12 @@ func (pw *samplerPlaceholder) SampleProto(ctx context.Context, protoSample proto
 
 	return false, nil
 }
+
+func (pw *samplerPlaceholder) Close() error {
+	delegate := pw.delegate.Load()
+	if delegate != nil {
+		return delegate.(defs.Sampler).Close()
+	}
+
+	return nil
+}

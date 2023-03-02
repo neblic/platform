@@ -86,6 +86,8 @@ var _ = Describe("Sampler", func() {
 				sampled, err := p.SampleJSON(context.Background(), `{"id": 1}`)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(sampled).To(BeFalse())
+
+				Expect(p.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -168,6 +170,8 @@ var _ = Describe("Sampler", func() {
 						return receiver.TotalItems.Load() == 1
 					},
 					time.Second, time.Millisecond)
+
+				Expect(p.Close()).ToNot(HaveOccurred())
 			})
 
 			It("is a native sample it should export the sample", func() {
@@ -196,6 +200,8 @@ var _ = Describe("Sampler", func() {
 						return receiver.TotalItems.Load() == 1
 					},
 					time.Second, time.Millisecond)
+
+				Expect(p.Close()).ToNot(HaveOccurred())
 			})
 
 			It("is a proto sample it should export the sample", func() {
@@ -224,6 +230,8 @@ var _ = Describe("Sampler", func() {
 						return receiver.TotalItems.Load() == 1
 					},
 					time.Second, time.Millisecond)
+
+				Expect(p.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -319,6 +327,7 @@ var _ = Describe("Sampler", func() {
 					},
 					time.Second, time.Millisecond)
 
+				Expect(p.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -359,11 +368,13 @@ var _ = Describe("Sampler", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				_, err = provider.Sampler("sampler1", defs.DynamicSchema{})
+				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				<-registered
 				<-statsReceived
+
+				Expect(p.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})

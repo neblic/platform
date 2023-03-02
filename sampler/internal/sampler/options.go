@@ -7,6 +7,8 @@ import (
 	"github.com/neblic/platform/sampler/internal/sample/exporter"
 )
 
+const closeTimeout = time.Duration(2) * time.Second
+
 type AuthBearerOptions struct {
 	Token string
 }

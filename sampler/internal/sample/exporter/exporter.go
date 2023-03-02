@@ -8,4 +8,5 @@ import (
 
 type Exporter interface {
 	Export(context.Context, []sample.ResourceSamples) error
+	Close(context.Context) error
 }
