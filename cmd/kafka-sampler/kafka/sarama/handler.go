@@ -43,6 +43,12 @@ func (h *SamplerHandler) Setup(sess sarama.ConsumerGroupSession) error {
 // Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited
 func (h *SamplerHandler) Cleanup(sarama.ConsumerGroupSession) error {
 	// Clean samplers
+	for topic, sampler := range h.samplers {
+		if err := sampler.Close(); err != nil {
+			h.logger.Error("error closing sampler for topic %s: %w", topic, err)
+		}
+	}
+
 	h.samplers = map[string]defs.Sampler{}
 
 	return nil
