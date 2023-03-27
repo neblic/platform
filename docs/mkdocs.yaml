@@ -28,6 +28,7 @@ nav:
       - 'Go Sampler': https://pkg.go.dev/github.com/neblic/platform/sampler
 theme: 
   name: material
+  custom_dir: overrides
   logo: assets/neblic-logo-white.png
   favicon: assets/neblic-favicon.png
   features:
