@@ -181,11 +181,14 @@ var _ = Describe("ServerStream", func() {
 							Uid:  "some_uid",
 							Name: "some_name",
 							Config: &protos.SamplerConfig{
-								SamplingRules: []*protos.SamplingRule{
+								Streams: []*protos.Stream{
 									{
-										Uid:      "some_sr_uid",
-										Language: protos.SamplingRule_CEL,
-										Rule:     "some_CEL_rule",
+										Uid: "some_stream_uid",
+										Rule: &protos.StreamRule{
+											Uid:      "some_sr_uid",
+											Language: protos.StreamRule_CEL,
+											Rule:     "some_CEL_rule",
+										},
 									},
 								},
 							},

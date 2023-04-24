@@ -298,17 +298,20 @@ var _ = Describe("ControlPlane", func() {
 					<-clientRegistered
 					<-samplerRegistered
 
-					testSamplingRule := data.SamplingRule{
-						UID:  "some_sr_uid",
-						Lang: data.NewSamplingRuleLangFromProto(protos.SamplingRule_CEL),
-						Rule: "some_CEL_rule",
+					testStream := data.Stream{
+						UID: "some_stream_uid",
+						StreamRule: data.StreamRule{
+							UID:  "some_sr_uid",
+							Lang: data.NewStreamRuleLangFromProto(protos.StreamRule_CEL),
+							Rule: "some_CEL_rule",
+						},
 					}
 
 					samplerConfigUpdate := &data.SamplerConfigUpdate{
-						SamplingRuleUpdates: []data.SamplingRuleUpdate{
+						StreamUpdates: []data.StreamUpdate{
 							{
-								Op:           data.SamplingRuleUpsert,
-								SamplingRule: testSamplingRule,
+								Op:     data.StreamRuleUpsert,
+								Stream: testStream,
 							},
 						},
 					}
@@ -316,12 +319,14 @@ var _ = Describe("ControlPlane", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					test.AssertWithTimeout(
-						func() bool { return len(p.Config().SamplingRules) == 1 },
+						func() bool { return len(p.Config().Streams) == 1 },
 						condTimeout,
 						func() {
-							Expect(len(p.Config().SamplingRules)).To(Equal(1))
+							Expect(len(p.Config().Streams)).To(Equal(1))
 							Expect(p.Config()).To(Equal(data.SamplerConfig{
-								SamplingRules: map[data.SamplerSamplingRuleUID]data.SamplingRule{testSamplingRule.UID: testSamplingRule},
+								Streams: map[data.SamplerStreamUID]data.Stream{
+									testStream.UID: testStream,
+								},
 							}))
 						},
 					)
@@ -344,29 +349,34 @@ var _ = Describe("ControlPlane", func() {
 					<-clientRegistered
 					<-samplerRegistered
 
-					testSamplingRule := data.SamplingRule{
-						UID:  "some_sr_uid",
-						Lang: data.NewSamplingRuleLangFromProto(protos.SamplingRule_CEL),
-						Rule: "some_CEL_rule",
+					testStream := data.Stream{
+						UID: "some_stream_uid",
+						StreamRule: data.StreamRule{
+							UID:  "some_sr_uid",
+							Lang: data.NewStreamRuleLangFromProto(protos.StreamRule_CEL),
+							Rule: "some_CEL_rule",
+						},
 					}
 
 					samplerConfigUpdate := &data.SamplerConfigUpdate{
-						SamplingRuleUpdates: []data.SamplingRuleUpdate{
+						StreamUpdates: []data.StreamUpdate{
 							{
-								Op:           data.SamplingRuleUpsert,
-								SamplingRule: testSamplingRule,
+								Op:     data.StreamRuleUpsert,
+								Stream: testStream,
 							},
 						},
 					}
-					err = c.ConfigureSampler(context.Background(), p.Name(), "resource1", "", samplerConfigUpdate)
 
+					err = c.ConfigureSampler(context.Background(), p.Name(), "resource1", "", samplerConfigUpdate)
 					test.AssertWithTimeout(
-						func() bool { return len(p.Config().SamplingRules) == 1 },
+						func() bool { return len(p.Config().Streams) == 1 },
 						condTimeout,
 						func() {
-							Expect(len(p.Config().SamplingRules)).To(Equal(1))
+							Expect(len(p.Config().Streams)).To(Equal(1))
 							Expect(p.Config()).To(Equal(data.SamplerConfig{
-								SamplingRules: map[data.SamplerSamplingRuleUID]data.SamplingRule{testSamplingRule.UID: testSamplingRule},
+								Streams: map[data.SamplerStreamUID]data.Stream{
+									testStream.UID: testStream,
+								},
 							}))
 						},
 					)
@@ -424,17 +434,20 @@ var _ = Describe("ControlPlane", func() {
 					<-clientRegistered
 					<-samplerRegistered
 
-					testSamplingRule := data.SamplingRule{
-						UID:  "some_sr_uid",
-						Lang: data.NewSamplingRuleLangFromProto(protos.SamplingRule_CEL),
-						Rule: "some_CEL_rule",
+					testStream := data.Stream{
+						UID: "some_stream_uid",
+						StreamRule: data.StreamRule{
+							UID:  "some_sr_uid",
+							Lang: data.NewStreamRuleLangFromProto(protos.StreamRule_CEL),
+							Rule: "some_CEL_rule",
+						},
 					}
 
 					samplerConfigUpdate := &data.SamplerConfigUpdate{
-						SamplingRuleUpdates: []data.SamplingRuleUpdate{
+						StreamUpdates: []data.StreamUpdate{
 							{
-								Op:           data.SamplingRuleUpsert,
-								SamplingRule: testSamplingRule,
+								Op:     data.StreamRuleUpsert,
+								Stream: testStream,
 							},
 						},
 					}
@@ -443,12 +456,14 @@ var _ = Describe("ControlPlane", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					test.AssertWithTimeout(
-						func() bool { return len(p.Config().SamplingRules) == 1 },
+						func() bool { return len(p.Config().Streams) == 1 },
 						condTimeout,
 						func() {
-							Expect(len(p.Config().SamplingRules)).To(Equal(1))
+							Expect(len(p.Config().Streams)).To(Equal(1))
 							Expect(p.Config()).To(Equal(data.SamplerConfig{
-								SamplingRules: map[data.SamplerSamplingRuleUID]data.SamplingRule{testSamplingRule.UID: testSamplingRule},
+								Streams: map[data.SamplerStreamUID]data.Stream{
+									testStream.UID: testStream,
+								},
 							}))
 						},
 					)
@@ -464,12 +479,14 @@ var _ = Describe("ControlPlane", func() {
 					<-samplerRegistered2
 
 					test.AssertWithTimeout(
-						func() bool { return len(p2.Config().SamplingRules) == 1 },
+						func() bool { return len(p.Config().Streams) == 1 },
 						condTimeout,
 						func() {
-							Expect(len(p2.Config().SamplingRules)).To(Equal(1))
-							Expect(p2.Config()).To(Equal(data.SamplerConfig{
-								SamplingRules: map[data.SamplerSamplingRuleUID]data.SamplingRule{testSamplingRule.UID: testSamplingRule},
+							Expect(len(p.Config().Streams)).To(Equal(1))
+							Expect(p.Config()).To(Equal(data.SamplerConfig{
+								Streams: map[data.SamplerStreamUID]data.Stream{
+									testStream.UID: testStream,
+								},
 							}))
 						},
 					)

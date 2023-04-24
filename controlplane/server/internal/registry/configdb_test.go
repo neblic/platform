@@ -17,11 +17,14 @@ func storageExample() storage.Storage[samplerIdentifier, *identifiedSamplerConfi
 	storage.Set(samplerIdentifier1, &identifiedSamplerConfig{
 		samplerIdentifier: samplerIdentifier1,
 		SamplerConfig: &data.SamplerConfig{
-			SamplingRules: map[data.SamplerSamplingRuleUID]data.SamplingRule{
-				"samplingRule1": {
-					UID:  "samplingRule1",
-					Lang: data.SrlCel,
-					Rule: "true",
+			Streams: map[data.SamplerStreamUID]data.Stream{
+				"stream1": {
+					UID: "stream1",
+					StreamRule: data.StreamRule{
+						UID:  "streamRule1",
+						Lang: data.SrlCel,
+						Rule: "true",
+					},
 				},
 			},
 		},
@@ -31,7 +34,7 @@ func storageExample() storage.Storage[samplerIdentifier, *identifiedSamplerConfi
 	storage.Set(samplerIdentifier2, &identifiedSamplerConfig{
 		samplerIdentifier: samplerIdentifier2,
 		SamplerConfig: &data.SamplerConfig{
-			SamplingRules: map[data.SamplerSamplingRuleUID]data.SamplingRule{},
+			Streams: map[data.SamplerStreamUID]data.Stream{},
 		},
 	})
 
@@ -39,7 +42,7 @@ func storageExample() storage.Storage[samplerIdentifier, *identifiedSamplerConfi
 	storage.Set(samplerIdentifier3, &identifiedSamplerConfig{
 		samplerIdentifier: samplerIdentifier3,
 		SamplerConfig: &data.SamplerConfig{
-			SamplingRules: map[data.SamplerSamplingRuleUID]data.SamplingRule{},
+			Streams: map[data.SamplerStreamUID]data.Stream{},
 		},
 	})
 
@@ -47,7 +50,7 @@ func storageExample() storage.Storage[samplerIdentifier, *identifiedSamplerConfi
 	storage.Set(samplerIdentifier4, &identifiedSamplerConfig{
 		samplerIdentifier: samplerIdentifier4,
 		SamplerConfig: &data.SamplerConfig{
-			SamplingRules: map[data.SamplerSamplingRuleUID]data.SamplingRule{},
+			Streams: map[data.SamplerStreamUID]data.Stream{},
 		},
 	})
 
@@ -89,11 +92,14 @@ func TestConfigDB_Get(t *testing.T) {
 				samplerResource: "resource1",
 			},
 			want: &data.SamplerConfig{
-				SamplingRules: map[data.SamplerSamplingRuleUID]data.SamplingRule{
-					"samplingRule1": {
-						UID:  "samplingRule1",
-						Lang: data.SrlCel,
-						Rule: "true",
+				Streams: map[data.SamplerStreamUID]data.Stream{
+					"stream1": {
+						UID: "stream1",
+						StreamRule: data.StreamRule{
+							UID:  "streamRule1",
+							Lang: data.SrlCel,
+							Rule: "true",
+						},
 					},
 				},
 			},
@@ -157,11 +163,14 @@ func TestConfigDB_Set(t *testing.T) {
 				samplerName:     "name1",
 				samplerResource: "resource1",
 				config: &data.SamplerConfig{
-					SamplingRules: map[data.SamplerSamplingRuleUID]data.SamplingRule{
-						"samplingRule2": {
-							UID:  "samplingRule2",
-							Lang: data.SrlCel,
-							Rule: "true",
+					Streams: map[data.SamplerStreamUID]data.Stream{
+						"stream2": {
+							UID: "stream2",
+							StreamRule: data.StreamRule{
+								UID:  "streamRule2",
+								Lang: data.SrlCel,
+								Rule: "true",
+							},
 						},
 					},
 				},

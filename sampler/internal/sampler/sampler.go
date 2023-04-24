@@ -25,7 +25,7 @@ type Sampler struct {
 
 	ruleBuilder *rule.Builder
 
-	rules         map[data.SamplerSamplingRuleUID]*rule.Rule
+	rules         map[data.SamplerStreamRuleUID]*rule.Rule
 	rulesM        sync.Mutex
 	samplingStats data.SamplerSamplingStats
 
@@ -66,7 +66,7 @@ func New(
 		resourceName: opts.Resource,
 
 		ruleBuilder: ruleBuilder,
-		rules:       make(map[data.SamplerSamplingRuleUID]*rule.Rule),
+		rules:       make(map[data.SamplerStreamRuleUID]*rule.Rule),
 
 		controlPlaneClient: controlPlaneClient,
 		exporter:           opts.Exporter,
@@ -128,21 +128,21 @@ func (p *Sampler) updateStats(period time.Duration) {
 
 func (p *Sampler) updateConfig(config data.SamplerConfig) {
 	// replace all existing rules
-	if config.SamplingRules != nil {
+	if config.Streams != nil {
 		p.rulesM.Lock()
 		defer p.rulesM.Unlock()
 
-		rules := make(map[data.SamplerSamplingRuleUID]*rule.Rule)
+		rules := make(map[data.SamplerStreamRuleUID]*rule.Rule)
 		p.rules = rules
 
-		for _, sRule := range config.SamplingRules {
-			builtRule, err := p.buildSamplingRule(sRule)
+		for _, stream := range config.Streams {
+			builtRule, err := p.buildSamplingRule(stream.StreamRule)
 			if err != nil {
-				p.logger.Error(fmt.Sprintf("couldn't build sampling rule %+v: %s", sRule, err))
+				p.logger.Error(fmt.Sprintf("couldn't build sampling rule %+v: %s", stream, err))
 				continue
 			}
 
-			rules[sRule.UID] = builtRule
+			rules[stream.StreamRule.UID] = builtRule
 		}
 	}
 
@@ -156,19 +156,19 @@ func (p *Sampler) updateConfig(config data.SamplerConfig) {
 	}
 }
 
-func (p *Sampler) buildSamplingRule(samplingRule data.SamplingRule) (*rule.Rule, error) {
-	switch samplingRule.Lang {
+func (p *Sampler) buildSamplingRule(streamRule data.StreamRule) (*rule.Rule, error) {
+	switch streamRule.Lang {
 	case data.SrlCel:
-		builtRule, err := p.ruleBuilder.Build(samplingRule.Rule)
+		builtRule, err := p.ruleBuilder.Build(streamRule.Rule)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't build CEL rule %s: %s", samplingRule.Rule, err)
+			return nil, fmt.Errorf("couldn't build CEL rule %s: %s", streamRule.Rule, err)
 		}
 
 		return builtRule, nil
 	case data.SrlUnknown:
 		fallthrough
 	default:
-		return nil, fmt.Errorf("couldn't build rule with unknown type %s", samplingRule.Lang.String())
+		return nil, fmt.Errorf("couldn't build rule with unknown type %s", streamRule.Lang.String())
 	}
 }
 
@@ -205,13 +205,14 @@ func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample) (bool
 	p.rulesM.Lock()
 	defer p.rulesM.Unlock()
 
+	// assign sample to all matching streams based on their rules
 	var matches []sample.Match
-	for samplingRuleUID, samplingRule := range p.rules {
-		if match, err := samplingRule.Eval(ctx, evalSample); err != nil {
+	for streamRuleUID, streamRule := range p.rules {
+		if match, err := streamRule.Eval(ctx, evalSample); err != nil {
 			p.logger.Debug(fmt.Sprintf("error evaluating sample: %s", err))
 		} else if match {
 			matches = append(matches, sample.Match{
-				SamplingRuleUID: samplingRuleUID,
+				StreamUID: streamRuleUID,
 			})
 		}
 	}

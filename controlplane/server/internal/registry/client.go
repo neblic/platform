@@ -142,12 +142,15 @@ func (c *Client) UpdateSamplerConfig(uid data.SamplerUID, name, resource string,
 		updatedConfig.SamplingRate = update.SamplingRate
 	}
 
-	for _, rule := range update.SamplingRuleUpdates {
+	if updatedConfig.Streams == nil {
+		updatedConfig.Streams = make(map[data.SamplerStreamUID]data.Stream)
+	}
+	for _, rule := range update.StreamUpdates {
 		switch rule.Op {
-		case data.SamplingRuleUpsert:
-			updatedConfig.SamplingRules[rule.SamplingRule.UID] = rule.SamplingRule
-		case data.SamplingRuleDelete:
-			delete(updatedConfig.SamplingRules, rule.SamplingRule.UID)
+		case data.StreamRuleUpsert:
+			updatedConfig.Streams[rule.Stream.UID] = rule.Stream
+		case data.StreamRuleDelete:
+			delete(updatedConfig.Streams, rule.Stream.UID)
 		default:
 			c.logger.Error("received unkown sampling rule update operation: %s", rule.Op)
 		}

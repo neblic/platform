@@ -8,7 +8,7 @@ import (
 
 // Match identifies what determined that the sample should have been exported
 type Match struct {
-	SamplingRuleUID data.SamplerSamplingRuleUID
+	StreamUID data.SamplerStreamRuleUID
 }
 
 // Sample contains a data sample.
