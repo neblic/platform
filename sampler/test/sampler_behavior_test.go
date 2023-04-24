@@ -108,12 +108,25 @@ var _ = Describe("Sampler", func() {
 						Message: &protos.ServerToSampler_ConfReq{
 							ConfReq: &protos.SamplerConfReq{
 								SamplerConfig: &protos.SamplerConfig{
-									SamplingRules: []*protos.SamplingRule{
-										{Uid: uuid.NewString(), Language: protos.SamplingRule_CEL, Rule: "sample.id==1"},
-										// native sample export only works with exported fields
-										{Uid: uuid.NewString(), Language: protos.SamplingRule_CEL, Rule: "sample.ID==1"},
-										// we use a different schema to test proto export
-										{Uid: uuid.NewString(), Language: protos.SamplingRule_CEL, Rule: `sample.sampler_uid == "1"`},
+									Streams: []*protos.Stream{
+										{
+											Uid: uuid.NewString(),
+											Rule: &protos.StreamRule{
+												Uid: uuid.NewString(), Language: protos.StreamRule_CEL, Rule: "sample.id==1",
+											},
+										},
+										{
+											Uid: uuid.NewString(),
+											Rule: &protos.StreamRule{
+												Uid: uuid.NewString(), Language: protos.StreamRule_CEL, Rule: "sample.ID==1",
+											},
+										},
+										{
+											Uid: uuid.NewString(),
+											Rule: &protos.StreamRule{
+												Uid: uuid.NewString(), Language: protos.StreamRule_CEL, Rule: `sample.sampler_uid == "1"`,
+											},
+										},
 									},
 								},
 							},
@@ -252,8 +265,13 @@ var _ = Describe("Sampler", func() {
 						Message: &protos.ServerToSampler_ConfReq{
 							ConfReq: &protos.SamplerConfReq{
 								SamplerConfig: &protos.SamplerConfig{
-									SamplingRules: []*protos.SamplingRule{
-										{Uid: uuid.NewString(), Language: protos.SamplingRule_CEL, Rule: "sample.id==1"},
+									Streams: []*protos.Stream{
+										{
+											Uid: uuid.NewString(),
+											Rule: &protos.StreamRule{
+												Uid: uuid.NewString(), Language: protos.StreamRule_CEL, Rule: "sample.id==1",
+											},
+										},
 									},
 								},
 							},

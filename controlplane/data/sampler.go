@@ -4,14 +4,14 @@ import (
 	"github.com/neblic/platform/controlplane/protos"
 )
 
-type SamplingRuleLang int
+type StreamRuleLang int
 
 const (
-	SrlUnknown SamplingRuleLang = iota
+	SrlUnknown StreamRuleLang = iota
 	SrlCel
 )
 
-func (srl SamplingRuleLang) String() string {
+func (srl StreamRuleLang) String() string {
 	switch srl {
 	case SrlCel:
 		return "CEL"
@@ -22,51 +22,50 @@ func (srl SamplingRuleLang) String() string {
 	}
 }
 
-func NewSamplingRuleLangFromProto(lang protos.SamplingRule_Language) SamplingRuleLang {
+func NewStreamRuleLangFromProto(lang protos.StreamRule_Language) StreamRuleLang {
 	switch lang {
-	case protos.SamplingRule_UNKNOWN:
+	case protos.StreamRule_UNKNOWN:
 		return SrlUnknown
-	case protos.SamplingRule_CEL:
+	case protos.StreamRule_CEL:
 		return SrlCel
 	default:
 		return SrlUnknown
 	}
 }
 
-func (srl SamplingRuleLang) ToProto() protos.SamplingRule_Language {
+func (srl StreamRuleLang) ToProto() protos.StreamRule_Language {
 	switch srl {
 	case SrlCel:
-		return protos.SamplingRule_CEL
+		return protos.StreamRule_CEL
 	case SrlUnknown:
 		fallthrough
 	default:
-		return protos.SamplingRule_UNKNOWN
+		return protos.StreamRule_UNKNOWN
 	}
 }
 
-type SamplerSamplingRuleUID string
-type SamplerUID string
+type SamplerStreamRuleUID string
 
-type SamplingRule struct {
-	UID  SamplerSamplingRuleUID
-	Lang SamplingRuleLang
+type StreamRule struct {
+	UID  SamplerStreamRuleUID
+	Lang StreamRuleLang
 	Rule string
 }
 
-func NewSamplingRuleFromProto(sr *protos.SamplingRule) SamplingRule {
+func NewStreamRuleFromProto(sr *protos.StreamRule) StreamRule {
 	if sr == nil {
-		return SamplingRule{}
+		return StreamRule{}
 	}
 
-	return SamplingRule{
-		UID:  SamplerSamplingRuleUID(sr.GetUid()),
-		Lang: NewSamplingRuleLangFromProto(sr.GetLanguage()),
+	return StreamRule{
+		UID:  SamplerStreamRuleUID(sr.GetUid()),
+		Lang: NewStreamRuleLangFromProto(sr.GetLanguage()),
 		Rule: sr.Rule,
 	}
 }
 
-func (sr SamplingRule) ToProto() *protos.SamplingRule {
-	return &protos.SamplingRule{
+func (sr StreamRule) ToProto() *protos.StreamRule {
+	return &protos.StreamRule{
 		Uid:      string(sr.UID),
 		Language: sr.Lang.ToProto(),
 		Rule:     sr.Rule,
@@ -96,21 +95,46 @@ func (sr SamplingRate) ToProto() *protos.SamplingRate {
 	}
 }
 
-type SamplingRuleUpdateOp int
+type SamplerStreamUID string
+
+type Stream struct {
+	UID        SamplerStreamUID
+	StreamRule StreamRule
+}
+
+func NewStreamFromProto(s *protos.Stream) Stream {
+	if s == nil {
+		return Stream{}
+	}
+
+	return Stream{
+		UID:        SamplerStreamUID(s.GetUid()),
+		StreamRule: NewStreamRuleFromProto(s.GetRule()),
+	}
+}
+
+func (s Stream) ToProto() *protos.Stream {
+	return &protos.Stream{
+		Uid:  string(s.UID),
+		Rule: s.StreamRule.ToProto(),
+	}
+}
+
+type StreamRuleUpdateOp int
 
 const (
-	SamplingRuleUpsert SamplingRuleUpdateOp = iota
-	SamplingRuleDelete
+	StreamRuleUpsert StreamRuleUpdateOp = iota
+	StreamRuleDelete
 )
 
-type SamplingRuleUpdate struct {
-	Op           SamplingRuleUpdateOp
-	SamplingRule SamplingRule
+type StreamUpdate struct {
+	Op     StreamRuleUpdateOp
+	Stream Stream
 }
 
 type SamplerConfigUpdate struct {
-	SamplingRate        *SamplingRate
-	SamplingRuleUpdates []SamplingRuleUpdate
+	SamplingRate  *SamplingRate
+	StreamUpdates []StreamUpdate
 }
 
 func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpdate) SamplerConfigUpdate {
@@ -124,26 +148,26 @@ func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpda
 		sr = &newSr
 	}
 
-	var samplingRuleUpdates []SamplingRuleUpdate
-	for _, rule := range protoUpdate.GetSamplingRuleUpdates() {
-		var op SamplingRuleUpdateOp
+	var streamUpdates []StreamUpdate
+	for _, rule := range protoUpdate.GetStreamUpdates() {
+		var op StreamRuleUpdateOp
 		switch rule.GetOp() {
-		case protos.ClientSamplingRuleUpdate_UPSERT:
-			op = SamplingRuleUpsert
-		case protos.ClientSamplingRuleUpdate_DELETE:
-			op = SamplingRuleDelete
+		case protos.ClientStreamUpdate_UPSERT:
+			op = StreamRuleUpsert
+		case protos.ClientStreamUpdate_DELETE:
+			op = StreamRuleDelete
 		default:
 		}
 
-		samplingRuleUpdates = append(samplingRuleUpdates, SamplingRuleUpdate{
-			Op:           op,
-			SamplingRule: NewSamplingRuleFromProto(rule.GetSamplingRule()),
+		streamUpdates = append(streamUpdates, StreamUpdate{
+			Op:     op,
+			Stream: NewStreamFromProto(rule.GetStream()),
 		})
 	}
 
 	return SamplerConfigUpdate{
-		SamplingRate:        sr,
-		SamplingRuleUpdates: samplingRuleUpdates,
+		SamplingRate:  sr,
+		StreamUpdates: streamUpdates,
 	}
 }
 
@@ -153,25 +177,25 @@ func (pcu SamplerConfigUpdate) ToProto() *protos.ClientSamplerConfigUpdate {
 		protoSamplingRate = pcu.SamplingRate.ToProto()
 	}
 
-	var protoUpdateSamplingRules []*protos.ClientSamplingRuleUpdate
-	for _, ruleUpdate := range pcu.SamplingRuleUpdates {
-		protoOp := protos.ClientSamplingRuleUpdate_UNKNOWN
+	var protoUpdateStreams []*protos.ClientStreamUpdate
+	for _, ruleUpdate := range pcu.StreamUpdates {
+		protoOp := protos.ClientStreamUpdate_UNKNOWN
 		switch ruleUpdate.Op {
-		case SamplingRuleUpsert:
-			protoOp = protos.ClientSamplingRuleUpdate_UPSERT
-		case SamplingRuleDelete:
-			protoOp = protos.ClientSamplingRuleUpdate_DELETE
+		case StreamRuleUpsert:
+			protoOp = protos.ClientStreamUpdate_UPSERT
+		case StreamRuleDelete:
+			protoOp = protos.ClientStreamUpdate_DELETE
 		}
 
-		protoUpdateSamplingRules = append(protoUpdateSamplingRules, &protos.ClientSamplingRuleUpdate{
-			Op:           protoOp,
-			SamplingRule: ruleUpdate.SamplingRule.ToProto(),
+		protoUpdateStreams = append(protoUpdateStreams, &protos.ClientStreamUpdate{
+			Op:     protoOp,
+			Stream: ruleUpdate.Stream.ToProto(),
 		})
 	}
 
 	return &protos.ClientSamplerConfigUpdate{
-		SamplingRate:        protoSamplingRate,
-		SamplingRuleUpdates: protoUpdateSamplingRules,
+		SamplingRate:  protoSamplingRate,
+		StreamUpdates: protoUpdateStreams,
 	}
 }
 
@@ -181,13 +205,13 @@ func (pcu SamplerConfigUpdate) ToProto() *protos.ClientSamplerConfigUpdate {
 // This struct gets serialized to disk to persist sampler configurations,
 // all fields need to be uppercase to be properly persisted.
 type SamplerConfig struct {
-	SamplingRules map[SamplerSamplingRuleUID]SamplingRule
-	SamplingRate  *SamplingRate
+	Streams      map[SamplerStreamUID]Stream
+	SamplingRate *SamplingRate
 }
 
 func NewSamplerConfig() *SamplerConfig {
 	return &SamplerConfig{
-		SamplingRules: make(map[SamplerSamplingRuleUID]SamplingRule),
+		Streams: make(map[SamplerStreamUID]Stream),
 	}
 }
 
@@ -196,9 +220,9 @@ func NewSamplerConfigFromProto(config *protos.SamplerConfig) SamplerConfig {
 		return SamplerConfig{}
 	}
 
-	samplingRules := map[SamplerSamplingRuleUID]SamplingRule{}
-	for _, protoSR := range config.GetSamplingRules() {
-		samplingRules[SamplerSamplingRuleUID(protoSR.GetUid())] = NewSamplingRuleFromProto(protoSR)
+	streams := map[SamplerStreamUID]Stream{}
+	for _, protoSR := range config.GetStreams() {
+		streams[SamplerStreamUID(protoSR.GetUid())] = NewStreamFromProto(protoSR)
 	}
 
 	var samplingRate *SamplingRate
@@ -210,19 +234,19 @@ func NewSamplerConfigFromProto(config *protos.SamplerConfig) SamplerConfig {
 	}
 
 	return SamplerConfig{
-		SamplingRules: samplingRules,
-		SamplingRate:  samplingRate,
+		Streams:      streams,
+		SamplingRate: samplingRate,
 	}
 }
 
 func (pc SamplerConfig) IsEmpty() bool {
-	return pc.SamplingRate == nil && len(pc.SamplingRules) == 0
+	return pc.SamplingRate == nil && len(pc.Streams) == 0
 }
 
 func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
-	var protoSRules []*protos.SamplingRule
-	for _, samplingRule := range pc.SamplingRules {
-		protoSRules = append(protoSRules, samplingRule.ToProto())
+	var protoStream []*protos.Stream
+	for _, stream := range pc.Streams {
+		protoStream = append(protoStream, stream.ToProto())
 	}
 
 	var protoSamplingRate *protos.SamplingRate
@@ -234,8 +258,8 @@ func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
 	}
 
 	return &protos.SamplerConfig{
-		SamplingRules: protoSRules,
-		SamplingRate:  protoSamplingRate,
+		Streams:      protoStream,
+		SamplingRate: protoSamplingRate,
 	}
 }
 
@@ -261,6 +285,8 @@ func (s SamplerSamplingStats) ToProto() *protos.SamplerSamplingStats {
 		SamplesExported:  s.SamplesExported,
 	}
 }
+
+type SamplerUID string
 
 type Sampler struct {
 	Name          string
