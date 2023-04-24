@@ -33,7 +33,7 @@ func TestFromResourceSamples(t *testing.T) {
 									Data: map[string]any{"id": "some_id111"},
 									Matches: []sample.Match{
 										{
-											SamplingRuleUID: "some_sampling_rule_uid1111",
+											StreamUID: "some_sampling_rule_uid1111",
 										},
 									},
 								},
@@ -46,7 +46,7 @@ func TestFromResourceSamples(t *testing.T) {
 									Data: map[string]any{"id": "some_id121"},
 									Matches: []sample.Match{
 										{
-											SamplingRuleUID: "some_sampling_rule_uid1211",
+											StreamUID: "some_sampling_rule_uid1211",
 										},
 									},
 								},
@@ -55,10 +55,10 @@ func TestFromResourceSamples(t *testing.T) {
 									Data: map[string]any{"id": "some_id122"},
 									Matches: []sample.Match{
 										{
-											SamplingRuleUID: "some_sampling_rule_uid1221",
+											StreamUID: "some_sampling_rule_uid1221",
 										},
 										{
-											SamplingRuleUID: "some_sampling_rule_uid1222",
+											StreamUID: "some_sampling_rule_uid1222",
 										},
 									},
 								},
@@ -77,7 +77,7 @@ func TestFromResourceSamples(t *testing.T) {
 									Data: map[string]any{"id": "some_id2"},
 									Matches: []sample.Match{
 										{
-											SamplingRuleUID: "some_sampling_rule_uid2",
+											StreamUID: "some_sampling_rule_uid2",
 										},
 									},
 								},
@@ -128,7 +128,7 @@ func TestFromResourceSamples(t *testing.T) {
 
 						var samplingRuleUIDs []string
 						for _, match := range cSample.Matches {
-							samplingRuleUIDs = append(samplingRuleUIDs, string(match.SamplingRuleUID))
+							samplingRuleUIDs = append(samplingRuleUIDs, string(match.StreamUID))
 						}
 
 						assert.ElementsMatch(t, samplingRuleUIDs, lrSamplingRuleUIDs.Slice().AsRaw())

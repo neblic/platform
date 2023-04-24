@@ -48,7 +48,7 @@ func fromResourceSamples(resourceSmpls []sample.ResourceSamples) plog.Logs {
 				lrClientUIDs.EnsureCapacity(len(sample.Matches))
 				lrSamplingRuleUIDs.EnsureCapacity(len(sample.Matches))
 				for _, match := range sample.Matches {
-					lrSamplingRuleUIDs.AppendEmpty().SetStr(string(match.SamplingRuleUID))
+					lrSamplingRuleUIDs.AppendEmpty().SetStr(string(match.StreamUID))
 				}
 
 			}
