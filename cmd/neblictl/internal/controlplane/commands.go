@@ -12,181 +12,173 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 	return &Commands{
 		Commands: interpoler.CommandNodes{
 			{
-				Name:        "list",
-				Description: "List elements",
-				Subcommands: interpoler.CommandNodes{
+				Name:        "resources:list",
+				Description: "List all resources",
+				Executor:    controlPlaneExecutors.ListResources,
+			},
+			{
+				Name:        "samplers:list",
+				Description: "List all samplers",
+				Executor:    controlPlaneExecutors.ListSamplers,
+			},
+			{
+				Name:        "samplers:sampling:set",
+				Description: "Sets the sampling limit for a sampler",
+				Executor:    controlPlaneExecutors.SamplerSamplingSet,
+				Parameters: []interpoler.Parameter{
 					{
-						Name:        "resources",
-						Description: "List resources",
-						Executor:    controlPlaneExecutors.ListResources,
+						Name:        "limit",
+						Description: "Maximum number of samples per second exported",
 					},
 					{
-						Name:        "samplers",
-						Description: "List samplers",
-						Executor:    controlPlaneExecutors.ListSamplers,
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
 					},
 					{
-						Name:        "rules",
-						Description: "List rules",
-						Parameters: []interpoler.Parameter{
-							{
-								Name:        "resource",
-								Description: "Resource where the sampler have been defined",
-								Completer:   controlPlaneCompleters.ListResources,
-							},
-							{
-								Name:        "sampler",
-								Description: "Name of an already configured sampler",
-								Completer:   controlPlaneCompleters.ListSamplers,
-							},
-						},
-						Executor: controlPlaneExecutors.ListRules,
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
 					},
 				},
 			},
 			{
-				Name:        "create",
-				Description: "Create sampling configuration for a specific resource and sampler",
-				Subcommands: interpoler.CommandNodes{
+				Name:        "samplers:sampling:unset",
+				Description: "Remove the sampling limit for a sampler",
+				Executor:    controlPlaneExecutors.SamplerSamplingUnset,
+				Parameters: []interpoler.Parameter{
 					{
-						Name:        "rule",
-						Description: "Create sampling rule for a specific resource and sampler",
-						Parameters: []interpoler.Parameter{
-							{
-								Name:        "resource",
-								Description: "Resource where the sampler have been defined",
-								Completer:   controlPlaneCompleters.ListResources,
-							},
-							{
-								Name:        "sampler",
-								Description: "Name of an already configured sampler",
-								Completer:   controlPlaneCompleters.ListSamplers,
-							},
-							{
-								Name:        "sampling_rule",
-								Description: "Sampling rule, format TBD",
-							},
-						},
-						Executor: controlPlaneExecutors.CreateRule,
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
 					},
 					{
-						Name:        "rate",
-						Description: "Create sampling rate for a specific resource and sampler",
-						Parameters: []interpoler.Parameter{
-							{
-								Name:        "resource",
-								Description: "Resource where the sampler have been defined",
-								Completer:   controlPlaneCompleters.ListResources,
-							},
-							{
-								Name:        "sampler",
-								Description: "Name of an already configured sampler",
-								Completer:   controlPlaneCompleters.ListSamplers,
-							},
-							{
-								Name:        "limit",
-								Description: "Maximum number of samples per second exported",
-							},
-						},
-						Executor: controlPlaneExecutors.CreateRate,
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
 					},
 				},
 			},
 			{
-				Name:        "update",
-				Description: "Update sampling configuration for a specific resource and sampler",
-				Subcommands: interpoler.CommandNodes{
+				Name:        "streams:list",
+				Description: "List streams",
+				Executor:    controlPlaneExecutors.ListStreams,
+				Parameters: []interpoler.Parameter{
 					{
-						Name:        "rule",
-						Description: "Update sampling rule for a specific resource and sampler",
-						Parameters: []interpoler.Parameter{
-							{
-								Name:        "resource",
-								Description: "Resource where the sampler have been defined",
-								Completer:   controlPlaneCompleters.ListResources,
-							},
-							{
-								Name:        "sampler",
-								Description: "Name of an already configured sampler",
-								Completer:   controlPlaneCompleters.ListSamplers,
-							},
-							{
-								Name:        "old_sampling_rule",
-								Description: "Old sampling rule, format TBD",
-							},
-							{
-								Name:        "new_sampling_rule",
-								Description: "New sampling rule, format TBD",
-							},
-						},
-						Executor: controlPlaneExecutors.UpdateRule,
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
 					},
 					{
-						Name:        "rate",
-						Description: "Update sampling rate for a specific resource and sampler",
-						Parameters: []interpoler.Parameter{
-							{
-								Name:        "resource",
-								Description: "Resource where the sampler have been defined",
-								Completer:   controlPlaneCompleters.ListResources,
-							},
-							{
-								Name:        "sampler",
-								Description: "Name of an already configured sampler",
-								Completer:   controlPlaneCompleters.ListSamplers,
-							},
-							{
-								Name:        "limit",
-								Description: "Maximum number of samples per second exported",
-							},
-						},
-						Executor: controlPlaneExecutors.UpdateRate,
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
 					},
 				},
 			},
 			{
-				Name:        "delete",
-				Description: "Update sampling configuration for a specific resource and sampler",
-				Subcommands: interpoler.CommandNodes{
+				Name:        "streams:create",
+				Description: "Create streams",
+				ExtendedDescription: `* It it possible to create multiple streams targeting different samplers at once. 
+* If the uid is not specified, a random one will be generated.
+* All the created streams will have the same UID`,
+				Parameters: []interpoler.Parameter{
 					{
 						Name:        "rule",
-						Description: "Update sampling rule for a specific resource and sampler",
-						Parameters: []interpoler.Parameter{
-							{
-								Name:        "resource",
-								Description: "Resource where the sampler have been defined",
-								Completer:   controlPlaneCompleters.ListResources,
-							},
-							{
-								Name:        "sampler",
-								Description: "Name of an already configured sampler",
-								Completer:   controlPlaneCompleters.ListSamplers,
-							},
-							{
-								Name:        "sampling_rule",
-								Description: "Sampling rule, format TBD",
-							},
-						},
-						Executor: controlPlaneExecutors.DeleteRule,
+						Description: "CEL rule that will select the stream elements",
 					},
 					{
-						Name:        "rate",
-						Description: "Update sampling rate for a specific resource and sampler",
-						Parameters: []interpoler.Parameter{
-							{
-								Name:        "resource",
-								Description: "Resource where the sampler have been defined",
-								Completer:   controlPlaneCompleters.ListResources,
-							},
-							{
-								Name:        "sampler",
-								Description: "Name of an already configured sampler",
-								Completer:   controlPlaneCompleters.ListSamplers,
-							},
-						},
-						Executor: controlPlaneExecutors.DeleteRate,
+						Name:        "uid",
+						Description: "Stream uid",
+						Optional:    true,
+						DoNotFilter: true,
+					},
+					{
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
 					},
 				},
+				Executor: controlPlaneExecutors.CreateStreams,
+			},
+			{
+				Name:                "streams:update",
+				Description:         "Update streams",
+				ExtendedDescription: `* It it possible to update multiple streams targeting different samplers at once.`,
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "uid",
+						Description: "Stream uid",
+						Completer:   controlPlaneCompleters.ListStreamsUID,
+					},
+					{
+						Name:        "updated-rule",
+						Description: "Updated CEL rule",
+					},
+					{
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+				Executor: controlPlaneExecutors.UpdateStreams,
+			},
+			{
+				Name:                "streams:delete",
+				Description:         "Delete streams",
+				ExtendedDescription: `* It it possible to delete multiple streams targeting different samplers at once.`,
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "uid",
+						Description: "Stream uid",
+						Completer:   controlPlaneCompleters.ListStreamsUID,
+					},
+					{
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+				Executor: controlPlaneExecutors.DeleteStreams,
 			},
 		},
 	}
