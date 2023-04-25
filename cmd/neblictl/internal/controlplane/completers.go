@@ -5,6 +5,7 @@ import (
 	"sort"
 
 	"github.com/neblic/platform/cmd/neblictl/internal/interpoler"
+	"github.com/neblic/platform/controlplane/data"
 )
 
 type Completers struct {
@@ -18,16 +19,27 @@ func NewCompleters(controlPlaneClient *Client) *Completers {
 }
 
 func (c *Completers) ListResources(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
-	// Get all samplers
-	samplers, _ := c.controlPlaneClient.getSamplers(ctx, true)
+	resourceParameter, _ := parameters.Get("resource")
+	samplerParameter, _ := parameters.Get("sampler")
+	streamUIDParameter, streamUIDParameterOk := parameters.Get("uid")
+
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, true)
 
 	// Store resources in a map to remove duplicates
 	resourcesMap := map[string]bool{"*": true}
-	for sampler := range samplers {
-		resourcesMap[sampler.resource] = true
+	for _, sampler := range samplers {
+		if !streamUIDParameterOk || streamUIDParameter.DoNotFilter {
+			resourcesMap[sampler.Resource] = true
+		} else {
+			for _, stream := range sampler.Config.Streams {
+				if streamUIDParameterOk && stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
+					resourcesMap[sampler.Resource] = true
+				}
+			}
+		}
 	}
 
-	// Construct list of samplers
+	// Construct list of resources
 	resources := []string{}
 	for resoure := range resourcesMap {
 		resources = append(resources, resoure)
@@ -40,43 +52,60 @@ func (c *Completers) ListResources(ctx context.Context, parameters interpoler.Pa
 // ListSamplers lists all the available samplers. If a resource parameter is provided, it will just
 // return the samplers that are part of the resource
 func (c *Completers) ListSamplers(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
-	// Get options
-	resourceParameter, ok := parameters.Get("resource")
+	resourceParameter, _ := parameters.Get("resource")
+	samplerParameter, _ := parameters.Get("sampler")
+	streamUIDParameter, streamUIDParameterOk := parameters.Get("uid")
 
-	// Store samplers in a map to remove duplicates
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, true)
+
+	// Store resources in a map to remove duplicates
 	samplersMap := map[string]bool{"*": true}
-	samplersFull, _ := c.controlPlaneClient.getSamplers(ctx, true)
-	for resourceAndSamplerEntry := range samplersFull {
-		if !ok || (ok && resourceAndSamplerEntry.resource == resourceParameter.Value) {
-			samplersMap[resourceAndSamplerEntry.sampler] = true
+	for _, sampler := range samplers {
+		if !streamUIDParameterOk || streamUIDParameter.DoNotFilter {
+			samplersMap[sampler.Name] = true
+		} else {
+			for _, stream := range sampler.Config.Streams {
+				if streamUIDParameterOk && stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
+					samplersMap[sampler.Name] = true
+				}
+			}
 		}
 	}
 
-	// Construct list of samplers
-	samplers := []string{}
-	for sampler := range samplersMap {
-		samplers = append(samplers, sampler)
+	// Construct list of sampler names
+	samplersName := []string{}
+	for resoure := range samplersMap {
+		samplersName = append(samplersName, resoure)
 	}
-	sort.Strings(samplers)
+	sort.Strings(samplersName)
 
-	return samplers
+	return samplersName
 }
 
-func (c *Completers) ListRules(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
-	// Get options
+func (c *Completers) ListStreamsUID(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
 	resourceParameter, _ := parameters.Get("resource")
 	samplerParameter, _ := parameters.Get("sampler")
+	streamUIDParameter, streamUIDParameterOk := parameters.Get("uid")
 
-	sampler, _ := c.controlPlaneClient.getSampler(ctx, samplerParameter.Value, resourceParameter.Value, true)
-	if sampler == nil {
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, true)
+	if len(samplers) == 0 {
 		return []string{}
 	}
 
-	var rules []string
-	for _, samplingRule := range sampler.Config.SamplingRules {
-		rules = append(rules, samplingRule.Rule)
+	uidsSet := map[string]struct{}{}
+	for _, sampler := range samplers {
+		for _, stream := range sampler.Config.Streams {
+			if !streamUIDParameterOk || streamUIDParameter.DoNotFilter || (streamUIDParameterOk && stream.UID == data.SamplerStreamUID(streamUIDParameter.Value)) {
+				uidsSet[string(stream.UID)] = struct{}{}
+			}
+		}
 	}
+	var uids []string
+	for uid := range uidsSet {
+		uids = append(uids, uid)
+	}
+	sort.Strings(uids)
 
 	// Construct output
-	return rules
+	return uids
 }

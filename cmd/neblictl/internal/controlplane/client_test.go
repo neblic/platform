@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestExecutors_doesResourceAndSamplerMatch(t *testing.T) {
+func TestClient_doesResourceAndSamplerMatch(t *testing.T) {
 	type fields struct {
 		controlPlaneClient *Client
 	}
@@ -106,10 +106,7 @@ func TestExecutors_doesResourceAndSamplerMatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := &Executors{
-				controlPlaneClient: tt.fields.controlPlaneClient,
-			}
-			if got := e.doesResourceAndSamplerMatch(tt.args.resourceParameter, tt.args.samplerParameter, tt.args.resourceAndSamplerEntry); got != tt.want {
+			if got := doesResourceAndSamplerMatch(tt.args.resourceParameter, tt.args.samplerParameter, tt.args.resourceAndSamplerEntry); got != tt.want {
 				t.Errorf("Executors.doesResourceAndSamplerMatch() = %v, want %v", got, tt.want)
 			}
 		})
