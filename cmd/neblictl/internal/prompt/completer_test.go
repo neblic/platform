@@ -11,80 +11,57 @@ import (
 
 var commands = interpoler.CommandNodes{
 	{
-		Name:        "list",
-		Description: "List elements",
-		Subcommands: interpoler.CommandNodes{
+		Name: "streams:create",
+		Parameters: []interpoler.Parameter{
 			{
-				Name:        "samplers",
-				Description: "List samplers",
+				Name:        "sampler",
+				Description: "Filter streams by sampler",
+				Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
+					return []string{"sampler1", "sampler2"}
+				},
 			},
 			{
-				Name:        "rules",
-				Description: "List rules",
-				Parameters: []interpoler.Parameter{
-					{
-						Name:        "sampler",
-						Description: "Name of an already configured sampler",
-						Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
-							return []string{"p1", "p2"}
-						},
-					},
-				},
+				Name:        "uid",
+				Description: "Stream uid",
+			},
+			{
+				Name:        "rule",
+				Description: "CEL rule that will select the stream elements",
 			},
 		},
 	},
 	{
-		Name:        "create",
-		Description: "Create a sampling rule for a specific sampler",
+		Name: "streams:update",
 		Parameters: []interpoler.Parameter{
 			{
 				Name:        "sampler",
 				Description: "Name of an already configured sampler",
 				Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
-					return []string{"p1", "p2"}
+					return []string{"sampler1", "sampler2"}
 				},
 			},
 			{
-				Name:        "sampling_rule",
-				Description: "Sampling rule, format TBD",
+				Name:        "uid",
+				Description: "Stream uid",
 				Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
-					return []string{}
-				},
-			},
-		},
-	},
-	{
-		Name:        "update",
-		Description: "Update sampling rule for a specific sampler",
-		Parameters: []interpoler.Parameter{
-			{
-				Name:        "sampler",
-				Description: "Name of an already configured sampler",
-				Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
-					return []string{"p1", "p2"}
-				},
-			},
-			{
-				Name:        "old_sampling_rule",
-				Description: "Old sampling rule, format TBD",
-				Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
-					samplerParameter, _ := funcOptions.Get("sampler")
-					switch samplerParameter.Value {
-					case "p1":
-						return []string{"p1s1", "p1s2"}
-					case "p2":
-						return []string{}
+					uidParamter, ok := funcOptions.Get("uid")
+					if !ok {
+						return []string{"sampler1s1", "sampler1s2", "sampler2s1"}
+					}
+
+					switch uidParamter.Value {
+					case "sampler1":
+						return []string{"sampler1s1", "sampler1s2"}
+					case "sampler2":
+						return []string{"sampler2s1"}
 					default:
 						panic("sampler does not exist")
 					}
 				},
 			},
 			{
-				Name:        "new_sampling_rule",
-				Description: "New sampling rule, format TBD",
-				Completer: func(_ context.Context, funcOptions interpoler.ParametersWithValue) []string {
-					return []string{}
-				},
+				Name:        "updated-rule",
+				Description: "Updated CEL rule",
 			},
 		},
 	},
@@ -104,65 +81,33 @@ func TestSuggestions(t *testing.T) {
 			name: "Empty command",
 			args: args{
 				commands:         commands,
-				tokanizedCommand: interpoler.NewTokanizedCommand([]string{}, false),
+				tokanizedCommand: interpoler.NewTokanizedCommand([]interpoler.Token{}, false, 0),
 			},
-			want: []prompt.Suggest{{Text: "list"}, {Text: "create"}, {Text: "update"}},
+			want: []prompt.Suggest{{Text: "streams:create"}, {Text: "streams:update"}},
 		},
 		{
 			name: "Partial command",
 			args: args{
 				commands:         commands,
-				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"li"}, false),
+				tokanizedCommand: interpoler.NewTokanizedCommand([]interpoler.Token{{Value: "streams"}}, false, 0),
 			},
-			want: []prompt.Suggest{{Text: "list"}},
-		},
-		{
-			name: "Suggest subcommand",
-			args: args{
-				commands:         commands,
-				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", ""}, false),
-			},
-			want: []prompt.Suggest{{Text: "samplers"}, {Text: "rules"}},
-		},
-		{
-			name: "Suggest partial subcommand",
-			args: args{
-				commands:         commands,
-				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", "sa"}, false),
-			},
-			want: []prompt.Suggest{{Text: "samplers"}},
-		},
-		{
-			name: "Suggest partial subcommand with trailing space",
-			args: args{
-				commands:         commands,
-				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", "sa"}, true),
-			},
-			want: []prompt.Suggest{},
-		},
-		{
-			name: "Suggest partial subcommand with trailing space",
-			args: args{
-				commands:         commands,
-				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", "sa", "a"}, false),
-			},
-			want: []prompt.Suggest{},
+			want: []prompt.Suggest{{Text: "streams:create"}, {Text: "streams:update"}},
 		},
 		{
 			name: "Suggest parameter value",
 			args: args{
 				commands:         commands,
-				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", "rules", ""}, false),
+				tokanizedCommand: interpoler.NewTokanizedCommand([]interpoler.Token{{Value: "streams:create"}, {Value: "--sampler"}, {Value: "", Pos: 10}}, false, 10),
 			},
-			want: []prompt.Suggest{{Text: "p1"}, {Text: "p2"}},
+			want: []prompt.Suggest{{Text: "sampler1"}, {Text: "sampler2"}},
 		},
 		{
 			name: "Suggest partial parameter value",
 			args: args{
 				commands:         commands,
-				tokanizedCommand: interpoler.NewTokanizedCommand([]string{"list", "rules", "p"}, false),
+				tokanizedCommand: interpoler.NewTokanizedCommand([]interpoler.Token{{Value: "streams:update"}, {Value: "--uid"}, {Value: "sampler1", Pos: 6}}, false, 14),
 			},
-			want: []prompt.Suggest{{Text: "p1"}, {Text: "p2"}},
+			want: []prompt.Suggest{{Text: "sampler1s1"}, {Text: "sampler1s2"}},
 		},
 	}
 	for _, tt := range tests {

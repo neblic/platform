@@ -10,28 +10,23 @@ import (
 type ExecutorFunc func(ctx context.Context, funcOptions ParametersWithValue, writer *internal.Writer) error
 type CompleterFunc func(ctx context.Context, funcOptions ParametersWithValue) []string
 
-type ParametersWithValue []*ParameterWithValue
-
-func (p *ParametersWithValue) Get(name string) (*ParameterWithValue, bool) {
-	for _, parameter := range *p {
-		if parameter.Name == name {
-			return parameter, true
-		}
-	}
-	return nil, false
-}
-
-func (p *ParametersWithValue) GetLast() (*ParameterWithValue, bool) {
-	if len(*p) == 0 {
-		return nil, false
-	}
-
-	return (*p)[len(*p)-1], true
-}
+type ParametersWithValue map[string]*ParameterWithValue
 
 type ParameterWithValue struct {
 	Parameter
-	Value string
+	Value        string
+	DefaultValue bool
+	InvalidValue bool
+}
+
+func (p *ParametersWithValue) Get(name string) (*ParameterWithValue, bool) {
+	parameter, ok := (*p)[name]
+	return parameter, ok
+}
+
+func (p *ParametersWithValue) IsSet(name string) bool {
+	parameter, ok := p.Get(name)
+	return ok && !parameter.DefaultValue
 }
 
 func (p *ParameterWithValue) AsInt64() (int64, error) {
@@ -42,14 +37,17 @@ type Parameter struct {
 	Name        string
 	Description string
 	Completer   CompleterFunc
+	Optional    bool
+	Default     string
+	DoNotFilter bool
 }
 
 type CommandNodes []*CommandNode
 
 type CommandNode struct {
-	Name        string
-	Description string
-	Subcommands CommandNodes
-	Parameters  []Parameter
-	Executor    ExecutorFunc
+	Name                string
+	Description         string
+	ExtendedDescription string
+	Parameters          []Parameter
+	Executor            ExecutorFunc
 }

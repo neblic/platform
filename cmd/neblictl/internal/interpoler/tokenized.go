@@ -1,19 +1,26 @@
 package interpoler
 
 type TokanizedCommand struct {
-	Parts            []string
+	Tokens           []Token
 	HasTrailingSpace bool
+	CursorPos        int
 }
 
-func NewTokanizedCommand(parts []string, hasTrailingSpace bool) *TokanizedCommand {
+type Token struct {
+	Value string
+	Pos   int
+}
+
+func NewTokanizedCommand(tokens []Token, hasTrailingSpace bool, cursorPos int) *TokanizedCommand {
 	return &TokanizedCommand{
-		Parts:            parts,
+		Tokens:           tokens,
 		HasTrailingSpace: hasTrailingSpace,
+		CursorPos:        cursorPos,
 	}
 }
 
 func (c *TokanizedCommand) Len() int {
-	return len(c.Parts)
+	return len(c.Tokens)
 }
 
 func (c *TokanizedCommand) Cut() (string, *TokanizedCommand) {
@@ -22,13 +29,14 @@ func (c *TokanizedCommand) Cut() (string, *TokanizedCommand) {
 	}
 
 	// Cut the token in two parts, the head and the remaining parts
-	part, remainingParts := c.Parts[0], c.Parts[1:]
+	token, remainingTokens := c.Tokens[0], c.Tokens[1:]
 
 	// Create remaining command using remaining parts
 	remainingCommand := &TokanizedCommand{
-		Parts:            remainingParts,
+		Tokens:           remainingTokens,
 		HasTrailingSpace: c.HasTrailingSpace,
+		CursorPos:        c.CursorPos - token.Pos,
 	}
 
-	return part, remainingCommand
+	return token.Value, remainingCommand
 }

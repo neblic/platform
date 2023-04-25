@@ -32,17 +32,24 @@ var (
 	originalTermios      *unix.Termios = &unix.Termios{}
 )
 
-func createTokanizedCommand(inputText string) *interpoler.TokanizedCommand {
+func createTokanizedCommand(inputText string, cursorPos int) *interpoler.TokanizedCommand {
 	parts := strings.Split(inputText, " ")
 
 	// Remove empty parts result of having multiple contiguous spaces
-	removedSpacesParts := make([]string, 0, len(parts))
+	currentPos := 0
+	removedSpacesTokens := make([]interpoler.Token, 0, len(parts))
 	for _, part := range parts {
 		if part == "" {
+			currentPos += 1
 			continue
 		}
 
-		removedSpacesParts = append(removedSpacesParts, part)
+		removedSpacesTokens = append(removedSpacesTokens, interpoler.Token{
+			Value: part,
+			Pos:   currentPos,
+		})
+
+		currentPos += len(part) + 1
 	}
 
 	hasTrailingSpace := false
@@ -50,7 +57,7 @@ func createTokanizedCommand(inputText string) *interpoler.TokanizedCommand {
 		hasTrailingSpace = true
 	}
 
-	return interpoler.NewTokanizedCommand(removedSpacesParts, hasTrailingSpace)
+	return interpoler.NewTokanizedCommand(removedSpacesTokens, hasTrailingSpace, cursorPos)
 
 }
 
@@ -76,7 +83,7 @@ func executor(in string) {
 	}
 
 	// Sanitize input
-	tokanizedCommand := createTokanizedCommand(in)
+	tokanizedCommand := createTokanizedCommand(in, 0)
 
 	// Execute command and show output/error
 	err := promptImpl.Execute(ctx, controlPlaneCommands.Commands, tokanizedCommand, writer)
@@ -95,7 +102,7 @@ func completer(in prompt.Document) []prompt.Suggest {
 	}
 
 	// Tokanize the input
-	tokanizedCommand := createTokanizedCommand(inputText)
+	tokanizedCommand := createTokanizedCommand(inputText, len(inputText))
 
 	// Execute command and show output/error
 	suggestions := promptImpl.Suggestions(context.Background(), controlPlaneCommands.Commands, tokanizedCommand)

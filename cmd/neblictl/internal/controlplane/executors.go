@@ -38,52 +38,9 @@ func NewExecutors(controlPlaneClient *Client) *Executors {
 	}
 }
 
-func (e *Executors) doesResourceAndSamplerMatch(resourceParameter, samplerParameter string, resourceAndSamplerEntry resourceAndSampler) bool {
-	acceptAllResources := resourceParameter == "*"
-	acceptAllSamplers := samplerParameter == "*"
-
-	// This part of the logic explores all four possible combinations.
-	// 1) ASSUMPTION: resourceParameter==* and SamplerParameter==*
-	allResourcesAndAllSamplers := acceptAllResources && acceptAllSamplers
-	// 2) ASSUMPTION: resourceParameter==* and samplerParameter==<sampler> CONDITION resourceAndSamplerEntry.sampler==<sampler>
-	allResourcesAndMatchingSampler := acceptAllResources && resourceAndSamplerEntry.sampler == samplerParameter
-	// 3) ASSUMPTION resourceAndSamplerEntry.resrouce==<resource> and resourceParameter==* CONDITION resourceParameter==<resource>
-	matchingResourceAndAllSamplers := resourceAndSamplerEntry.resource == resourceParameter && acceptAllSamplers
-	// 4) ASSUMPTION resourceParameter==<resource> and samplerParameter==<sampler> CONDITION resourceAndSamplerEntry.resource==<resource> and resourceAndSamplerEntry.sampler==<sampler>
-	matchingResourceAndMatchingSampler := resourceAndSamplerEntry.resource == resourceParameter && resourceAndSamplerEntry.sampler == samplerParameter
-	return allResourcesAndAllSamplers || allResourcesAndMatchingSampler || matchingResourceAndAllSamplers || matchingResourceAndMatchingSampler
-
-}
-
-func (e *Executors) getMatchingSamplers(ctx context.Context, resourceParameter string, samplerParameter string, cached bool) (map[resourceAndSampler]*data.Sampler, error) {
-
-	samplers, err := e.controlPlaneClient.getSamplers(ctx, cached)
-
-	// Iterate over all samplers and select the ones matching the input
-	resourceAndSamplers := map[resourceAndSampler]*data.Sampler{}
-	for resourceAndSamplerEntry, samplerData := range samplers {
-		if e.doesResourceAndSamplerMatch(resourceParameter, samplerParameter, resourceAndSamplerEntry) {
-			resourceAndSamplers[resourceAndSampler{resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler}] = samplerData
-		}
-	}
-
-	// Return error if no matching sampler was found
-	if len(resourceAndSamplers) == 0 {
-		var err error
-		if resourceParameter == "*" || samplerParameter == "*" {
-			err = fmt.Errorf("could not find any sampler matching the criteria")
-		} else {
-			err = fmt.Errorf("sampler does not exist")
-		}
-		return resourceAndSamplers, err
-	}
-
-	return resourceAndSamplers, err
-}
-
 func (e *Executors) ListResources(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get all samplers
-	samplers, err := e.controlPlaneClient.getSamplers(ctx, false)
+	samplers, err := e.controlPlaneClient.getAllSamplers(ctx, false)
 
 	// Build deduplicated list of rows
 	header := []string{"Resource"}
@@ -113,7 +70,7 @@ func (e *Executors) ListResources(ctx context.Context, parameters interpoler.Par
 
 func (e *Executors) ListSamplers(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get all samplers
-	samplers, err := e.controlPlaneClient.getSamplers(ctx, false)
+	samplers, err := e.controlPlaneClient.getAllSamplers(ctx, false)
 
 	// Build table rows
 	header := []string{"Resource", "Sampler", "Sampling Rate", "Samples Evaluated", "Samples Exported"}
@@ -157,20 +114,20 @@ func (e *Executors) ListSamplers(ctx context.Context, parameters interpoler.Para
 	return nil
 }
 
-func (e *Executors) ListRules(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) ListStreams(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 
 	// Build table rows
-	header := []string{"Resource", "Sampler", "Sampling Rule"}
+	header := []string{"Resource", "Sampler", "Stream UID", "Stream Rule"}
 	rows := [][]string{}
 	for _, samplerData := range resourceAndSamplers {
-		for _, samplingRule := range samplerData.Config.SamplingRules {
-			rows = append(rows, []string{samplerData.Resource, samplerData.Name, samplingRule.Rule})
+		for _, stream := range samplerData.Config.Streams {
+			rows = append(rows, []string{samplerData.Resource, samplerData.Name, string(stream.UID), stream.StreamRule.Rule})
 		}
 	}
 
@@ -193,41 +150,51 @@ func (e *Executors) ListRules(ctx context.Context, parameters interpoler.Paramet
 	return nil
 }
 
-func (e *Executors) CreateRule(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	// Get options
-	samplerParameter, _ := parameters.Get("sampler")
+func (e *Executors) CreateStreams(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	resourceParameter, _ := parameters.Get("resource")
-	samplingRuleParameter, _ := parameters.Get("sampling_rule")
+	samplerParameter, _ := parameters.Get("sampler")
+	streamRuleParameter, _ := parameters.Get("rule")
+	streamUIDParameter, streamUIDParameterSet := parameters.Get("uid") // optional
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
 		return err
 	}
 
+	// If multiple streans are created at once, they will all have the same UID
+	var streamUID data.SamplerStreamUID
+	if streamUIDParameterSet {
+		streamUID = data.SamplerStreamUID(streamUIDParameter.Value)
+	} else {
+		streamUID = data.SamplerStreamUID(uuid.New().String())
+	}
+
 	// Create rules one by one
 	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
-		// Check that the sampling rule does not exist
-		ruleExists := false
-		for _, samplingRule := range samplerData.Config.SamplingRules {
-			if samplingRule.Rule == samplingRuleParameter.Value {
-				ruleExists = true
+		// Check that the stream does not exist
+		streamExists := false
+		for _, stream := range samplerData.Config.Streams {
+			if stream.UID == streamUID {
+				streamExists = true
 				break
 			}
 		}
-		if ruleExists {
-			writer.WriteStringf("%s.%s: Sampling rule already exists\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+		if streamExists {
+			writer.WriteStringf("%s.%s: Stream already exists\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
 			continue
 		}
-
 		update := &data.SamplerConfigUpdate{
-			SamplingRuleUpdates: []data.SamplingRuleUpdate{
+			StreamUpdates: []data.StreamUpdate{
 				{
-					Op: data.SamplingRuleUpsert,
-					SamplingRule: data.SamplingRule{
-						UID:  data.SamplerSamplingRuleUID(uuid.New().String()),
-						Lang: data.SrlCel,
-						Rule: samplingRuleParameter.Value,
+					Op: data.StreamRuleUpsert,
+					Stream: data.Stream{
+						UID: streamUID,
+						StreamRule: data.StreamRule{
+							UID:  data.SamplerStreamRuleUID(uuid.New().String()),
+							Lang: data.SrlCel,
+							Rule: streamRuleParameter.Value,
+						},
 					},
 				},
 			},
@@ -236,18 +203,131 @@ func (e *Executors) CreateRule(ctx context.Context, parameters interpoler.Parame
 		// Propagate new configuration
 		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Could not create the sampling rule because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not create the stream because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
-		writer.WriteStringf("%s.%s: Rule successfully created\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+		writer.WriteStringf("%s.%s: Stream successfully created\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
 
 	}
 
 	return nil
 }
 
-func (e *Executors) CreateRate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) UpdateStreams(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	resourceParameter, _ := parameters.Get("resource")
+	samplerParameter, _ := parameters.Get("sampler")
+	streamUIDParameter, _ := parameters.Get("uid")
+	updatedRuleParameter, _ := parameters.Get("updated-rule")
+
+	// Compute list of targeted resources and samplers
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
+	if err != nil {
+		return err
+	}
+
+	// Update streams one by one
+	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
+		// Check if the stream exists
+		found := false
+		for _, stream := range samplerData.Config.Streams {
+			if stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			writer.WriteStringf("%s.%s: Stream with UID '%s' does not exist\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, streamUIDParameter.Value)
+			continue
+		}
+
+		// Modify sampling rule to existing config
+		update := &data.SamplerConfigUpdate{
+			StreamUpdates: []data.StreamUpdate{
+				{
+					Op: data.StreamRuleUpsert,
+					Stream: data.Stream{
+						UID: data.SamplerStreamUID(streamUIDParameter.Value),
+						StreamRule: data.StreamRule{
+							UID:  data.SamplerStreamRuleUID(uuid.New().String()),
+							Lang: data.SrlCel,
+							Rule: updatedRuleParameter.Value,
+						},
+					},
+				},
+			},
+		}
+
+		// Propagate new configuration
+		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
+		if err != nil {
+			writer.WriteStringf("%s.%s: Could not update the stream because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			continue
+		}
+
+		// Write output
+		writer.WriteStringf("%s.%s: Stream successfully updated\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+	}
+
+	return nil
+}
+
+func (e *Executors) DeleteStreams(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	// Get options
+	resourceParameter, _ := parameters.Get("resource")
+	samplerParameter, _ := parameters.Get("sampler")
+	streamUIDParameter, _ := parameters.Get("uid")
+
+	// Compute list of targeted resources and samplers
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
+	if err != nil {
+		return err
+	}
+
+	// Delete streams one by one
+	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
+
+		// Check if the stream exists
+		found := false
+		for _, stream := range samplerData.Config.Streams {
+			if stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			writer.WriteStringf("%s.%s: Stream with UID '%s' does not exist\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, streamUIDParameter.Value)
+			continue
+		}
+
+		// Modify sampling rule to existing config
+		update := &data.SamplerConfigUpdate{
+			StreamUpdates: []data.StreamUpdate{
+				{
+					Op: data.StreamRuleDelete,
+					Stream: data.Stream{
+						UID: data.SamplerStreamUID(streamUIDParameter.Value),
+					},
+				},
+			},
+		}
+
+		// Propagate new configuration
+		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
+		if err != nil {
+			writer.WriteStringf("%s.%s: Could not delete the sampling rule because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			continue
+		}
+
+		// Write output
+		writer.WriteStringf("%s.%s: Rule successfully deleted\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+	}
+
+	return nil
+}
+func (e *Executors) SamplerSamplingSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
@@ -260,21 +340,13 @@ func (e *Executors) CreateRate(ctx context.Context, parameters interpoler.Parame
 	}
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
 		return err
 	}
 
 	// Create rate one by one
-	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
-		// Check that the sampling rate does not exist.
-		// If sampling rate is nil, it means the server does not have any configured sampling rate and the sampler default is applied.
-		// When the server has configuration, a sampling rate exists if the value is bigger or equal than 0.
-		if samplerData.Config.SamplingRate != nil && samplerData.Config.SamplingRate.Limit >= 0 {
-			writer.WriteStringf("%s.%s: Sampling rate already exists\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
-			continue
-		}
-
+	for resourceAndSamplerEntry := range resourceAndSamplers {
 		update := &data.SamplerConfigUpdate{
 			SamplingRate: &data.SamplingRate{
 				Limit: limitInt64,
@@ -296,194 +368,19 @@ func (e *Executors) CreateRate(ctx context.Context, parameters interpoler.Parame
 	return nil
 }
 
-func (e *Executors) UpdateRule(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	// Get options
-	samplerParameter, _ := parameters.Get("sampler")
-	resourceParameter, _ := parameters.Get("resource")
-	oldSamplingRuleParameter, _ := parameters.Get("old_sampling_rule")
-	newSamplingRuleParameter, _ := parameters.Get("new_sampling_rule")
-
-	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
-	if err != nil {
-		return err
-	}
-
-	// Update rule one by one
-	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
-
-		// Check that the sampling rule already exists
-		existingUID := data.SamplerSamplingRuleUID("")
-		for uid, samplingRule := range samplerData.Config.SamplingRules {
-			if samplingRule.Rule == oldSamplingRuleParameter.Value {
-				existingUID = uid
-				break
-			}
-		}
-
-		if existingUID == "" {
-			writer.WriteStringf("%s.%s: Sampling rule does not exist\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
-			continue
-
-		}
-
-		// Modify sampling rule to existing config
-		update := &data.SamplerConfigUpdate{
-			SamplingRuleUpdates: []data.SamplingRuleUpdate{
-				{
-					Op: data.SamplingRuleUpsert,
-					SamplingRule: data.SamplingRule{
-						UID:  existingUID,
-						Lang: data.SrlCel,
-						Rule: newSamplingRuleParameter.Value,
-					},
-				},
-			},
-		}
-
-		// Propagate new configuration
-		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
-		if err != nil {
-			writer.WriteStringf("%s.%s: Could not update the sampling rule because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
-			continue
-		}
-
-		// Write output
-		writer.WriteStringf("%s.%s: Rule successfully updated\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
-	}
-
-	return nil
-}
-
-func (e *Executors) UpdateRate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	// Get options
-	samplerParameter, _ := parameters.Get("sampler")
-	resourceParameter, _ := parameters.Get("resource")
-	limitParameter, _ := parameters.Get("limit")
-
-	// Parse limit and burst parameters
-	limitInt64, err := limitParameter.AsInt64()
-	if err != nil {
-		return fmt.Errorf("limit must be an integer")
-	}
-
-	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
-	if err != nil {
-		return err
-	}
-
-	// Update rate one by one
-	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
-
-		// Check that the sampling rate exists.
-		// If sampling rate is nil, it means the server does not have any configured sampling rate and the sampler default is applied.
-		// When the server has configuration, a sampling rate does not exist if it forwards without limits (limit is -1)
-		if samplerData.Config.SamplingRate == nil || samplerData.Config.SamplingRate.Limit == -1 {
-			writer.WriteStringf("%s.%s: Sampling rate does not exist\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
-			continue
-		}
-
-		// Modify sampling rate to existing config
-		update := &data.SamplerConfigUpdate{
-			SamplingRate: &data.SamplingRate{
-				Limit: limitInt64,
-				Burst: 0,
-			},
-		}
-
-		// Propagate new configuration
-		err = e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
-		if err != nil {
-			writer.WriteStringf("%s.%s: Could not update the sampling rate because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
-			continue
-		}
-
-		// Write output
-		writer.WriteStringf("%s.%s: Rate successfully updated\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
-	}
-
-	return nil
-}
-
-func (e *Executors) DeleteRule(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	// Get options
-	samplerParameter, _ := parameters.Get("sampler")
-	resourceParameter, _ := parameters.Get("resource")
-	samplingRuleParameter, _ := parameters.Get("sampling_rule")
-
-	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
-	if err != nil {
-		return err
-	}
-
-	// Delete rule one by one
-	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
-
-		// Check that the sampling rule already exists
-		existingUID := data.SamplerSamplingRuleUID("")
-		for uid, samplingRule := range samplerData.Config.SamplingRules {
-			if samplingRule.Rule == samplingRuleParameter.Value {
-				existingUID = uid
-				break
-			}
-		}
-
-		if existingUID == "" {
-			writer.WriteStringf("%s.%s: Sampling rule does not exist\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
-			continue
-		}
-
-		// Modify sampling rule to existing config
-		update := &data.SamplerConfigUpdate{
-			SamplingRuleUpdates: []data.SamplingRuleUpdate{
-				{
-					Op: data.SamplingRuleDelete,
-					SamplingRule: data.SamplingRule{
-						UID: existingUID,
-					},
-				},
-			},
-		}
-
-		// Propagate new configuration
-		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
-		if err != nil {
-			writer.WriteStringf("%s.%s: Could not delete the sampling rule because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
-			continue
-		}
-
-		// Write output
-		writer.WriteStringf("%s.%s: Rule successfully deleted\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
-	}
-
-	return nil
-}
-
-func (e *Executors) DeleteRate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) SamplerSamplingUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.getMatchingSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
 		return err
 	}
 
 	// Delete rate one by one
-	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
-
-		// Check that the sampling rate exists.
-		// If sampling rate is nil, it means the server does not have any configured sampling rate and the sampler default is applied.
-		// When the server has configuration, a sampling rate does not exist if it forwards without limits (limit is -1)
-		if samplerData.Config.SamplingRate == nil || samplerData.Config.SamplingRate.Limit == -1 {
-			writer.WriteStringf("%s.%s: Sampling rate does not exist\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
-			continue
-
-		}
-
+	for resourceAndSamplerEntry := range resourceAndSamplers {
 		// Modify sampling rate to existing config
 		update := &data.SamplerConfigUpdate{
 			SamplingRate: &data.SamplingRate{
@@ -501,7 +398,6 @@ func (e *Executors) DeleteRate(ctx context.Context, parameters interpoler.Parame
 
 		// Write output
 		writer.WriteStringf("%s.%s: Rate successfully deleted\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
-
 	}
 
 	return nil

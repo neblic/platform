@@ -100,7 +100,7 @@ func (c *Client) pullSamplerConfigs(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) getSamplers(ctx context.Context, cached bool) (map[resourceAndSampler]*data.Sampler, error) {
+func (c *Client) getAllSamplers(ctx context.Context, cached bool) (map[resourceAndSampler]*data.Sampler, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -111,12 +111,47 @@ func (c *Client) getSamplers(ctx context.Context, cached bool) (map[resourceAndS
 	return c.samplers, err
 }
 
-func (c *Client) getSampler(ctx context.Context, name, resource string, cached bool) (*data.Sampler, error) {
-	c.mutex.RLock()
-	defer c.mutex.RUnlock()
+func doesResourceAndSamplerMatch(resourceParameter, samplerParameter string, resourceAndSamplerEntry resourceAndSampler) bool {
+	acceptAllResources := resourceParameter == "*"
+	acceptAllSamplers := samplerParameter == "*"
 
-	samplerConfigs, err := c.getSamplers(ctx, cached)
-	return samplerConfigs[resourceAndSampler{resource, name}], err
+	// This part of the logic explores all four possible combinations.
+	// 1) ASSUMPTION: resourceParameter==* and SamplerParameter==*
+	allResourcesAndAllSamplers := acceptAllResources && acceptAllSamplers
+	// 2) ASSUMPTION: resourceParameter==* and samplerParameter==<sampler> CONDITION resourceAndSamplerEntry.sampler==<sampler>
+	allResourcesAndMatchingSampler := acceptAllResources && resourceAndSamplerEntry.sampler == samplerParameter
+	// 3) ASSUMPTION resourceAndSamplerEntry.resrouce==<resource> and resourceParameter==* CONDITION resourceParameter==<resource>
+	matchingResourceAndAllSamplers := acceptAllSamplers && resourceAndSamplerEntry.resource == resourceParameter
+	// 4) ASSUMPTION resourceParameter==<resource> and samplerParameter==<sampler> CONDITION resourceAndSamplerEntry.resource==<resource> and resourceAndSamplerEntry.sampler==<sampler>
+	matchingResourceAndMatchingSampler := resourceAndSamplerEntry.resource == resourceParameter && resourceAndSamplerEntry.sampler == samplerParameter
+
+	return allResourcesAndAllSamplers || allResourcesAndMatchingSampler || matchingResourceAndAllSamplers || matchingResourceAndMatchingSampler
+
+}
+
+func (c *Client) getSamplers(ctx context.Context, resourceParameter string, samplerParameter string, cached bool) (map[resourceAndSampler]*data.Sampler, error) {
+	samplers, err := c.getAllSamplers(ctx, cached)
+
+	// Iterate over all samplers and select the ones matching the input
+	resourceAndSamplers := map[resourceAndSampler]*data.Sampler{}
+	for resourceAndSamplerEntry, samplerData := range samplers {
+		if doesResourceAndSamplerMatch(resourceParameter, samplerParameter, resourceAndSamplerEntry) {
+			resourceAndSamplers[resourceAndSampler{resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler}] = samplerData
+		}
+	}
+
+	// Return error if no matching sampler was found
+	if len(resourceAndSamplers) == 0 {
+		var err error
+		if resourceParameter == "*" || samplerParameter == "*" {
+			err = fmt.Errorf("could not find any sampler matching the criteria")
+		} else {
+			err = fmt.Errorf("sampler does not exist")
+		}
+		return resourceAndSamplers, err
+	}
+
+	return resourceAndSamplers, err
 }
 
 func (c *Client) setSamplerConfig(ctx context.Context, name, resource string, update *data.SamplerConfigUpdate) error {
