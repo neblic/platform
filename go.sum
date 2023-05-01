@@ -333,8 +333,8 @@ go.opentelemetry.io/collector/featuregate v0.72.0 h1:ohUu+sefEWa1VGgzTu40xJhfHp+
 go.opentelemetry.io/collector/featuregate v0.72.0/go.mod h1:6mZdaoUukhcreY8fZKwnTm7RVsyp4iFFNf5UXMnzIxc=
 go.opentelemetry.io/collector/pdata v1.0.0-rc6 h1:qsFpsJWwpvUDg5GgaADa67mQpHoF2k7Yap6utad7kaI=
 go.opentelemetry.io/collector/pdata v1.0.0-rc6/go.mod h1:Eud2ehoJr3n4RclhcYfhrlRIbl/nxwTl4w2D/Fyzp20=
-go.opentelemetry.io/collector/semconv v0.72.0 h1:5GweTJstHEhWJX5ArO3+dEkbQx7/GeaAuVCbpaBhaIs=
-go.opentelemetry.io/collector/semconv v0.72.0/go.mod h1:Bqj5xGvhJzyCB8kd8xH+h5OveqIIoWZPgsxz3vjLMNY=
+go.opentelemetry.io/collector/semconv v0.76.1 h1:cY5z4uXLB15AuU7GkJFfFCTD82l83fqK7DBRqQ7sZCY=
+go.opentelemetry.io/collector/semconv v0.76.1/go.mod h1:eRAIvw3omXfvZxt1GAt9o4R/NFGSruOVkZ6JiJwPo6U=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.39.0 h1:MUes2rbdXa1ce9mwKYzTyBG0CtqpLT0NgKTFAz8FIDs=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.39.0/go.mod h1:tETUy0CG/bwb1vHaXyNZJJP9395sjxlQQ5e69KtvZMc=
 go.opentelemetry.io/otel v1.14.0 h1:/79Huy8wbf5DnIPhemGB+zEPVwnN6fuQybr/SRXa6hM=
