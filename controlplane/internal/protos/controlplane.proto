@@ -16,22 +16,16 @@ message Status {
   string error_message = 2;
 }
 
-message StreamRule {
-  enum Language {
-    UNKNOWN = 0;
-    CEL = 1;
-  }
-  string uid = 1;
-  Language language = 2;
-  string rule = 3;
+message DeterministicSampling {
+  // the minimum sample_rate valid value is 1 (all samples)
+  int32 sample_rate = 1;
 }
 
-message Stream {
-  string uid = 1;
-  StreamRule rule = 2;
+message Sampling {
+  oneof Sampling { DeterministicSampling deterministic_sampling = 1; }
 }
 
-message SamplingRate {
+message Limiter {
   // limit determines the maximum number of exported samples per second.
   // -1 means no exported samples limit
   // 0 means no samples will be exported
@@ -40,13 +34,41 @@ message SamplingRate {
   int64 burst = 2;
 }
 
-// Only the fields that are present are updated. If a field is present,
-// the previous value is replaced by the new one.
-message SamplerConfig {
-  // repeated StreamRule stream_rules = 1 [ deprecated = true ];
+message Stream {
+  message Rule {
+    enum Language {
+      UNKNOWN = 0;
+      CEL = 1;
+    }
+    Language language = 1;
+    string rule = 2;
+  }
 
-  SamplingRate sampling_rate = 2;
-  repeated Stream streams = 3;
+  string uid = 1;
+  Rule rule = 2;
+}
+
+// Used to get and update the sampler configuration.
+//
+// When sent by the server to update a sampler, only the fields that are present
+// are updated. If a field is present, the previous value is replaced with the
+// new one.
+message SamplerConfig {
+  // Configures the sampler streams.
+  repeated Stream streams = 1;
+  // Sets an upper bound to the amount of samples that will be processed by the
+  // sampler. It protects the application from an excessive CPU usage due to the
+  // sampler processing a large amount of samples.
+  Limiter limiter_in = 2;
+  // Defines the sampling strategy to apply when a sample is received and before
+  // processing it in any way (e.g. before determining if a sample belongs to a
+  // stream which would require parsing it and evaluating the stream rules).
+  // Sampling is performed after limiter_in has been applied.
+  Sampling sampling_in = 3;
+  // Sets an upper bound to the amount of samples that will be exported by the
+  // sampler. It protects the application from overloading the network due to
+  // the sampler exporting a large amount of samples.
+  Limiter limiter_out = 4;
 }
 
 message SamplerSamplingStats {
@@ -93,7 +115,7 @@ message SamplerToServer {
     // Requests
     SamplerRegisterReq register_req = 4;
     // Responses
-    SamplerConfRes conf_res = 5;
+    ServerSamplerConfRes conf_res = 5;
   }
 }
 
@@ -104,7 +126,7 @@ message ServerToSampler {
     // Responses
     SamplerRegisterRes register_res = 3;
     // Requests
-    SamplerConfReq conf_req = 4;
+    ServerSamplerConfReq conf_req = 4;
   }
 }
 
@@ -155,12 +177,12 @@ message SamplerRegisterRes { Status status = 1; }
 
 // configure sampling rules
 
-message SamplerConfReq {
+message ServerSamplerConfReq {
   // The Sampler configuration.
   SamplerConfig sampler_config = 1;
 }
 
-message SamplerConfRes { Status status = 1; }
+message ServerSamplerConfRes { Status status = 1; }
 
 /** client messages **/
 
@@ -198,15 +220,16 @@ message ClientStreamUpdate {
   }
 
   Op op = 1;
-  // StreamRule stream_rule = 2 [ deprecated = true ];
-  Stream stream = 3;
+  Stream stream = 2;
 }
 
+// All fields are optional. If a field is nil, it means that the field is not
+// updated.
 message ClientSamplerConfigUpdate {
-  // repeated ClientStreamRuleUpdate stream_rule_updates = 1 [ deprecated = true
-  // ];
-  SamplingRate sampling_rate = 2;
+  Limiter limiter_in = 1;
+  Sampling sampling_in = 2;
   repeated ClientStreamUpdate stream_updates = 3;
+  Limiter limiter_out = 4;
 }
 
 message ClientSamplerConfReq {

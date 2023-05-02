@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/neblic/platform/controlplane/data"
-	"github.com/neblic/platform/controlplane/server/internal/defs/sampler"
 	internalsampler "github.com/neblic/platform/controlplane/server/internal/defs/sampler"
 	"github.com/neblic/platform/logging"
 )
@@ -96,7 +95,7 @@ func (p *Sampler) GetRegisteredSamplers() []*internalsampler.Sampler {
 	return registeredSamplers
 }
 
-func (p *Sampler) Register(uid data.SamplerUID, name, resource string, conn sampler.Conn) error {
+func (p *Sampler) Register(uid data.SamplerUID, name, resource string, conn internalsampler.Conn) error {
 	p.Lock()
 	defer p.Unlock()
 

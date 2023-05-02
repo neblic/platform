@@ -106,25 +106,25 @@ var _ = Describe("Sampler", func() {
 				func(stream protos.ControlPlane_SamplerConnServer) error {
 					err = stream.Send(&protos.ServerToSampler{
 						Message: &protos.ServerToSampler_ConfReq{
-							ConfReq: &protos.SamplerConfReq{
+							ConfReq: &protos.ServerSamplerConfReq{
 								SamplerConfig: &protos.SamplerConfig{
 									Streams: []*protos.Stream{
 										{
 											Uid: uuid.NewString(),
-											Rule: &protos.StreamRule{
-												Uid: uuid.NewString(), Language: protos.StreamRule_CEL, Rule: "sample.id==1",
+											Rule: &protos.Stream_Rule{
+												Language: protos.Stream_Rule_CEL, Rule: "sample.id==1",
 											},
 										},
 										{
 											Uid: uuid.NewString(),
-											Rule: &protos.StreamRule{
-												Uid: uuid.NewString(), Language: protos.StreamRule_CEL, Rule: "sample.ID==1",
+											Rule: &protos.Stream_Rule{
+												Language: protos.Stream_Rule_CEL, Rule: "sample.ID==1",
 											},
 										},
 										{
 											Uid: uuid.NewString(),
-											Rule: &protos.StreamRule{
-												Uid: uuid.NewString(), Language: protos.StreamRule_CEL, Rule: `sample.sampler_uid == "1"`,
+											Rule: &protos.Stream_Rule{
+												Language: protos.Stream_Rule_CEL, Rule: `sample.sampler_uid == "1"`,
 											},
 										},
 									},
@@ -263,13 +263,13 @@ var _ = Describe("Sampler", func() {
 				func(stream protos.ControlPlane_SamplerConnServer) error {
 					err = stream.Send(&protos.ServerToSampler{
 						Message: &protos.ServerToSampler_ConfReq{
-							ConfReq: &protos.SamplerConfReq{
+							ConfReq: &protos.ServerSamplerConfReq{
 								SamplerConfig: &protos.SamplerConfig{
 									Streams: []*protos.Stream{
 										{
 											Uid: uuid.NewString(),
-											Rule: &protos.StreamRule{
-												Uid: uuid.NewString(), Language: protos.StreamRule_CEL, Rule: "sample.id==1",
+											Rule: &protos.Stream_Rule{
+												Language: protos.Stream_Rule_CEL, Rule: "sample.id==1",
 											},
 										},
 									},

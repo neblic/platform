@@ -22,9 +22,9 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				Executor:    controlPlaneExecutors.ListSamplers,
 			},
 			{
-				Name:        "samplers:sampling:set",
-				Description: "Sets the sampling limit for a sampler",
-				Executor:    controlPlaneExecutors.SamplerSamplingSet,
+				Name:        "samplers:limiterout:set",
+				Description: "Sets the maximum number of samples exported per second by a sampler",
+				Executor:    controlPlaneExecutors.SamplerLimiterOutSet,
 				Parameters: []interpoler.Parameter{
 					{
 						Name:        "limit",
@@ -47,9 +47,9 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				},
 			},
 			{
-				Name:        "samplers:sampling:unset",
-				Description: "Remove the sampling limit for a sampler",
-				Executor:    controlPlaneExecutors.SamplerSamplingUnset,
+				Name:        "samplers:limiterout:unset",
+				Description: "Unsets the maximum number of samples per second exported by a sampler",
+				Executor:    controlPlaneExecutors.SamplerLimiterOutUnset,
 				Parameters: []interpoler.Parameter{
 					{
 						Name:        "resource",
