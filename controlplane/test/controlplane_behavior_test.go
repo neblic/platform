@@ -301,8 +301,7 @@ var _ = Describe("ControlPlane", func() {
 					testStream := data.Stream{
 						UID: "some_stream_uid",
 						StreamRule: data.StreamRule{
-							UID:  "some_sr_uid",
-							Lang: data.NewStreamRuleLangFromProto(protos.StreamRule_CEL),
+							Lang: data.NewStreamRuleLangFromProto(protos.Stream_Rule_CEL),
 							Rule: "some_CEL_rule",
 						},
 					}
@@ -352,8 +351,7 @@ var _ = Describe("ControlPlane", func() {
 					testStream := data.Stream{
 						UID: "some_stream_uid",
 						StreamRule: data.StreamRule{
-							UID:  "some_sr_uid",
-							Lang: data.NewStreamRuleLangFromProto(protos.StreamRule_CEL),
+							Lang: data.NewStreamRuleLangFromProto(protos.Stream_Rule_CEL),
 							Rule: "some_CEL_rule",
 						},
 					}
@@ -368,6 +366,8 @@ var _ = Describe("ControlPlane", func() {
 					}
 
 					err = c.ConfigureSampler(context.Background(), p.Name(), "resource1", "", samplerConfigUpdate)
+					Expect(err).ToNot(HaveOccurred())
+
 					test.AssertWithTimeout(
 						func() bool { return len(p.Config().Streams) == 1 },
 						condTimeout,
@@ -437,8 +437,7 @@ var _ = Describe("ControlPlane", func() {
 					testStream := data.Stream{
 						UID: "some_stream_uid",
 						StreamRule: data.StreamRule{
-							UID:  "some_sr_uid",
-							Lang: data.NewStreamRuleLangFromProto(protos.StreamRule_CEL),
+							Lang: data.NewStreamRuleLangFromProto(protos.Stream_Rule_CEL),
 							Rule: "some_CEL_rule",
 						},
 					}

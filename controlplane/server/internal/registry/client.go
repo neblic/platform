@@ -132,17 +132,22 @@ func (c *Client) Deregister(UID data.ClientUID) error {
 func (c *Client) UpdateSamplerConfig(uid data.SamplerUID, name, resource string, update data.SamplerConfigUpdate) error {
 	c.Lock()
 	defer c.Unlock()
+	c.logger.Debug("updating sampler config", "uid", uid, "name", name, "resource", resource, "update", update)
 
 	updatedConfig := c.configs.Get(uid, name, resource)
 	if updatedConfig == nil {
 		updatedConfig = data.NewSamplerConfig()
 	}
 
-	if update.SamplingRate != nil {
-		updatedConfig.SamplingRate = update.SamplingRate
+	if update.LimiterIn != nil {
+		updatedConfig.LimiterIn = update.LimiterIn
 	}
 
-	if updatedConfig.Streams == nil {
+	if update.SamplingIn != nil {
+		updatedConfig.SamplingIn = update.SamplingIn
+	}
+
+	if len(update.StreamUpdates) > 0 {
 		updatedConfig.Streams = make(map[data.SamplerStreamUID]data.Stream)
 	}
 	for _, rule := range update.StreamUpdates {
@@ -152,21 +157,26 @@ func (c *Client) UpdateSamplerConfig(uid data.SamplerUID, name, resource string,
 		case data.StreamRuleDelete:
 			delete(updatedConfig.Streams, rule.Stream.UID)
 		default:
-			c.logger.Error("received unkown sampling rule update operation: %s", rule.Op)
+			c.logger.Error(fmt.Sprintf("received unkown sampling rule update operation: %d", rule.Op))
 		}
 	}
 
+	if update.LimiterOut != nil {
+		updatedConfig.LimiterIn = update.LimiterOut
+	}
+
 	var action ConfigAction
-	var err error
 	if updatedConfig.IsEmpty() {
 		action = ConfigDeleted
-		err = c.configs.Delete(uid, name, resource)
+		if err := c.configs.Delete(uid, name, resource); err != nil {
+			c.logger.Error(fmt.Sprintf("Error deleting configuration: %s", err.Error()))
+		}
 	} else {
 		action = ConfigUpdated
-		err = c.configs.Set(uid, name, resource, updatedConfig)
-	}
-	if err != nil {
-		c.logger.Error(err.Error())
+		if err := c.configs.Set(uid, name, resource, updatedConfig); err != nil {
+			c.logger.Error(fmt.Sprintf("Error setting configuration: %s", err.Error()))
+
+		}
 	}
 
 	c.sendEvent(&ConfigEvent{

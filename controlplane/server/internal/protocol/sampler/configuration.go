@@ -15,7 +15,7 @@ func (p *Sampler) Configure(samplerConfig *data.SamplerConfig) error {
 
 	req := &protos.ServerToSampler{
 		Message: &protos.ServerToSampler_ConfReq{
-			ConfReq: &protos.SamplerConfReq{
+			ConfReq: &protos.ServerSamplerConfReq{
 				SamplerConfig: protoSamplerConfig,
 			},
 		},
