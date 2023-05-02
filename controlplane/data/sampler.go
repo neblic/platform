@@ -65,7 +65,6 @@ func (sr StreamRule) ToProto() *protos.Stream_Rule {
 
 type LimiterConfig struct {
 	Limit int64
-	Burst int64
 }
 
 func NewLimiterFromProto(sr *protos.Limiter) LimiterConfig {
@@ -75,14 +74,12 @@ func NewLimiterFromProto(sr *protos.Limiter) LimiterConfig {
 
 	return LimiterConfig{
 		Limit: sr.Limit,
-		Burst: sr.Burst,
 	}
 }
 
 func (sr LimiterConfig) ToProto() *protos.Limiter {
 	return &protos.Limiter{
 		Limit: sr.Limit,
-		Burst: sr.Burst,
 	}
 }
 

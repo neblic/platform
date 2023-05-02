@@ -52,7 +52,7 @@ func NewProvider(ctx context.Context, settings Settings, opts ...Option) (defs.P
 	case "":
 		// nothing to do
 	default:
-		return nil, fmt.Errorf("Invalid authorization type %s", setOpts.dataServerAuth.authType)
+		return nil, fmt.Errorf("invalid authorization type %s", setOpts.dataServerAuth.authType)
 	}
 
 	sampleExporter, err := exporterotlp.New(ctx, setOpts.logger, settings.DataServerAddr, exporterOpts)
@@ -79,9 +79,9 @@ func (p *Provider) Sampler(name string, schema defs.Schema) (defs.Sampler, error
 		ControlPlaneAddr: p.settings.ControlServerAddr,
 		EnableTLS:        p.opts.controlServerTLSEnable,
 
-		Exporter:  p.sampleExporter,
-		RateLimit: p.opts.samplingRateLimit,
-		RateBurst: p.opts.samplingRateBurst,
+		LimiterInLimit:  p.opts.limiterInLimit,
+		Exporter:        p.sampleExporter,
+		LimiterOutLimit: p.opts.limiterOutLimit,
 
 		UpdateStatsPeriod: p.opts.updateStatsPeriod,
 	}
@@ -93,7 +93,7 @@ func (p *Provider) Sampler(name string, schema defs.Schema) (defs.Sampler, error
 	case "":
 		// nothing to do
 	default:
-		return nil, fmt.Errorf("Invalid authorization type %s", p.opts.controlServerAuth.authType)
+		return nil, fmt.Errorf("invalid authorization type %s", p.opts.controlServerAuth.authType)
 	}
 
 	return sampler.New(samplerOpts, p.logger)
