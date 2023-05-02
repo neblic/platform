@@ -325,77 +325,78 @@ func (e *Executors) DeleteStreams(ctx context.Context, parameters interpoler.Par
 
 	return nil
 }
-func (e *Executors) SamplerLimiterOutSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	// Get options
+
+func (e *Executors) setMultipleSamplersConfig(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer, update *data.SamplerConfigUpdate) error {
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
-	limitParameter, _ := parameters.Get("limit")
 
-	// Parse limit and burst parameters
-	limitInt64, err := limitParameter.AsInt64()
-	if err != nil {
-		return fmt.Errorf("limit must be an integer")
-	}
-
-	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
 		return err
 	}
 
-	// Set rate one by one
 	for resourceAndSamplerEntry := range resourceAndSamplers {
-		update := &data.SamplerConfigUpdate{
-			LimiterOut: &data.LimiterConfig{
-				Limit: limitInt64,
-				Burst: 0,
-			},
-		}
-
-		// Propagate new configuration
-		err = e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
-		if err != nil {
-			writer.WriteStringf("%s.%s: Could not set the limiter rate because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+		if err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update); err != nil {
+			writer.WriteStringf("%s.%s: Could not update sampler config%v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
-		// Write output
-		writer.WriteStringf("%s.%s: Limiter rate successfully set\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+		writer.WriteStringf("%s.%s: Sampler configuration successfully updated\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
 	}
 
 	return nil
 }
 
-func (e *Executors) SamplerLimiterOutUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	// Get options
-	samplerParameter, _ := parameters.Get("sampler")
-	resourceParameter, _ := parameters.Get("resource")
-
-	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
+func (e *Executors) SamplerLimiterInSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	limitParameter, _ := parameters.Get("limit")
+	limitInt64, err := limitParameter.AsInt64()
 	if err != nil {
-		return err
+		return fmt.Errorf("limit must be an integer")
 	}
 
-	// Unset rate one by one
-	for resourceAndSamplerEntry := range resourceAndSamplers {
-		update := &data.SamplerConfigUpdate{
-			LimiterOut: &data.LimiterConfig{
-				Limit: -1,
-				Burst: 0,
-			},
-		}
-
-		// Propagate new configuration
-		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
-		if err != nil {
-			writer.WriteStringf("%s.%s: Could not unset the limiter rate because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
-			continue
-		}
-
-		// Write output
-		writer.WriteStringf("%s.%s: Limiter rate successfully unset\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+	update := &data.SamplerConfigUpdate{
+		LimiterIn: &data.LimiterConfig{
+			Limit: limitInt64,
+		},
 	}
 
-	return nil
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+}
+
+func (e *Executors) SamplerLimiterInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	// TODO: Propery unset value instead of setting it to -1
+	update := &data.SamplerConfigUpdate{
+		LimiterIn: &data.LimiterConfig{
+			Limit: -1,
+		},
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+}
+
+func (e *Executors) SamplerLimiterOutSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	limitParameter, _ := parameters.Get("limit")
+	limitInt64, err := limitParameter.AsInt64()
+	if err != nil {
+		return fmt.Errorf("limit must be an integer")
+	}
+
+	update := &data.SamplerConfigUpdate{
+		LimiterOut: &data.LimiterConfig{
+			Limit: limitInt64,
+		},
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+}
+
+func (e *Executors) SamplerLimiterOutUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	// TODO: Propery unset value instead of setting it to -1
+	update := &data.SamplerConfigUpdate{
+		LimiterOut: &data.LimiterConfig{
+			Limit: -1,
+		},
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
 }

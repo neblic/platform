@@ -23,15 +23,16 @@ type Sampler struct {
 	name         string
 	resourceName string
 
-	ruleBuilder *rule.Builder
-
-	streams       map[data.SamplerStreamUID]*rule.Rule
-	rulesM        sync.Mutex
-	samplingStats data.SamplerSamplingStats
+	limiterIn *rate.Limiter
+	// TODO: do not use a mutex and instead atomically upadte the list of configured streams
+	streamsM   sync.Mutex
+	streams    map[data.SamplerStreamUID]*rule.Rule
+	limiterOut *rate.Limiter
 
 	controlPlaneClient *csampler.Sampler
 	exporter           exporter.Exporter
-	limiterOut         *rate.Limiter
+	ruleBuilder        *rule.Builder
+	samplingStats      data.SamplerSamplingStats
 
 	logger logging.Logger
 }
@@ -69,8 +70,9 @@ func New(
 		streams:     make(map[data.SamplerStreamUID]*rule.Rule),
 
 		controlPlaneClient: controlPlaneClient,
+		limiterIn:          rate.NewLimiter(rate.Limit(opts.LimiterInLimit), int(opts.LimiterInLimit)),
 		exporter:           opts.Exporter,
-		limiterOut:         rate.NewLimiter(rate.Limit(opts.RateLimit), int(opts.RateBurst)),
+		limiterOut:         rate.NewLimiter(rate.Limit(opts.LimiterOutLimit), int(opts.LimiterOutLimit)),
 
 		logger: logger.With("sampler_name", opts.Name, "sampler_uid", controlPlaneClient.UID()),
 	}
@@ -127,11 +129,19 @@ func (p *Sampler) updateStats(period time.Duration) {
 }
 
 func (p *Sampler) updateConfig(config data.SamplerConfig) {
+	// configure limiter in
+	if config.LimiterIn != nil {
+		limit := rate.Limit(config.LimiterIn.Limit)
+		if limit == -1 {
+			limit = rate.Inf
+		}
+		p.limiterIn = rate.NewLimiter(limit, int(config.LimiterIn.Limit))
+	}
 
 	// replace all existing streams
 	if config.Streams != nil {
-		p.rulesM.Lock()
-		defer p.rulesM.Unlock()
+		p.streamsM.Lock()
+		defer p.streamsM.Unlock()
 
 		p.streams = make(map[data.SamplerStreamUID]*rule.Rule)
 		for _, stream := range config.Streams {
@@ -145,13 +155,13 @@ func (p *Sampler) updateConfig(config data.SamplerConfig) {
 		}
 	}
 
-	// configure limiter
+	// configure limiter out
 	if config.LimiterOut != nil {
 		limit := rate.Limit(config.LimiterOut.Limit)
 		if limit == -1 {
 			limit = rate.Inf
 		}
-		p.limiterOut = rate.NewLimiter(limit, int(config.LimiterOut.Burst))
+		p.limiterOut = rate.NewLimiter(limit, int(config.LimiterOut.Limit))
 	}
 }
 
@@ -199,13 +209,15 @@ func (p *Sampler) SampleProto(ctx context.Context, protoSample proto.Message) (b
 func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample) (bool, error) {
 	p.samplingStats.SamplesEvaluated++
 
-	p.rulesM.Lock()
-	defer p.rulesM.Unlock()
+	if !p.limiterIn.Allow() {
+		return false, nil
+	}
 
-	//TODO: Apply limiter_in
 	//TODO: Apply sampler_in
 
 	// assign sample to all matching streams based on their rules
+	p.streamsM.Lock()
+	defer p.streamsM.Unlock()
 	var matches []sample.Match
 	for streamUID, streamRule := range p.streams {
 		if match, err := streamRule.Eval(ctx, evalSample); err != nil {
