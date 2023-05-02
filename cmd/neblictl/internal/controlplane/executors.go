@@ -78,11 +78,11 @@ func (e *Executors) ListSamplers(ctx context.Context, parameters interpoler.Para
 	for resourceAndSamplerEntry, samplerData := range samplers {
 		// Define sampling rate value
 		samplingRate := "sampler default"
-		if samplerData.Config.SamplingRate != nil {
-			if samplerData.Config.SamplingRate.Limit == -1 {
+		if samplerData.Config.LimiterOut != nil {
+			if samplerData.Config.LimiterOut.Limit == -1 {
 				samplingRate = "disabled"
 			} else {
-				samplingRate = fmt.Sprintf("Limit: %d", samplerData.Config.SamplingRate.Limit)
+				samplingRate = fmt.Sprintf("Limit: %d", samplerData.Config.LimiterOut.Limit)
 			}
 		}
 
@@ -191,7 +191,6 @@ func (e *Executors) CreateStreams(ctx context.Context, parameters interpoler.Par
 					Stream: data.Stream{
 						UID: streamUID,
 						StreamRule: data.StreamRule{
-							UID:  data.SamplerStreamRuleUID(uuid.New().String()),
 							Lang: data.SrlCel,
 							Rule: streamRuleParameter.Value,
 						},
@@ -250,7 +249,6 @@ func (e *Executors) UpdateStreams(ctx context.Context, parameters interpoler.Par
 					Stream: data.Stream{
 						UID: data.SamplerStreamUID(streamUIDParameter.Value),
 						StreamRule: data.StreamRule{
-							UID:  data.SamplerStreamRuleUID(uuid.New().String()),
 							Lang: data.SrlCel,
 							Rule: updatedRuleParameter.Value,
 						},
@@ -327,7 +325,7 @@ func (e *Executors) DeleteStreams(ctx context.Context, parameters interpoler.Par
 
 	return nil
 }
-func (e *Executors) SamplerSamplingSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) SamplerLimiterOutSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
@@ -345,10 +343,10 @@ func (e *Executors) SamplerSamplingSet(ctx context.Context, parameters interpole
 		return err
 	}
 
-	// Create rate one by one
+	// Set rate one by one
 	for resourceAndSamplerEntry := range resourceAndSamplers {
 		update := &data.SamplerConfigUpdate{
-			SamplingRate: &data.SamplingRate{
+			LimiterOut: &data.LimiterConfig{
 				Limit: limitInt64,
 				Burst: 0,
 			},
@@ -357,18 +355,18 @@ func (e *Executors) SamplerSamplingSet(ctx context.Context, parameters interpole
 		// Propagate new configuration
 		err = e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Could not create the sampling rate because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not set the limiter rate because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
 		// Write output
-		writer.WriteStringf("%s.%s: Rate successfully created\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+		writer.WriteStringf("%s.%s: Limiter rate successfully set\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
 	}
 
 	return nil
 }
 
-func (e *Executors) SamplerSamplingUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) SamplerLimiterOutUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
 	samplerParameter, _ := parameters.Get("sampler")
 	resourceParameter, _ := parameters.Get("resource")
@@ -379,11 +377,10 @@ func (e *Executors) SamplerSamplingUnset(ctx context.Context, parameters interpo
 		return err
 	}
 
-	// Delete rate one by one
+	// Unset rate one by one
 	for resourceAndSamplerEntry := range resourceAndSamplers {
-		// Modify sampling rate to existing config
 		update := &data.SamplerConfigUpdate{
-			SamplingRate: &data.SamplingRate{
+			LimiterOut: &data.LimiterConfig{
 				Limit: -1,
 				Burst: 0,
 			},
@@ -392,12 +389,12 @@ func (e *Executors) SamplerSamplingUnset(ctx context.Context, parameters interpo
 		// Propagate new configuration
 		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Could not delete the sampling rate because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not unset the limiter rate because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
 		// Write output
-		writer.WriteStringf("%s.%s: Rate successfully deleted\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+		writer.WriteStringf("%s.%s: Limiter rate successfully unset\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
 	}
 
 	return nil

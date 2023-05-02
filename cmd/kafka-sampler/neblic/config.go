@@ -9,7 +9,7 @@ import (
 type Options struct {
 	Bearer            string
 	TLS               bool
-	SamplerLimit      uint
+	LimiterOutLimit   uint
 	UpdateStatsPeriod time.Duration
 }
 

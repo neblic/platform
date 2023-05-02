@@ -113,8 +113,8 @@ func initNeblic(ctx context.Context, logger logging.Logger, config *neblic.Confi
 	if config.TLS {
 		options = append(options, sampler.WithTLS())
 	}
-	if config.SamplerLimit != 0 {
-		options = append(options, sampler.WithSamplingRateBurst(int64(config.SamplerLimit)), sampler.WithSamplingRateLimit(int64(config.SamplerLimit)))
+	if config.LimiterOutLimit != 0 {
+		options = append(options, sampler.WithLimiterOutLimit(int64(config.LimiterOutLimit)))
 	}
 	if config.UpdateStatsPeriod != 0 {
 		options = append(options, sampler.WithUpdateStatsPeriod(config.UpdateStatsPeriod))

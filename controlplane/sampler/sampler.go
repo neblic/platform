@@ -120,7 +120,7 @@ func (p *Sampler) recvServerReqCb(serverToSamplerReq *protos.ServerToSampler) (b
 // handleConfigurationRequest sets the sampler configuration (e.g. its rule rules)
 // the configuration replaces the previous configuration but he operation is idempotent
 // so it should only apply the differences between the new and previous configuration
-func (p *Sampler) handleConfigurationRequest(req *protos.SamplerConfReq) (*protos.SamplerToServer, error) {
+func (p *Sampler) handleConfigurationRequest(req *protos.ServerSamplerConfReq) (*protos.SamplerToServer, error) {
 	samplerConfig := data.NewSamplerConfigFromProto(req.GetSamplerConfig())
 
 	p.data.Config = samplerConfig
@@ -130,7 +130,7 @@ func (p *Sampler) handleConfigurationRequest(req *protos.SamplerConfReq) (*proto
 
 	res := p.samplerStream.ToServerMsg()
 	res.Message = &protos.SamplerToServer_ConfRes{
-		ConfRes: &protos.SamplerConfRes{
+		ConfRes: &protos.ServerSamplerConfRes{
 			Status: &protos.Status{
 				Type: protos.Status_OK,
 			},

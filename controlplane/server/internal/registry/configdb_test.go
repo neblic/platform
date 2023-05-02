@@ -21,7 +21,6 @@ func storageExample() storage.Storage[samplerIdentifier, *identifiedSamplerConfi
 				"stream1": {
 					UID: "stream1",
 					StreamRule: data.StreamRule{
-						UID:  "streamRule1",
 						Lang: data.SrlCel,
 						Rule: "true",
 					},
@@ -96,7 +95,6 @@ func TestConfigDB_Get(t *testing.T) {
 					"stream1": {
 						UID: "stream1",
 						StreamRule: data.StreamRule{
-							UID:  "streamRule1",
 							Lang: data.SrlCel,
 							Rule: "true",
 						},
@@ -167,7 +165,6 @@ func TestConfigDB_Set(t *testing.T) {
 						"stream2": {
 							UID: "stream2",
 							StreamRule: data.StreamRule{
-								UID:  "streamRule2",
 								Lang: data.SrlCel,
 								Rule: "true",
 							},
