@@ -36,8 +36,8 @@ type options struct {
 	controlServerAuth authOption
 	dataServerAuth    authOption
 
-	samplingRateLimit int64
-	samplingRateBurst int64
+	limiterInLimit  int64
+	limiterOutLimit int64
 
 	updateStatsPeriod time.Duration
 
@@ -49,8 +49,8 @@ func newDefaultOptions() *options {
 		controlServerTLSEnable: false,
 		dataServerTLSEnable:    false,
 
-		samplingRateLimit: 10,
-		samplingRateBurst: 10,
+		limiterInLimit:  100,
+		limiterOutLimit: 10,
 
 		updateStatsPeriod: time.Second * time.Duration(5),
 	}
@@ -93,17 +93,19 @@ func WithBearerAuth(token string) Option {
 	})
 }
 
-// WithSamplingRateLimit establishes the initial sampling rate limit
-func WithSamplingRateLimit(l int64) Option {
+// WithLimiterInLimit establishes the initial limiter in rate limit
+// in samples per second
+func WithLimiterInLimit(l int64) Option {
 	return newFuncOption(func(o *options) {
-		o.samplingRateLimit = l
+		o.limiterInLimit = l
 	})
 }
 
-// WithSamplingRateBurst establishes the initial sampling rate burst
-func WithSamplingRateBurst(b int64) Option {
+// WithLimiterOutLimit establishes the initial limiter out rate limit
+// in samples per second
+func WithLimiterOutLimit(l int64) Option {
 	return newFuncOption(func(o *options) {
-		o.samplingRateBurst = b
+		o.limiterOutLimit = l
 	})
 }
 

@@ -11,16 +11,66 @@ type Commands struct {
 func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Completers) *Commands {
 	return &Commands{
 		Commands: interpoler.CommandNodes{
+			// resources
 			{
 				Name:        "resources:list",
 				Description: "List all resources",
 				Executor:    controlPlaneExecutors.ListResources,
 			},
+			// samplers
 			{
 				Name:        "samplers:list",
 				Description: "List all samplers",
 				Executor:    controlPlaneExecutors.ListSamplers,
 			},
+			// samplers:limiterin
+			{
+				Name:        "samplers:limiterin:set",
+				Description: "Sets the maximum number of samples processed per second by a sampler",
+				Executor:    controlPlaneExecutors.SamplerLimiterInSet,
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "limit",
+						Description: "Maximum number of samples per second processed",
+					},
+					{
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+			},
+			{
+				Name:        "samplers:limiterin:unset",
+				Description: "Unsets the maximum number of samples per second processed by a sampler",
+				Executor:    controlPlaneExecutors.SamplerLimiterInUnset,
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+			},
+			// samplers:limiterout
 			{
 				Name:        "samplers:limiterout:set",
 				Description: "Sets the maximum number of samples exported per second by a sampler",
@@ -67,6 +117,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 					},
 				},
 			},
+			// streams
 			{
 				Name:        "streams:list",
 				Description: "List streams",

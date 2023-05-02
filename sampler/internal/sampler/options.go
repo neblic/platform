@@ -27,9 +27,9 @@ type Options struct {
 	EnableTLS        bool
 	Auth             AuthOptions
 
-	Exporter  exporter.Exporter
-	RateLimit int64
-	RateBurst int64
+	LimiterInLimit  int64
+	Exporter        exporter.Exporter
+	LimiterOutLimit int64
 
 	UpdateStatsPeriod time.Duration
 }

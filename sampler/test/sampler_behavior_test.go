@@ -249,10 +249,10 @@ var _ = Describe("Sampler", func() {
 		})
 	})
 
-	Describe("Limiting exported sampled", func() {
+	Describe("Limiting exported samples", func() {
 		var (
-			err      error
-			provider defs.Provider
+			err                                   error
+			providerLimitedOut, providerLimitedIn defs.Provider
 		)
 		configured := make(chan struct{})
 
@@ -296,17 +296,24 @@ var _ = Describe("Sampler", func() {
 				ControlServerAddr: controlPlaneServer.Addr(),
 				DataServerAddr:    logsReceiverLn.Addr().String(),
 			}
-			provider, err = sampler.NewProvider(context.Background(), settings,
-				sampler.WithSamplingRateLimit(10),
+
+			providerLimitedOut, err = sampler.NewProvider(context.Background(), settings,
+				sampler.WithLimiterOutLimit(10),
+				sampler.WithLogger(logger),
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			providerLimitedIn, err = sampler.NewProvider(context.Background(), settings,
+				sampler.WithLimiterInLimit(5),
 				sampler.WithLogger(logger),
 			)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
-		When("there is a limiter set", func() {
-			It("should not set more samples than the allowed by the limiter settings", func() {
+		When("there is an out limiter set", func() {
+			It("should not export more samples than the allowed by the limiter settings", func() {
 				// create a sampler
-				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				p, err := providerLimitedOut.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				// wait until the server has configured the sampler
@@ -336,6 +343,52 @@ var _ = Describe("Sampler", func() {
 				}
 
 				Expect(numSampled + 1).To(Equal(10))
+
+				// the receiver should have received the sample
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+						return receiver.TotalItems.Load() == int32(numSampled+1)
+					},
+					time.Second, time.Millisecond)
+
+				Expect(p.Close()).ToNot(HaveOccurred())
+			})
+		})
+
+		When("there is an in limiter set", func() {
+			It("should not export more samples than the allowed by the limiter settings", func() {
+				// create a sampler
+				p, err := providerLimitedIn.Sampler("sampler1", defs.DynamicSchema{})
+				Expect(err).ToNot(HaveOccurred())
+
+				// wait until the server has configured the sampler
+				<-configured
+
+				// send samples to sampler until it is sampled
+				// we do this so we are sure the config has been read and applied by the sampler
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						sampled, err := p.SampleJSON(context.Background(), `{"id": 1}`)
+						Expect(err).ToNot(HaveOccurred())
+						return sampled
+					},
+					time.Second, time.Millisecond)
+
+				// send a large amount of samples so the limiter kicks in
+				numSampled := 0
+				for i := 0; i < 1000; i++ {
+					sampled, err := p.SampleJSON(context.Background(), `{"id": 1}`)
+					Expect(err).ToNot(HaveOccurred())
+
+					if sampled {
+						numSampled++
+					}
+				}
+
+				Expect(numSampled + 1).To(Equal(5))
 
 				// the receiver should have received the sample
 				require.Eventually(GinkgoT(),
