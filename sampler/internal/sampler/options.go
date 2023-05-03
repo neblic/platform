@@ -3,6 +3,7 @@ package sampler
 import (
 	"time"
 
+	"github.com/neblic/platform/controlplane/data"
 	"github.com/neblic/platform/sampler/defs"
 	"github.com/neblic/platform/sampler/internal/sample/exporter"
 )
@@ -27,9 +28,10 @@ type Options struct {
 	EnableTLS        bool
 	Auth             AuthOptions
 
-	LimiterInLimit  int64
-	Exporter        exporter.Exporter
-	LimiterOutLimit int64
+	LimiterIn  data.LimiterConfig
+	SamplingIn data.SamplingConfig
+	Exporter   exporter.Exporter
+	LimiterOut data.LimiterConfig
 
 	UpdateStatsPeriod time.Duration
 }

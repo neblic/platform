@@ -83,8 +83,7 @@ var _ = Describe("Sampler", func() {
 				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
-				sampled, err := p.SampleJSON(context.Background(), `{"id": 1}`)
-				Expect(err).ToNot(HaveOccurred())
+				sampled := p.Sample(context.Background(), defs.JsonSample(`{"id": 1}`, ""))
 				Expect(sampled).To(BeFalse())
 
 				Expect(p.Close()).ToNot(HaveOccurred())
@@ -170,8 +169,7 @@ var _ = Describe("Sampler", func() {
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled, err := p.SampleJSON(context.Background(), `{"id": 1}`)
-						Expect(err).ToNot(HaveOccurred())
+						sampled := p.Sample(context.Background(), defs.JsonSample(`{"id": 1}`, ""))
 						return sampled
 					},
 					time.Second, time.Millisecond)
@@ -200,7 +198,7 @@ var _ = Describe("Sampler", func() {
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled, err := p.SampleNative(context.Background(), nativeSample{ID: 1})
+						sampled := p.Sample(context.Background(), defs.NativeSample(nativeSample{ID: 1}, ""))
 						Expect(err).ToNot(HaveOccurred())
 						return sampled
 					},
@@ -230,7 +228,7 @@ var _ = Describe("Sampler", func() {
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled, err := p.SampleProto(context.Background(), &protos.SamplerToServer{SamplerUid: "1"})
+						sampled := p.Sample(context.Background(), defs.ProtoSample(&protos.SamplerToServer{SamplerUid: "1"}, ""))
 						Expect(err).ToNot(HaveOccurred())
 						return sampled
 					},
@@ -251,8 +249,8 @@ var _ = Describe("Sampler", func() {
 
 	Describe("Limiting exported samples", func() {
 		var (
-			err                                   error
-			providerLimitedOut, providerLimitedIn defs.Provider
+			err                                                      error
+			providerLimitedOut, providerLimitedIn, providerSampledIn defs.Provider
 		)
 		configured := make(chan struct{})
 
@@ -297,14 +295,22 @@ var _ = Describe("Sampler", func() {
 				DataServerAddr:    logsReceiverLn.Addr().String(),
 			}
 
-			providerLimitedOut, err = sampler.NewProvider(context.Background(), settings,
-				sampler.WithLimiterOutLimit(10),
+			providerLimitedIn, err = sampler.NewProvider(context.Background(), settings,
+				sampler.WithLimiterInLimit(5),
 				sampler.WithLogger(logger),
 			)
 			Expect(err).ToNot(HaveOccurred())
 
-			providerLimitedIn, err = sampler.NewProvider(context.Background(), settings,
-				sampler.WithLimiterInLimit(5),
+			providerSampledIn, err = sampler.NewProvider(context.Background(), settings,
+				sampler.WithLimiterInLimit(1000),
+				sampler.WithDeterministicSamplingIn(2),
+				sampler.WithLimiterOutLimit(1000),
+				sampler.WithLogger(logger),
+			)
+			Expect(err).ToNot(HaveOccurred())
+
+			providerLimitedOut, err = sampler.NewProvider(context.Background(), settings,
+				sampler.WithLimiterOutLimit(10),
 				sampler.WithLogger(logger),
 			)
 			Expect(err).ToNot(HaveOccurred())
@@ -325,8 +331,7 @@ var _ = Describe("Sampler", func() {
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled, err := p.SampleJSON(context.Background(), `{"id": 1}`)
-						Expect(err).ToNot(HaveOccurred())
+						sampled := p.Sample(context.Background(), defs.JsonSample(`{"id": 1}`, ""))
 						return sampled
 					},
 					time.Second, time.Millisecond)
@@ -334,8 +339,7 @@ var _ = Describe("Sampler", func() {
 				// send a large amount of samples so the limiter kicks in
 				numSampled := 0
 				for i := 0; i < 1000; i++ {
-					sampled, err := p.SampleJSON(context.Background(), `{"id": 1}`)
-					Expect(err).ToNot(HaveOccurred())
+					sampled := p.Sample(context.Background(), defs.JsonSample(`{"id": 1}`, ""))
 
 					if sampled {
 						numSampled++
@@ -371,8 +375,7 @@ var _ = Describe("Sampler", func() {
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled, err := p.SampleJSON(context.Background(), `{"id": 1}`)
-						Expect(err).ToNot(HaveOccurred())
+						sampled := p.Sample(context.Background(), defs.JsonSample(`{"id": 1}`, ""))
 						return sampled
 					},
 					time.Second, time.Millisecond)
@@ -380,8 +383,7 @@ var _ = Describe("Sampler", func() {
 				// send a large amount of samples so the limiter kicks in
 				numSampled := 0
 				for i := 0; i < 1000; i++ {
-					sampled, err := p.SampleJSON(context.Background(), `{"id": 1}`)
-					Expect(err).ToNot(HaveOccurred())
+					sampled := p.Sample(context.Background(), defs.JsonSample(`{"id": 1}`, ""))
 
 					if sampled {
 						numSampled++
@@ -391,6 +393,61 @@ var _ = Describe("Sampler", func() {
 				Expect(numSampled + 1).To(Equal(5))
 
 				// the receiver should have received the sample
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+						return receiver.TotalItems.Load() == int32(numSampled+1)
+					},
+					time.Second, time.Millisecond)
+
+				Expect(p.Close()).ToNot(HaveOccurred())
+			})
+
+		})
+
+		When("there is an in sampler set", func() {
+			It("should not export samples if their determinant is not selected", func() {
+				// create a sampler
+				p, err := providerSampledIn.Sampler("sampler1", defs.DynamicSchema{})
+				Expect(err).ToNot(HaveOccurred())
+
+				// wait until the server has configured the sampler
+				<-configured
+
+				// send samples to sampler until it is sampled
+				// we do this so we are sure the config has been read and applied by the sampler
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						sampled := p.Sample(context.Background(), defs.JsonSample(`{"id": 1}`, "some_matching_key"))
+						return sampled
+					},
+					time.Second, time.Millisecond)
+
+				// should not be sampled
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						sampled := p.Sample(context.Background(), defs.JsonSample(`{"id": 1}`, "some_non_matching_key"))
+						return !sampled
+					},
+					time.Second, time.Millisecond)
+
+				// should all be sampled
+				numSampled := 0
+				for i := 0; i < 100; i++ {
+					sampled := p.Sample(context.Background(), defs.JsonSample(`{"id": 1}`, "some_matching_key"))
+
+					if sampled {
+						numSampled++
+					}
+				}
+
+				Expect(numSampled).To(Equal(100))
+
+				// the receiver should have received all the samples
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()

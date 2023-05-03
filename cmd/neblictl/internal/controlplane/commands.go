@@ -1,6 +1,8 @@
 package controlplane
 
 import (
+	"context"
+
 	"github.com/neblic/platform/cmd/neblictl/internal/interpoler"
 )
 
@@ -53,6 +55,62 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				Name:        "samplers:limiterin:unset",
 				Description: "Unsets the maximum number of samples per second processed by a sampler",
 				Executor:    controlPlaneExecutors.SamplerLimiterInUnset,
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+			},
+			// samplers:samplerin:deterministic
+			{
+				Name:        "samplers:samplerin:set:deterministic",
+				Description: "Sets a deterministic samplerin configuration",
+				Executor:    controlPlaneExecutors.SamplerSamplerInSetDeterministic,
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "sample_rate",
+						Description: "Deterministic sampling sample rate. 1 means all samples are sampled",
+					},
+					{
+						Name:        "sample_empty_determinant",
+						Description: "Boolean value to determine if samples with an empty determinant should be sampled",
+						Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
+							return []string{"true", "false"}
+						},
+						Optional: true,
+						Default:  "false",
+					},
+					{
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+			},
+			{
+				Name:        "samplers:samplerin:unset",
+				Description: "Unsets any samplerin configuration set",
+				Executor:    controlPlaneExecutors.SamplerSamplerInUnset,
 				Parameters: []interpoler.Parameter{
 					{
 						Name:        "resource",

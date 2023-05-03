@@ -13,8 +13,8 @@ import (
 	"github.com/neblic/platform/sampler/internal/rule"
 	"github.com/neblic/platform/sampler/internal/sample"
 	"github.com/neblic/platform/sampler/internal/sample/exporter"
+	"github.com/neblic/platform/sampler/internal/sample/sampling"
 	"golang.org/x/time/rate"
-	"google.golang.org/protobuf/proto"
 )
 
 var _ defs.Sampler = (*Sampler)(nil)
@@ -24,6 +24,7 @@ type Sampler struct {
 	resourceName string
 
 	limiterIn *rate.Limiter
+	samplerIn sampling.Sampler
 	// TODO: do not use a mutex and instead atomically upadte the list of configured streams
 	streamsM   sync.Mutex
 	streams    map[data.SamplerStreamUID]*rule.Rule
@@ -62,6 +63,18 @@ func New(
 	// move control plane connection to provider
 	controlPlaneClient := csampler.New(opts.Name, opts.Resource, clientOpts...)
 
+	var samplerIn sampling.Sampler
+	switch opts.SamplingIn.SamplingType {
+	case data.DeterministicSamplingType:
+		deterministicSampler, err := sampling.NewDeterministicSampler(
+			uint(opts.SamplingIn.DeterministicSampling.SampleRate),
+			opts.SamplingIn.DeterministicSampling.SampleEmptyDeterminant)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't initialize the deterministic sampler: %w", err)
+		}
+		samplerIn = deterministicSampler
+	}
+
 	p := &Sampler{
 		name:         opts.Name,
 		resourceName: opts.Resource,
@@ -70,9 +83,10 @@ func New(
 		streams:     make(map[data.SamplerStreamUID]*rule.Rule),
 
 		controlPlaneClient: controlPlaneClient,
-		limiterIn:          rate.NewLimiter(rate.Limit(opts.LimiterInLimit), int(opts.LimiterInLimit)),
+		limiterIn:          rate.NewLimiter(rate.Limit(opts.LimiterIn.Limit), int(opts.LimiterIn.Limit)),
+		samplerIn:          samplerIn,
 		exporter:           opts.Exporter,
-		limiterOut:         rate.NewLimiter(rate.Limit(opts.LimiterOutLimit), int(opts.LimiterOutLimit)),
+		limiterOut:         rate.NewLimiter(rate.Limit(opts.LimiterOut.Limit), int(opts.LimiterOut.Limit)),
 
 		logger: logger.With("sampler_name", opts.Name, "sampler_uid", controlPlaneClient.UID()),
 	}
@@ -179,41 +193,39 @@ func (p *Sampler) buildSamplingRule(streamRule data.StreamRule) (*rule.Rule, err
 	}
 }
 
-func (p *Sampler) SampleJSON(ctx context.Context, jsonSample string) (bool, error) {
-	s, err := rule.NewEvalSampleFromJSON(jsonSample)
-	if err != nil {
-		return false, err
+// TODO: send errors to provider error channel
+func (p *Sampler) Sample(ctx context.Context, sample defs.Sample) bool {
+	var evalSample *rule.EvalSample
+	switch sample.Type {
+	case defs.JsonSampleType:
+		evalSample, _ = rule.NewEvalSampleFromJSON(sample.Json)
+	case defs.NativeSampleType:
+		evalSample, _ = rule.NewEvalSampleFromNative(sample.Native)
+	case defs.ProtoSampleType:
+		evalSample, _ = rule.NewEvalSampleFromProto(sample.Proto)
+	default:
+		return false
 	}
 
-	return p.sample(ctx, s)
+	sampled, _ := p.sample(ctx, evalSample, sample.Determinant)
+	return sampled
 }
 
-func (p *Sampler) SampleNative(ctx context.Context, nativeSample any) (bool, error) {
-	s, err := rule.NewEvalSampleFromNative(nativeSample)
-	if err != nil {
-		return false, err
-	}
-
-	return p.sample(ctx, s)
-}
-
-func (p *Sampler) SampleProto(ctx context.Context, protoSample proto.Message) (bool, error) {
-	s, err := rule.NewEvalSampleFromProto(protoSample)
-	if err != nil {
-		return false, err
-	}
-
-	return p.sample(ctx, s)
-}
-
-func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample) (bool, error) {
+func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample, determinant string) (bool, error) {
 	p.samplingStats.SamplesEvaluated++
 
-	if !p.limiterIn.Allow() {
+	if p.limiterIn != nil && !p.limiterIn.Allow() {
 		return false, nil
 	}
 
-	//TODO: Apply sampler_in
+	if p.samplerIn != nil && !p.samplerIn.Sample(determinant) {
+		return false, nil
+	}
+
+	// Optimization: if there are no output tokens available, no need to do anything since it won't be sampled
+	if p.limiterOut != nil && p.limiterOut.Tokens() == 0 {
+		return false, nil
+	}
 
 	// assign sample to all matching streams based on their rules
 	p.streamsM.Lock()
@@ -230,25 +242,27 @@ func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample) (bool
 	}
 
 	if len(matches) > 0 {
-		if p.limiterOut.Allow() {
-			if err := p.exporter.Export(ctx, []sample.ResourceSamples{{
-				ResourceName: p.resourceName,
-				SamplerName:  p.name,
-				SamplersSamples: []sample.SamplerSamples{{
-					Samples: []sample.Sample{{
-						Ts:      time.Now(),
-						Data:    evalSample.AsMap(),
-						Matches: matches,
-					}},
-				}},
-			}}); err != nil {
-				return false, fmt.Errorf("failure to export samples: %w", err)
-			}
-
-			p.samplingStats.SamplesExported++
-
-			return true, nil
+		if p.limiterOut != nil && !p.limiterOut.Allow() {
+			return false, nil
 		}
+
+		if err := p.exporter.Export(ctx, []sample.ResourceSamples{{
+			ResourceName: p.resourceName,
+			SamplerName:  p.name,
+			SamplersSamples: []sample.SamplerSamples{{
+				Samples: []sample.Sample{{
+					Ts:      time.Now(),
+					Data:    evalSample.AsMap(),
+					Matches: matches,
+				}},
+			}},
+		}}); err != nil {
+			return false, fmt.Errorf("failure to export samples: %w", err)
+		}
+
+		p.samplingStats.SamplesExported++
+
+		return true, nil
 	}
 
 	return false, nil
