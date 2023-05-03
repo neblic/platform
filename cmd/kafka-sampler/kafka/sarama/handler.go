@@ -68,10 +68,7 @@ func (h *SamplerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 			if !ok {
 				return fmt.Errorf("received a message from the unexpected topic %s", message.Topic)
 			}
-			_, err := sampler.SampleJSON(session.Context(), string(message.Value))
-			if err != nil {
-				h.logger.Error("Error sampling kafka message in topic", "topic", message.Topic, "error", err)
-			}
+			sampler.Sample(session.Context(), defs.JsonSample(string(message.Value), string(message.Key)))
 
 			session.MarkMessage(message, "")
 

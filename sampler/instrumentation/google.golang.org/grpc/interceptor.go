@@ -55,7 +55,8 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		if reqProtoMsg != nil {
 			samplerName := method + "Req"
 			samplerReq := getProtoSampler(samplerReqs, samplerName, reqProtoMsg)
-			samplerReq.SampleProto(ctx, reqProtoMsg)
+			// TODO: allow the user to provide a way to get the determinant from the request
+			samplerReq.Sample(ctx, defs.ProtoSample(reqProtoMsg, ""))
 		}
 
 		err := invoker(ctx, method, req, reply, cc, callOpts...)
@@ -64,7 +65,8 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		if resProtoMsg != nil {
 			samplerName := method + "Res"
 			samplerRes := getProtoSampler(samplerResps, samplerName, resProtoMsg)
-			samplerRes.SampleProto(ctx, resProtoMsg)
+			// TODO: allow the user to provide a way to get the determinant from the response
+			samplerRes.Sample(ctx, defs.ProtoSample(resProtoMsg, ""))
 		}
 
 		return err
@@ -87,7 +89,8 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		if reqProtoMsg != nil {
 			samplerName := info.FullMethod + "Req"
 			samplerReq := getProtoSampler(samplerReqs, samplerName, reqProtoMsg)
-			samplerReq.SampleProto(ctx, reqProtoMsg)
+			// TODO: allow the user to provide a way to get the determinant from the request
+			samplerReq.Sample(ctx, defs.ProtoSample(reqProtoMsg, ""))
 		}
 
 		reply, err := handler(ctx, req)
@@ -96,7 +99,8 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		if resProtoMsg != nil {
 			samplerName := info.FullMethod + "Res"
 			samplerRes := getProtoSampler(samplerResps, samplerName, resProtoMsg)
-			samplerRes.SampleProto(ctx, resProtoMsg)
+			// TODO: allow the user to provide a way to get the determinant from the response
+			samplerRes.Sample(ctx, defs.ProtoSample(resProtoMsg, ""))
 		}
 
 		return reply, err

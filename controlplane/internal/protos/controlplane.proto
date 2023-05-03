@@ -19,6 +19,7 @@ message Status {
 message DeterministicSampling {
   // the minimum sample_rate valid value is 1 (all samples)
   int32 sample_rate = 1;
+  bool sample_empty_determinant = 2;
 }
 
 message Sampling {
@@ -51,6 +52,17 @@ message Stream {
 // When sent by the server to update a sampler, only the fields that are present
 // are updated. If a field is present, the previous value is replaced with the
 // new one.
+//
+// If the configuration option is configured from the client the process is as
+// follows:
+// * Add new option to SamplerConfig
+// * Make sure new option can be set with the ClientSamplerConfigUpdate message
+// * Update at package platform/controlplane/server/internal/registry the method
+//   Client.UpdateSamplerConfig so the new option gets set in the server
+//   registry
+// * Update platform/controlplane/data package to include new option to the
+//   internal controlplane structs
+// * Update neblictl if the option can be configured using the CLI
 message SamplerConfig {
   // Configures the sampler streams.
   repeated Stream streams = 1;

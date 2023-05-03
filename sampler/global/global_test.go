@@ -24,6 +24,9 @@ func (p *mockSampler) SampleNative(ctx context.Context, nativeSample any) (bool,
 func (p *mockSampler) SampleProto(ctx context.Context, protoSample proto.Message) (bool, error) {
 	return true, nil
 }
+func (p *mockSampler) Sample(ctx context.Context, sample defs.Sample) bool {
+	return true
+}
 func (p *mockSampler) Close() error {
 	return nil
 }
@@ -42,8 +45,7 @@ func TestSetSamplerProvider(t *testing.T) {
 	assert.IsType(t, &samplerPlaceholder{}, pp)
 
 	// by default, placeholder samplers return false
-	match, err := pp.SampleJSON(context.Background(), "")
-	assert.NoError(t, err)
+	match := pp.Sample(context.Background(), defs.JsonSample("", ""))
 	assert.Equal(t, false, match)
 
 	// set mock provider
@@ -51,8 +53,7 @@ func TestSetSamplerProvider(t *testing.T) {
 	require.NoError(t, err)
 
 	// after setting the mock provider, samplers should have been replaced by mock samplers and return true
-	match, err = pp.SampleJSON(context.Background(), "")
-	assert.NoError(t, err)
+	match = pp.Sample(context.Background(), defs.JsonSample("", ""))
 	assert.Equal(t, true, match)
 
 	// new samplers should be mocks since it is what the mock provider returns

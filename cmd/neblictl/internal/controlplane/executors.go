@@ -400,3 +400,40 @@ func (e *Executors) SamplerLimiterOutUnset(ctx context.Context, parameters inter
 
 	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
 }
+
+func (e *Executors) SamplerSamplerInSetDeterministic(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	sampleRateParameter, _ := parameters.Get("sample_rate")
+	sampleRateInt32, err := sampleRateParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("sample_rate must be an integer")
+	}
+
+	sampleEmptyDetParameter, _ := parameters.Get("sample_empty_determinant")
+	sampleEmptyDetBool, err := sampleEmptyDetParameter.AsBool()
+	if err != nil {
+		return fmt.Errorf("sample_empty_determinant must be a boolean")
+	}
+
+	update := &data.SamplerConfigUpdate{
+		SamplingIn: &data.SamplingConfig{
+			SamplingType: data.DeterministicSamplingType,
+			DeterministicSampling: data.DeterministicSamplingConfig{
+				SampleRate:             sampleRateInt32,
+				SampleEmptyDeterminant: sampleEmptyDetBool,
+			},
+		},
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+}
+
+func (e *Executors) SamplerSamplerInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	// TODO: Propery unset value instead of setting it to an unknown sampler type
+	update := &data.SamplerConfigUpdate{
+		SamplingIn: &data.SamplingConfig{
+			SamplingType: data.UnknownSamplingType,
+		},
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+}

@@ -6,16 +6,60 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+type SampleType uint8
+
+const (
+	UnknownSampleType SampleType = iota
+	JsonSampleType
+	NativeSampleType
+	ProtoSampleType
+)
+
+type Sample struct {
+	Determinant string
+
+	Type   SampleType
+	Json   string
+	Native any
+	Proto  proto.Message
+}
+
+// JsonSample creates a data sample encoded as a JSON string.
+func JsonSample(json string, determinant string) Sample {
+	return Sample{
+		Determinant: determinant,
+
+		Type: JsonSampleType,
+		Json: json,
+	}
+}
+
+// NativeSample creates a data sample represented as a Go struct.
+// Only exported fields will be part of the sample.
+func NativeSample(native any, determinant string) Sample {
+	return Sample{
+		Determinant: determinant,
+
+		Type:   NativeSampleType,
+		Native: native,
+	}
+}
+
+// ProtoSample creates a data sample encoded as a proto message. The protoSample parameter has to be the same
+// type as the proto message provided as schema when creating the sampler.
+func ProtoSample(proto proto.Message, determinant string) Sample {
+	return Sample{
+		Determinant: determinant,
+
+		Type:  ProtoSampleType,
+		Proto: proto,
+	}
+}
+
 // Sampler defines the sampler public interface
 type Sampler interface {
-	// SampleJSON samples a data sample encoded as a JSON string.
-	SampleJSON(ctx context.Context, jsonSample string) (bool, error)
-	// SampleNative samples a data sample represented as a Go struct.
-	// Only exported fields will be part of the sample.
-	SampleNative(ctx context.Context, nativeSample any) (bool, error)
-	// SampleProto samples a data sampled encoded as a proto message. The protoSample parameter has to be the same
-	// type as the proto message provided as schema when creating the sampler.
-	SampleProto(ctx context.Context, protoSample proto.Message) (bool, error)
+	// Sample samples the given data sample.
+	Sample(ctx context.Context, sample Sample) bool
 	// Close closes all Sampler connections with the Control and Data planes. Once closed,
 	// the Sampler can't be reused and none of its methods can be called.
 	Close() error
