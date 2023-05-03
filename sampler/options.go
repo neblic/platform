@@ -3,6 +3,7 @@ package sampler
 import (
 	"time"
 
+	"github.com/neblic/platform/controlplane/data"
 	"github.com/neblic/platform/logging"
 )
 
@@ -36,8 +37,9 @@ type options struct {
 	controlServerAuth authOption
 	dataServerAuth    authOption
 
-	limiterInLimit  int64
-	limiterOutLimit int64
+	limiterIn  data.LimiterConfig
+	samplingIn data.SamplingConfig
+	limiterOut data.LimiterConfig
 
 	updateStatsPeriod time.Duration
 
@@ -49,8 +51,13 @@ func newDefaultOptions() *options {
 		controlServerTLSEnable: false,
 		dataServerTLSEnable:    false,
 
-		limiterInLimit:  100,
-		limiterOutLimit: 10,
+		limiterIn: data.LimiterConfig{
+			Limit: 100,
+		},
+		samplingIn: data.SamplingConfig{},
+		limiterOut: data.LimiterConfig{
+			Limit: 10,
+		},
 
 		updateStatsPeriod: time.Second * time.Duration(5),
 	}
@@ -97,7 +104,21 @@ func WithBearerAuth(token string) Option {
 // in samples per second
 func WithLimiterInLimit(l int64) Option {
 	return newFuncOption(func(o *options) {
-		o.limiterInLimit = l
+		o.limiterIn.Limit = l
+	})
+}
+
+// WithDeterministicSamplingIn defines a deterministic sampling strategy which will be applied when a sample is received and before processing it in any way
+// (e.g. before determining if a sample belongs to a stream which would require parsing it and evaluating the stream rules).
+// Sampling is performed after the input limiter has been applied.
+func WithDeterministicSamplingIn(samplingRate int32) Option {
+	return newFuncOption(func(o *options) {
+		o.samplingIn = data.SamplingConfig{
+			SamplingType: data.DeterministicSamplingType,
+			DeterministicSampling: data.DeterministicSamplingConfig{
+				SampleRate: samplingRate,
+			},
+		}
 	})
 }
 
@@ -105,7 +126,7 @@ func WithLimiterInLimit(l int64) Option {
 // in samples per second
 func WithLimiterOutLimit(l int64) Option {
 	return newFuncOption(func(o *options) {
-		o.limiterOutLimit = l
+		o.limiterOut.Limit = l
 	})
 }
 

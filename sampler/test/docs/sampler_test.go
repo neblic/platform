@@ -31,9 +31,7 @@ func sampleData(ctx context.Context) bool {
 	var dataSample string
 
 	// evaluate a `Data Sample`
-	sampled, _ := someSampler.SampleJSON(ctx, dataSample)
-
-	return sampled
+	return someSampler.Sample(ctx, defs.JsonSample(dataSample, ""))
 }
 
 // --8<-- [end:SampleData]

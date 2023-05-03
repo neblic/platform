@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 
 	"github.com/neblic/platform/sampler/defs"
-	"google.golang.org/protobuf/proto"
 )
 
 /*
@@ -94,31 +93,13 @@ func (pw *samplerPlaceholder) setDelegate(pp defs.Provider) error {
 	return nil
 }
 
-func (pw *samplerPlaceholder) SampleJSON(ctx context.Context, jsonSample string) (bool, error) {
+func (pw *samplerPlaceholder) Sample(ctx context.Context, sample defs.Sample) bool {
 	delegate := pw.delegate.Load()
 	if delegate != nil {
-		return delegate.(defs.Sampler).SampleJSON(ctx, jsonSample)
+		return delegate.(defs.Sampler).Sample(ctx, sample)
 	}
 
-	return false, nil
-}
-
-func (pw *samplerPlaceholder) SampleNative(ctx context.Context, nativeSample any) (bool, error) {
-	delegate := pw.delegate.Load()
-	if delegate != nil {
-		return delegate.(defs.Sampler).SampleNative(ctx, nativeSample)
-	}
-
-	return false, nil
-}
-
-func (pw *samplerPlaceholder) SampleProto(ctx context.Context, protoSample proto.Message) (bool, error) {
-	delegate := pw.delegate.Load()
-	if delegate != nil {
-		return delegate.(defs.Sampler).SampleProto(ctx, protoSample)
-	}
-
-	return false, nil
+	return false
 }
 
 func (pw *samplerPlaceholder) Close() error {

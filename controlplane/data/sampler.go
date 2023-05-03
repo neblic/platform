@@ -86,11 +86,13 @@ func (sr LimiterConfig) ToProto() *protos.Limiter {
 type SamplingType int
 
 const (
-	DeterministicSamplingType SamplingType = iota + 1
+	UnknownSamplingType SamplingType = iota
+	DeterministicSamplingType
 )
 
 type DeterministicSamplingConfig struct {
-	SampleRate int32
+	SampleRate             int32
+	SampleEmptyDeterminant bool
 }
 
 type SamplingConfig struct {

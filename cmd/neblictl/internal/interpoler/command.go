@@ -29,8 +29,21 @@ func (p *ParametersWithValue) IsSet(name string) bool {
 	return ok && !parameter.DefaultValue
 }
 
+func (p *ParameterWithValue) AsBool() (bool, error) {
+	return strconv.ParseBool(p.Value)
+}
+
 func (p *ParameterWithValue) AsInt64() (int64, error) {
 	return strconv.ParseInt(p.Value, 10, 64)
+}
+
+func (p *ParameterWithValue) AsInt32() (int32, error) {
+	val, err := strconv.ParseInt(p.Value, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+
+	return int32(val), nil
 }
 
 type Parameter struct {
