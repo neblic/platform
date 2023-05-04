@@ -3,7 +3,6 @@ package sampler
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/neblic/platform/controlplane/data"
@@ -23,10 +22,8 @@ type Sampler struct {
 	name         string
 	resourceName string
 
-	limiterIn *rate.Limiter
-	samplerIn sampling.Sampler
-	// TODO: do not use a mutex and instead atomically upadte the list of configured streams
-	streamsM   sync.Mutex
+	limiterIn  *rate.Limiter
+	samplerIn  sampling.Sampler
 	streams    map[data.SamplerStreamUID]*rule.Rule
 	limiterOut *rate.Limiter
 
@@ -156,10 +153,7 @@ func (p *Sampler) updateConfig(config data.SamplerConfig) {
 
 	// replace all existing streams
 	if config.Streams != nil {
-		p.streamsM.Lock()
-		defer p.streamsM.Unlock()
-
-		p.streams = make(map[data.SamplerStreamUID]*rule.Rule)
+		newStreams := make(map[data.SamplerStreamUID]*rule.Rule)
 		for _, stream := range config.Streams {
 			builtRule, err := p.buildSamplingRule(stream.StreamRule)
 			if err != nil {
@@ -167,8 +161,10 @@ func (p *Sampler) updateConfig(config data.SamplerConfig) {
 				continue
 			}
 
-			p.streams[stream.UID] = builtRule
+			newStreams[stream.UID] = builtRule
 		}
+
+		p.streams = newStreams
 	}
 
 	// configure limiter out
@@ -241,8 +237,6 @@ func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample, deter
 	}
 
 	// assign sample to all matching streams based on their rules
-	p.streamsM.Lock()
-	defer p.streamsM.Unlock()
 	var matches []sample.Match
 	for streamUID, streamRule := range p.streams {
 		if match, err := streamRule.Eval(ctx, evalSample); err != nil {
