@@ -6,7 +6,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/neblic/platform/controlplane/data"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/controlplane/server/internal/auth"
 	protocolclient "github.com/neblic/platform/controlplane/server/internal/protocol/client"
@@ -37,6 +36,7 @@ type Server struct {
 	samplerRegistry *registry.Sampler
 	opts            *options
 
+	reconcileNow        chan struct{}
 	reconciliationTimer *time.Ticker
 
 	logger logging.Logger
@@ -51,9 +51,10 @@ func New(uid string, serverOptions ...Option) (*Server, error) {
 	}
 
 	s := &Server{
-		uid:    uid,
-		opts:   opts,
-		logger: opts.logger,
+		uid:          uid,
+		opts:         opts,
+		reconcileNow: make(chan struct{}, 1),
+		logger:       opts.logger,
 	}
 
 	// Initialize client registry
@@ -64,13 +65,13 @@ func New(uid string, serverOptions ...Option) (*Server, error) {
 	}
 
 	// Initialize sampler registry
-	s.samplerRegistry, err = registry.NewSampler(s.logger)
+	s.samplerRegistry, err = registry.NewSampler(s.logger, s.reconcileNow)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing sampler registry: %v", err)
 	}
 
 	s.reconciliationTimer = time.NewTicker(opts.reconciliationPeriod)
-	go s.handleEvents(s.clientRegistry.Events(), s.samplerRegistry.Events())
+	go s.reconcileConfigLoop()
 
 	return s, nil
 }
@@ -166,16 +167,13 @@ func (s *Server) Stop(timeout time.Duration) error {
 func (s *Server) reconcileSamplerConfigs() {
 	for _, sampler := range s.samplerRegistry.GetRegisteredSamplers() {
 		if sampler.Dirty {
-			var config *data.SamplerConfig
-
-			config = s.clientRegistry.GetSamplerConfig(sampler.Data.UID, sampler.Data.Name, sampler.Data.Resource)
+			config := s.clientRegistry.GetSamplerConfig(sampler.Data.UID, sampler.Data.Name, sampler.Data.Resource)
 			if config != nil {
 				if err := sampler.Conn.Configure(config); err != nil {
 					s.logger.Error(fmt.Sprintf("Error configuring sampler: %s", err))
-					continue
+				} else {
+					sampler.Data.Config = *config
 				}
-
-				sampler.Data.Config = *config
 			}
 
 			sampler.Dirty = false
@@ -183,51 +181,13 @@ func (s *Server) reconcileSamplerConfigs() {
 	}
 }
 
-func (s *Server) handleEvents(clientEvents chan registry.Event, samplerEvents chan *registry.SamplerEvent) {
+func (s *Server) reconcileConfigLoop() {
 	for {
 		select {
+		case <-s.reconcileNow:
+			s.reconcileSamplerConfigs()
 		case <-s.reconciliationTimer.C:
 			s.reconcileSamplerConfigs()
-		case event := <-clientEvents:
-			switch ev := event.(type) {
-			case *registry.ClientEvent:
-				// Nothing to do
-				switch ev.Action {
-				case registry.ClientRegistered:
-				case registry.ClientDeregistered:
-				default:
-				}
-			case *registry.ConfigEvent:
-				switch ev.Action {
-				case registry.ConfigUpdated:
-					fallthrough
-				case registry.ConfigDeleted:
-					samplers, err := s.samplerRegistry.GetSamplers(ev.SamplerName, ev.SamplerResource, ev.SamplerUID)
-					if err != nil {
-						if !errors.Is(err, registry.ErrUnknownSampler) {
-							s.logger.Error(fmt.Sprintf("Error updating sampler with uid: %s: %s", ev.SamplerUID, err))
-						}
-						continue
-					}
-
-					for _, sampler := range samplers {
-						sampler.Dirty = true
-					}
-
-					s.reconcileSamplerConfigs()
-				default:
-				}
-			default:
-			}
-
-		case event := <-samplerEvents:
-			switch event.Action {
-			case registry.SamplerRegistered:
-				s.reconcileSamplerConfigs()
-			case registry.SamplerDeregistered:
-				// Nothing to do
-			default:
-			}
 		}
 	}
 }

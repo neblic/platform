@@ -45,7 +45,7 @@ func (p *Sampler) HandleStream(stream protos.ControlPlane_SamplerConnServer) err
 func (p *Sampler) recvToServerReqCb(clientToServerMsg *protos.SamplerToServer) (bool, *protos.ServerToSampler, error) {
 	switch msg := clientToServerMsg.GetMessage().(type) {
 	case *protos.SamplerToServer_SamplerStatsMsg:
-		err := p.samplerReg.UpdateSamplerStats(
+		err := p.samplerReg.UpdateStats(
 			data.SamplerUID(clientToServerMsg.GetSamplerUid()),
 			data.NewSamplerSamplingStatsFromProto(msg.SamplerStatsMsg.GetSamplingStats()),
 		)
