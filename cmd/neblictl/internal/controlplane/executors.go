@@ -69,33 +69,24 @@ func (e *Executors) ListResources(ctx context.Context, parameters interpoler.Par
 }
 
 func (e *Executors) ListSamplers(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	// Get all samplers
-	samplers, err := e.controlPlaneClient.getAllSamplers(ctx, false)
+	samplerParameter, _ := parameters.Get("sampler")
+	resourceParameter, _ := parameters.Get("resource")
 
-	// Build table rows
-	header := []string{"Resource", "Sampler", "Sampling Rate", "Samples Evaluated", "Samples Exported"}
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
+	if err != nil {
+		return err
+	}
+
+	header := []string{"Resource", "Sampler", "Samples Evaluated", "Samples Exported"}
 	rows := [][]string{}
-	for resourceAndSamplerEntry, samplerData := range samplers {
-		// Define sampling rate value
-		samplingRate := "sampler default"
-		if samplerData.Config.LimiterOut != nil {
-			if samplerData.Config.LimiterOut.Limit == -1 {
-				samplingRate = "disabled"
-			} else {
-				samplingRate = fmt.Sprintf("Limit: %d", samplerData.Config.LimiterOut.Limit)
-			}
-		}
-
-		// Append row
+	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
 		rows = append(rows, []string{resourceAndSamplerEntry.resource,
 			resourceAndSamplerEntry.sampler,
-			samplingRate,
 			strconv.FormatUint(samplerData.SamplingStats.SamplesEvaluated, 10),
 			strconv.FormatUint(samplerData.SamplingStats.SamplesExported, 10),
 		})
 	}
 
-	// Sort rows first by resource and then by sampler.
 	slices.SortStableFunc(rows, func(a []string, b []string) bool {
 		if a[0] != b[0] {
 			return a[0] < b[0]
@@ -104,7 +95,58 @@ func (e *Executors) ListSamplers(ctx context.Context, parameters interpoler.Para
 		}
 	})
 
-	// Write table
+	writeTable(header, rows, []int{0}, writer)
+
+	if err != nil && errors.Is(err, context.Canceled) {
+		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
+	}
+
+	return nil
+}
+
+func (e *Executors) ConfigListSamplers(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	samplerParameter, _ := parameters.Get("sampler")
+	resourceParameter, _ := parameters.Get("resource")
+
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
+	if err != nil {
+		return err
+	}
+
+	header := []string{"Resource", "Sampler", "Limiter In", "Sampling In", "Limiter Out"}
+	rows := [][]string{}
+	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
+		limiterIn := "default"
+		if samplerData.Config.LimiterIn != nil {
+			limiterIn = fmt.Sprintf("%d", samplerData.Config.LimiterIn.Limit)
+		}
+
+		samplingIn := "default"
+		if samplerData.Config.SamplingIn != nil {
+			samplingIn = fmt.Sprintf("%s", samplerData.Config.SamplingIn)
+		}
+
+		limiterOut := "default"
+		if samplerData.Config.LimiterOut != nil {
+			limiterOut = fmt.Sprintf("%d", samplerData.Config.LimiterOut.Limit)
+		}
+
+		rows = append(rows, []string{resourceAndSamplerEntry.resource,
+			resourceAndSamplerEntry.sampler,
+			limiterIn,
+			samplingIn,
+			limiterOut,
+		})
+	}
+
+	slices.SortStableFunc(rows, func(a []string, b []string) bool {
+		if a[0] != b[0] {
+			return a[0] < b[0]
+		} else {
+			return a[1] < b[1]
+		}
+	})
+
 	writeTable(header, rows, []int{0}, writer)
 
 	if err != nil && errors.Is(err, context.Canceled) {

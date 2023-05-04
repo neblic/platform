@@ -22,8 +22,46 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 			// samplers
 			{
 				Name:        "samplers:list",
-				Description: "List all samplers",
+				Description: "List all samplers and their stats",
 				Executor:    controlPlaneExecutors.ListSamplers,
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+			},
+			// samplers:config:list
+			{
+				Name:        "samplers:config:list",
+				Description: "List all samplers configurations",
+				Executor:    controlPlaneExecutors.ConfigListSamplers,
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "resource",
+						Description: "Filter streams by resource",
+						Completer:   controlPlaneCompleters.ListResources,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler",
+						Description: "Filter streams by sampler",
+						Completer:   controlPlaneCompleters.ListSamplers,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
 			},
 			// samplers:limiterin
 			{
