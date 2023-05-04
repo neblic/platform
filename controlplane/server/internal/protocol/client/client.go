@@ -12,8 +12,8 @@ import (
 )
 
 type Client struct {
-	clientReg  *registry.Client  // It is allowed to modify the client registry
-	samplerReg *registry.Sampler // Client handlers can't modify the sampler registry, but can read it
+	clientReg  *registry.Client
+	samplerReg *registry.Sampler
 
 	registeredOnce bool
 	stream         *stream.Stream[*protos.ClientToServer, *protos.ServerToClient]

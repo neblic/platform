@@ -15,31 +15,23 @@ var (
 )
 
 type Sampler struct {
-	samplers map[data.SamplerUID]*internalsampler.Sampler
-	eventsCh chan *SamplerEvent
+	samplers    map[data.SamplerUID]*internalsampler.Sampler
+	notifyDirty chan struct{}
 
 	logger logging.Logger
-	sync.Mutex
+	m      sync.Mutex
 }
 
-func NewSampler(logger logging.Logger) (*Sampler, error) {
+func NewSampler(logger logging.Logger, notifyDirty chan struct{}) (*Sampler, error) {
 	if logger == nil {
 		logger = logging.NewNopLogger()
 	}
 
 	return &Sampler{
-		samplers: make(map[data.SamplerUID]*internalsampler.Sampler),
-		logger:   logger,
+		samplers:    make(map[data.SamplerUID]*internalsampler.Sampler),
+		notifyDirty: notifyDirty,
+		logger:      logger,
 	}, nil
-}
-
-func (p *Sampler) Events() chan *SamplerEvent {
-	if p.eventsCh == nil {
-		// eventsCh needs to be buffer to avoid a deadlock caused by methods accessing the registry in response to its events
-		p.eventsCh = make(chan *SamplerEvent, 10)
-	}
-
-	return p.eventsCh
 }
 
 func (p *Sampler) getSampler(uid data.SamplerUID) (*internalsampler.Sampler, error) {
@@ -55,15 +47,9 @@ func (p *Sampler) setSampler(uid data.SamplerUID, sampler *internalsampler.Sampl
 	p.samplers[uid] = sampler
 }
 
-// GetSamplers returns all samplers that match the provided arguments.
-// If UID is provided, it will return at most, one element
-func (p *Sampler) GetSamplers(name, resource string, uid data.SamplerUID) ([]*internalsampler.Sampler, error) {
-	p.Lock()
-	defer p.Unlock()
-
+func (p *Sampler) getSamplers(name, resource string, uid data.SamplerUID) ([]*internalsampler.Sampler, error) {
 	if uid != "" {
 		sampler, err := p.getSampler(uid)
-
 		return []*internalsampler.Sampler{sampler}, err
 	}
 
@@ -82,8 +68,8 @@ func (p *Sampler) GetSamplers(name, resource string, uid data.SamplerUID) ([]*in
 }
 
 func (p *Sampler) GetRegisteredSamplers() []*internalsampler.Sampler {
-	p.Lock()
-	defer p.Unlock()
+	p.m.Lock()
+	defer p.m.Unlock()
 
 	var registeredSamplers []*internalsampler.Sampler
 	for _, sampler := range p.samplers {
@@ -96,8 +82,8 @@ func (p *Sampler) GetRegisteredSamplers() []*internalsampler.Sampler {
 }
 
 func (p *Sampler) Register(uid data.SamplerUID, name, resource string, conn internalsampler.Conn) error {
-	p.Lock()
-	defer p.Unlock()
+	p.m.Lock()
+	defer p.m.Unlock()
 
 	knownSampler, err := p.getSampler(uid)
 	if err != nil && !errors.Is(err, ErrUnknownSampler) {
@@ -112,24 +98,18 @@ func (p *Sampler) Register(uid data.SamplerUID, name, resource string, conn inte
 	sampler.State = internalsampler.Registered
 	sampler.Dirty = true
 
-	p.samplers[uid] = sampler
-
-	p.sendEvent(&SamplerEvent{
-		Action: SamplerRegistered,
-		UID:    uid,
-	})
+	p.setSampler(uid, sampler)
 
 	return nil
 }
 
 func (p *Sampler) Deregister(uid data.SamplerUID) error {
-	p.Lock()
-	defer p.Unlock()
+	p.m.Lock()
+	defer p.m.Unlock()
 
 	_, err := p.getSampler(uid)
 	if errors.Is(err, ErrUnknownSampler) {
 		p.logger.Error("deregistering unknown sampler, nothing to do", "sampler_uid", uid)
-
 		return nil
 	} else if err != nil {
 		return err
@@ -137,17 +117,12 @@ func (p *Sampler) Deregister(uid data.SamplerUID) error {
 
 	delete(p.samplers, uid)
 
-	p.sendEvent(&SamplerEvent{
-		Action: SamplerDeregistered,
-		UID:    uid,
-	})
-
 	return nil
 }
 
-func (p *Sampler) UpdateSamplerStats(uid data.SamplerUID, newStats data.SamplerSamplingStats) error {
-	p.Lock()
-	defer p.Unlock()
+func (p *Sampler) UpdateStats(uid data.SamplerUID, newStats data.SamplerSamplingStats) error {
+	p.m.Lock()
+	defer p.m.Unlock()
 
 	foundSampler, err := p.getSampler(uid)
 	if err != nil {
@@ -159,8 +134,23 @@ func (p *Sampler) UpdateSamplerStats(uid data.SamplerUID, newStats data.SamplerS
 	return nil
 }
 
-func (p *Sampler) sendEvent(ev *SamplerEvent) {
-	if p.eventsCh != nil {
-		p.eventsCh <- ev
+func (p *Sampler) MarkDirty(name, resource string, uid data.SamplerUID) error {
+	p.m.Lock()
+	defer p.m.Unlock()
+
+	samplers, err := p.getSamplers(name, resource, uid)
+	if err != nil {
+		return err
 	}
+
+	for _, sampler := range samplers {
+		sampler.Dirty = true
+	}
+
+	select {
+	case p.notifyDirty <- struct{}{}:
+	default:
+	}
+
+	return nil
 }
