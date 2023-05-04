@@ -231,7 +231,7 @@ func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample, deter
 		return false, nil
 	}
 
-	// Optimization: if there are no output tokens available, no need to do anything since it won't be sampled
+	// optimization: if there are no output tokens available, no need to do anything since it won't be sampled
 	if p.limiterOut != nil && p.limiterOut.Tokens() == 0 {
 		return false, nil
 	}
@@ -253,13 +253,18 @@ func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample, deter
 			return false, nil
 		}
 
+		sampleMap, err := evalSample.Map()
+		if err != nil {
+			return false, fmt.Errorf("couldn't build sample to export: %w", err)
+		}
+
 		if err := p.exporter.Export(ctx, []sample.ResourceSamples{{
 			ResourceName: p.resourceName,
 			SamplerName:  p.name,
 			SamplersSamples: []sample.SamplerSamples{{
 				Samples: []sample.Sample{{
 					Ts:      time.Now(),
-					Data:    evalSample.AsMap(),
+					Data:    sampleMap,
 					Matches: matches,
 				}},
 			}},
