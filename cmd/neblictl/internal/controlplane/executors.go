@@ -364,10 +364,9 @@ func (e *Executors) SamplerLimiterInSet(ctx context.Context, parameters interpol
 }
 
 func (e *Executors) SamplerLimiterInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	// TODO: Propery unset value instead of setting it to -1
 	update := &data.SamplerConfigUpdate{
-		LimiterIn: &data.LimiterConfig{
-			Limit: -1,
+		Reset: data.SamplerConfigUpdateReset{
+			LimiterIn: true,
 		},
 	}
 
@@ -391,10 +390,9 @@ func (e *Executors) SamplerLimiterOutSet(ctx context.Context, parameters interpo
 }
 
 func (e *Executors) SamplerLimiterOutUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	// TODO: Propery unset value instead of setting it to -1
 	update := &data.SamplerConfigUpdate{
-		LimiterOut: &data.LimiterConfig{
-			Limit: -1,
+		Reset: data.SamplerConfigUpdateReset{
+			LimiterOut: true,
 		},
 	}
 
@@ -428,10 +426,9 @@ func (e *Executors) SamplerSamplerInSetDeterministic(ctx context.Context, parame
 }
 
 func (e *Executors) SamplerSamplerInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	// TODO: Propery unset value instead of setting it to an unknown sampler type
 	update := &data.SamplerConfigUpdate{
-		SamplingIn: &data.SamplingConfig{
-			SamplingType: data.UnknownSamplingType,
+		Reset: data.SamplerConfigUpdateReset{
+			SamplingIn: true,
 		},
 	}
 
