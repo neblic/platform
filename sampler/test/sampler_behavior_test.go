@@ -510,9 +510,38 @@ var _ = Describe("Sampler", func() {
 	Describe("Forwarding errors", func() {
 		When("an error channel is provided", func() {
 			It("should forward errors to the channel", func() {
+				configured := make(chan struct{})
+
 				// start control plane server
 				controlPlaneServer.SetSamplerHandlers(
 					mock.RegisterSamplerHandler,
+					func(stream protos.ControlPlane_SamplerConnServer) error {
+						err := stream.Send(&protos.ServerToSampler{
+							Message: &protos.ServerToSampler_ConfReq{
+								ConfReq: &protos.ServerSamplerConfReq{
+									SamplerConfig: &protos.SamplerConfig{
+										Streams: []*protos.Stream{
+											{
+												Uid: uuid.NewString(),
+												Rule: &protos.Stream_Rule{
+													Language: protos.Stream_Rule_CEL, Rule: "sample.id==1",
+												},
+											},
+										},
+									},
+								},
+							},
+						})
+						Expect(err).ToNot(HaveOccurred())
+
+						samplerConfRes, err := stream.Recv()
+						Expect(err).ToNot(HaveOccurred())
+						Expect(reflect.TypeOf(samplerConfRes.GetMessage())).
+							To(Equal(reflect.TypeOf(&protos.SamplerToServer_ConfRes{})))
+
+						configured <- struct{}{}
+						return nil
+					},
 				)
 				controlPlaneServer.Start(GinkgoT())
 
@@ -535,6 +564,20 @@ var _ = Describe("Sampler", func() {
 				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
+				<-configured
+
+				// send samples to sampler until it is sampled
+				// we do this so we are sure the config has been read and applied by the sampler
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						sampled := p.Sample(context.Background(), defs.JsonSample(`{"id": 1}`, "some_matching_key"))
+						return sampled
+					},
+					time.Second, time.Millisecond)
+
+				// send an invalid sample
 				sampled := p.Sample(context.Background(), defs.JsonSample(`invalid_json: `, ""))
 				Expect(sampled).To(BeFalse())
 
