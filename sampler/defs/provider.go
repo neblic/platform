@@ -10,6 +10,4 @@ type Provider interface {
 	// All sampled data is expected to be provided as proto messages with the sampler.SampleProto() method, and it should
 	// be the same type as the one provided when defining the sampler schema.
 	Sampler(name string, schema Schema) (Sampler, error)
-	// TODO: Errors returns a channel that will receive all Sampler errors
-	// Errors() <-chan error
 }

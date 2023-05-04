@@ -43,7 +43,8 @@ type options struct {
 
 	updateStatsPeriod time.Duration
 
-	logger logging.Logger
+	logger      logging.Logger
+	samplersErr chan error
 }
 
 func newDefaultOptions() *options {
@@ -146,5 +147,14 @@ func WithUpdateStatsPeriod(p time.Duration) Option {
 func WithLogger(l logging.Logger) Option {
 	return newFuncOption(func(o *options) {
 		o.logger = l
+	})
+}
+
+// WithErrorChannel received a channel where Sampler errors will be sent.
+// The avoid blocking the Sampler, it won't block if the channel is full so it is responsibility of
+// the provider to ensure the channel has enough buffer to avoid losing errors.
+func WithSamplerErrorChannel(errCh chan error) Option {
+	return newFuncOption(func(o *options) {
+		o.samplersErr = errCh
 	})
 }

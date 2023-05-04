@@ -12,8 +12,10 @@ import (
 
 // Provider defines a sampler provider object capable of creating new samplers with a common configuration
 type Provider struct {
-	settings       Settings
-	opts           *options
+	settings    Settings
+	opts        *options
+	samplersErr chan error
+
 	sampleExporter *exporterotlp.Exporter
 	logger         logging.Logger
 }
@@ -61,8 +63,9 @@ func NewProvider(ctx context.Context, settings Settings, opts ...Option) (defs.P
 	}
 
 	return &Provider{
-		settings: settings,
-		opts:     setOpts,
+		settings:    settings,
+		opts:        setOpts,
+		samplersErr: setOpts.samplersErr,
 
 		sampleExporter: sampleExporter,
 		logger:         setOpts.logger,
@@ -85,6 +88,8 @@ func (p *Provider) Sampler(name string, schema defs.Schema) (defs.Sampler, error
 		LimiterOut: p.opts.limiterOut,
 
 		UpdateStatsPeriod: p.opts.updateStatsPeriod,
+
+		ErrFwrder: p.samplersErr,
 	}
 
 	switch p.opts.controlServerAuth.authType {

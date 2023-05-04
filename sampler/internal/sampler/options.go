@@ -34,4 +34,6 @@ type Options struct {
 	LimiterOut data.LimiterConfig
 
 	UpdateStatsPeriod time.Duration
+
+	ErrFwrder chan error
 }
