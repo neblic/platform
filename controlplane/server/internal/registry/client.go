@@ -115,14 +115,26 @@ func (c *Client) UpdateSamplerConfig(uid data.SamplerUID, name, resource string,
 		updatedConfig = data.NewSamplerConfig()
 	}
 
+	// LimiterIn
+	if update.Reset.LimiterIn {
+		updatedConfig.LimiterIn = nil
+	}
 	if update.LimiterIn != nil {
 		updatedConfig.LimiterIn = update.LimiterIn
 	}
 
+	// SamplingIn
+	if update.Reset.SamplingIn {
+		updatedConfig.SamplingIn = nil
+	}
 	if update.SamplingIn != nil {
 		updatedConfig.SamplingIn = update.SamplingIn
 	}
 
+	// Streams
+	if update.Reset.Streams {
+		updatedConfig.Streams = make(map[data.SamplerStreamUID]data.Stream)
+	}
 	for _, rule := range update.StreamUpdates {
 		switch rule.Op {
 		case data.StreamRuleUpsert:
@@ -134,6 +146,10 @@ func (c *Client) UpdateSamplerConfig(uid data.SamplerUID, name, resource string,
 		}
 	}
 
+	// LimiterOut
+	if update.Reset.LimiterOut {
+		updatedConfig.LimiterOut = nil
+	}
 	if update.LimiterOut != nil {
 		updatedConfig.LimiterIn = update.LimiterOut
 	}
