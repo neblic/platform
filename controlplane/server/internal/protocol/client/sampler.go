@@ -38,7 +38,6 @@ func (c *Client) handleSamplerConfReq(req *protos.ClientSamplerConfReq) (*protos
 		}
 	} else {
 		update := data.NewSamplerConfigUpdateFromProto(req.GetSamplerConfigUpdate())
-
 		if err := c.clientReg.UpdateSamplerConfig(
 			data.SamplerUID(req.GetSamplerUid()),
 			req.GetSamplerName(),
@@ -47,6 +46,14 @@ func (c *Client) handleSamplerConfReq(req *protos.ClientSamplerConfReq) (*protos
 		); err != nil {
 			return nil, fmt.Errorf("error updating sampler configuration: %w", err)
 		}
+	}
+
+	if err := c.samplerReg.MarkDirty(
+		req.GetSamplerName(),
+		req.GetSamplerResource(),
+		data.SamplerUID(req.GetSamplerUid()),
+	); err != nil {
+		return nil, fmt.Errorf("error marking sampler as dirty: %w", err)
 	}
 
 	serverToClientRes := c.stream.FromServerMsg()
