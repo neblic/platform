@@ -39,11 +39,14 @@ func (so sampleOrigin) String() string {
 type EvalSample struct {
 	origin sampleOrigin
 
-	protoEncoded bool
-	proto        proto.Message
-
 	jsonEncoded bool
 	json        string
+
+	nativeEncoded bool
+	native        any
+
+	protoEncoded bool
+	proto        proto.Message
 
 	asMap map[string]any
 }
@@ -57,100 +60,113 @@ func jsonToStructPb(jsonMsg string) (*structpb.Struct, error) {
 	return &spb, nil
 }
 
-func protoToStructPb(protoMsg proto.Message) (*structpb.Struct, error) {
-	var (
-		protoJSON []byte
-		err       error
-	)
-
-	if protoJSON, err = protojson.Marshal(protoMsg); err != nil {
-		return nil, fmt.Errorf("couldn't marshall proto message: %w", err)
-	}
-
-	return jsonToStructPb(string(protoJSON))
-}
-
 func NewEvalSampleFromJSON(jsonSample string) (*EvalSample, error) {
-	// TODO: It should be possible to create a new CEL `interpreter.Activation` instead of a structpb.Struct
-	// internally using https://github.com/tidwall/gjson or https://github.com/buger/jsonparser
-	// that can be passed to Eval which would be faster and won't require mem allocations
-	spb, err := jsonToStructPb(jsonSample)
-	if err != nil {
-		return nil, err
-	}
-
 	return &EvalSample{
 		origin: jsonOrig,
 
-		protoEncoded: true,
-		proto:        spb,
-
 		jsonEncoded: true,
 		json:        jsonSample,
-
-		asMap: spb.AsMap(),
 	}, nil
 }
 
 // NewEvalSampleFromNative build a sample from any Go struct. Only exported fields will be part of the sample
 func NewEvalSampleFromNative(nativeSample any) (*EvalSample, error) {
-	// TODO: Similarly, we could use reflection to generate a map[string]interface{} directly without
-	// converting first to json
-	jsonSample, err := json.Marshal(nativeSample)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't marshal to JSON struct: %w", err)
-	}
-
-	// TODO: It should be possible to create a new CEL `interpreter.Activation` instead of a structpb.Struct
-	// internally using https://github.com/tidwall/gjson or https://github.com/buger/jsonparser
-	// that can be passed to Eval which would be faster and won't require mem allocations
-	spb, err := jsonToStructPb(string(jsonSample))
-	if err != nil {
-		return nil, err
-	}
-
 	return &EvalSample{
 		origin: nativeOrig,
 
-		protoEncoded: true,
-		proto:        spb,
-
-		jsonEncoded: true,
-		json:        string(jsonSample),
-
-		asMap: spb.AsMap(),
+		nativeEncoded: true,
+		native:        nativeSample,
 	}, nil
 }
 
 func NewEvalSampleFromProto(protoSample proto.Message) (*EvalSample, error) {
-	spb, err := protoToStructPb(protoSample)
-	if err != nil {
-		return nil, err
-	}
-
 	return &EvalSample{
 		origin: protoOrig,
 
 		protoEncoded: true,
 		proto:        protoSample,
-
-		asMap: spb.AsMap(),
 	}, nil
 }
 
-func (s *EvalSample) JSON() string {
+func (s *EvalSample) JSON() (string, error) {
 	if s.jsonEncoded {
-		return s.json
-	} else if s.protoEncoded {
-		jsonStr, _ := protojson.Marshal(s.proto)
-		return string(jsonStr)
+		return s.json, nil
+	} else if s.origin == protoOrig {
+		// if the original sample was a proto message, we use it to create a JSON representation since
+		// it will not alter the original message structure
+		jsonStr, err := protojson.Marshal(s.proto)
+		if err != nil {
+			return "", fmt.Errorf("couldn't marshal to JSON struct: %w", err)
+		}
+
+		s.jsonEncoded = true
+		s.json = string(jsonStr)
+
+		return s.json, nil
+	} else if s.origin == nativeOrig {
+		// if the original sample was a native Go struct, only the exported fields will be part of the
+		// JSON representation
+		jsonSample, err := json.Marshal(s.native)
+		if err != nil {
+			return "", fmt.Errorf("couldn't marshal to JSON struct: %w", err)
+		}
+
+		s.jsonEncoded = true
+		s.json = string(jsonSample)
+
+		return s.json, nil
 	}
 
-	return ""
+	return "", fmt.Errorf("couldn't get a JSON encoded message")
 }
 
-func (s *EvalSample) AsMap() map[string]any {
-	return s.asMap
+func (s *EvalSample) Proto() (proto.Message, error) {
+	if !s.protoEncoded {
+		// TODO: If it is a native sample, it should be possibe to create a map[string]interface{} directly using reflections
+		// without converting first to json so we can feed it to the CEL evaluator directly
+		// For now, just convert to JSON and then to a generic structpb proto message
+		jsonSample, err := s.JSON()
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: It should be possible to create a new CEL `interpreter.Activation` instead of a structpb.Struct
+		// internally using https://github.com/tidwall/gjson or https://github.com/buger/jsonparser
+		// that can be passed to Eval which would be faster and won't require mem allocations
+		spb, err := jsonToStructPb(jsonSample)
+		if err != nil {
+			return nil, err
+		}
+
+		s.protoEncoded = true
+		s.proto = spb
+	}
+
+	return s.proto, nil
+}
+
+func (s *EvalSample) Map() (map[string]any, error) {
+	if s.asMap == nil {
+		structPb, protoIsStructPb := s.proto.(*structpb.Struct)
+
+		if s.protoEncoded && protoIsStructPb {
+			s.asMap = structPb.AsMap()
+		} else {
+			jsonSample, err := s.JSON()
+			if err != nil {
+				return nil, err
+			}
+
+			asMap := make(map[string]interface{})
+			if err := json.Unmarshal([]byte(jsonSample), &asMap); err != nil {
+				return nil, fmt.Errorf("couldn't unmarshal JSON into a map: %w", err)
+			}
+
+			s.asMap = asMap
+		}
+	}
+
+	return s.asMap, nil
 }
 
 type sampleCompatibility uint8
@@ -212,15 +228,16 @@ func (r *Rule) Eval(ctx context.Context, sample *EvalSample) (bool, error) {
 		return false, err
 	}
 
-	if sample.protoEncoded {
-		val, _, err := r.prg.ContextEval(ctx, map[string]interface{}{"sample": sample.proto})
-		if err != nil {
-			return false, fmt.Errorf("failed to evaluate sample: %w", err)
-		}
-
-		// It is guaranteed to be a boolean because the rule has been checked at build time
-		return val.Value().(bool), nil
+	protoSample, err := sample.Proto()
+	if err != nil {
+		return false, fmt.Errorf("failed to get proto message from sample: %w", err)
 	}
 
-	return false, fmt.Errorf("EvalSample can't be evaluated since it is missing required internal data")
+	val, _, err := r.prg.ContextEval(ctx, map[string]interface{}{"sample": protoSample})
+	if err != nil {
+		return false, fmt.Errorf("failed to evaluate sample: %w", err)
+	}
+
+	// It is guaranteed to be a boolean because the rule has been checked at build time
+	return val.Value().(bool), nil
 }
