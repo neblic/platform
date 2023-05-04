@@ -506,4 +506,48 @@ var _ = Describe("Sampler", func() {
 			})
 		})
 	})
+
+	Describe("Forwarding errors", func() {
+		When("an error channel is provided", func() {
+			It("should forward errors to the channel", func() {
+				// start control plane server
+				controlPlaneServer.SetSamplerHandlers(
+					mock.RegisterSamplerHandler,
+				)
+				controlPlaneServer.Start(GinkgoT())
+
+				// initialize and start a sampler provider
+				settings := sampler.Settings{
+					ResourceName:      "sampled_service",
+					ControlServerAddr: controlPlaneServer.Addr(),
+					DataServerAddr:    logsReceiverLn.Addr().String(),
+				}
+				errCh := make(chan error, 1)
+
+				provider, err := sampler.NewProvider(context.Background(), settings,
+					sampler.WithUpdateStatsPeriod(time.Second),
+					sampler.WithLogger(logger),
+					sampler.WithSamplerErrorChannel(errCh),
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				// create a sampler
+				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				Expect(err).ToNot(HaveOccurred())
+
+				sampled := p.Sample(context.Background(), defs.JsonSample(`invalid_json: `, ""))
+				Expect(sampled).To(BeFalse())
+
+				/// expect an error to be received
+				require.Eventually(GinkgoT(),
+					func() bool {
+						<-errCh
+						return true
+					},
+					time.Second, time.Millisecond)
+
+				Expect(p.Close()).ToNot(HaveOccurred())
+			})
+		})
+	})
 })

@@ -35,7 +35,8 @@ type Sampler struct {
 	ruleBuilder        *rule.Builder
 	samplingStats      data.SamplerSamplingStats
 
-	logger logging.Logger
+	errFwrder chan error
+	logger    logging.Logger
 }
 
 func New(
@@ -88,7 +89,8 @@ func New(
 		exporter:           opts.Exporter,
 		limiterOut:         rate.NewLimiter(rate.Limit(opts.LimiterOut.Limit), int(opts.LimiterOut.Limit)),
 
-		logger: logger.With("sampler_name", opts.Name, "sampler_uid", controlPlaneClient.UID()),
+		errFwrder: opts.ErrFwrder,
+		logger:    logger.With("sampler_name", opts.Name, "sampler_uid", controlPlaneClient.UID()),
 	}
 
 	go p.listenControlEvents()
@@ -193,21 +195,32 @@ func (p *Sampler) buildSamplingRule(streamRule data.StreamRule) (*rule.Rule, err
 	}
 }
 
-// TODO: send errors to provider error channel
 func (p *Sampler) Sample(ctx context.Context, sample defs.Sample) bool {
-	var evalSample *rule.EvalSample
+	var (
+		evalSample *rule.EvalSample
+		err        error
+	)
 	switch sample.Type {
 	case defs.JsonSampleType:
-		evalSample, _ = rule.NewEvalSampleFromJSON(sample.Json)
+		evalSample, err = rule.NewEvalSampleFromJSON(sample.Json)
 	case defs.NativeSampleType:
-		evalSample, _ = rule.NewEvalSampleFromNative(sample.Native)
+		evalSample, err = rule.NewEvalSampleFromNative(sample.Native)
 	case defs.ProtoSampleType:
-		evalSample, _ = rule.NewEvalSampleFromProto(sample.Proto)
+		evalSample, err = rule.NewEvalSampleFromProto(sample.Proto)
 	default:
 		return false
 	}
+	if err != nil {
+		p.forwardError(err)
+		return false
+	}
 
-	sampled, _ := p.sample(ctx, evalSample, sample.Determinant)
+	sampled, err := p.sample(ctx, evalSample, sample.Determinant)
+	if err != nil {
+		p.forwardError(err)
+		return false
+	}
+
 	return sampled
 }
 
@@ -233,7 +246,7 @@ func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample, deter
 	var matches []sample.Match
 	for streamUID, streamRule := range p.streams {
 		if match, err := streamRule.Eval(ctx, evalSample); err != nil {
-			p.logger.Debug(fmt.Sprintf("error evaluating sample: %s", err))
+			p.forwardError(err)
 		} else if match {
 			matches = append(matches, sample.Match{
 				StreamUID: streamUID,
@@ -266,6 +279,15 @@ func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample, deter
 	}
 
 	return false, nil
+}
+
+func (p *Sampler) forwardError(err error) {
+	if p.errFwrder != nil {
+		select {
+		case p.errFwrder <- err:
+		default:
+		}
+	}
 }
 
 func (p *Sampler) Close() error {
