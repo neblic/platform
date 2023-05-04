@@ -56,12 +56,12 @@ message Stream {
 // If the configuration option is configured from the client the process is as
 // follows:
 // * Add new option to SamplerConfig
+// * Update platform/controlplane/data package to include new option to the
+//   internal controlplane structs
 // * Make sure new option can be set with the ClientSamplerConfigUpdate message
 // * Update at package platform/controlplane/server/internal/registry the method
 //   Client.UpdateSamplerConfig so the new option gets set in the server
 //   registry
-// * Update platform/controlplane/data package to include new option to the
-//   internal controlplane structs
 // * Update neblictl if the option can be configured using the CLI
 message SamplerConfig {
   // Configures the sampler streams.
@@ -233,13 +233,24 @@ message ClientStreamUpdate {
   Stream stream = 2;
 }
 
-// All fields are optional. If a field is nil, it means that the field is not
-// updated.
 message ClientSamplerConfigUpdate {
-  Limiter limiter_in = 1;
-  Sampling sampling_in = 2;
-  repeated ClientStreamUpdate stream_updates = 3;
-  Limiter limiter_out = 4;
+  // If a field is set to true, it means that the field is reset to its default.
+  // If a configuration option is reset and set in the same request, it will be
+  // first resetted and then set to its new value.
+  message Reset {
+    bool streams = 1;
+    bool limiter_in = 2;
+    bool sampling_in = 3;
+    bool limiter_out = 4;
+  }
+  Reset reset = 1;
+
+  // All fields are optional. If a field is nil, it means that the field will
+  // not be updated.
+  repeated ClientStreamUpdate stream_updates = 2;
+  Limiter limiter_in = 3;
+  Sampling sampling_in = 4;
+  Limiter limiter_out = 5;
 }
 
 message ClientSamplerConfReq {
@@ -251,7 +262,7 @@ message ClientSamplerConfReq {
   // If sampler_uid is set, only the sampler with the specified uid will be
   // configured.
   string sampler_uid = 3;
-  // The Sampler configuration update.
+  // Update configuration options. If not set, resets all configuration options
   ClientSamplerConfigUpdate sampler_config_update = 4;
 }
 

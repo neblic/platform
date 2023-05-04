@@ -1,6 +1,8 @@
 package data
 
 import (
+	"fmt"
+
 	"github.com/neblic/platform/controlplane/protos"
 )
 
@@ -100,6 +102,15 @@ type SamplingConfig struct {
 	DeterministicSampling DeterministicSamplingConfig
 }
 
+func (sc SamplingConfig) String() string {
+	switch sc.SamplingType {
+	case DeterministicSamplingType:
+		return fmt.Sprintf("DeterministicSampling(SampleRate: %d, SampleEmptyDeterminant: %t)", sc.DeterministicSampling.SampleRate, sc.DeterministicSampling.SampleEmptyDeterminant)
+	default:
+		return "Unknown"
+	}
+}
+
 func NewSamplingConfigFromProto(sr *protos.Sampling) SamplingConfig {
 	if sr == nil {
 		return SamplingConfig{}
@@ -130,6 +141,8 @@ func (sr SamplingConfig) ToProto() *protos.Sampling {
 				},
 			},
 		}
+	case UnknownSamplingType:
+		return &protos.Sampling{}
 	default:
 		return nil
 	}
@@ -172,8 +185,42 @@ type StreamUpdate struct {
 	Stream Stream
 }
 
-// All fields are optional. If a field is nil, it means that the field is not updated.
+type SamplerConfigUpdateReset struct {
+	LimiterIn  bool
+	SamplingIn bool
+	Streams    bool
+	LimiterOut bool
+}
+
+func NewSamplerConfigUpdateResetFromProto(protoReset *protos.ClientSamplerConfigUpdate_Reset) SamplerConfigUpdateReset {
+	if protoReset == nil {
+		return SamplerConfigUpdateReset{}
+	}
+
+	return SamplerConfigUpdateReset{
+		LimiterIn:  protoReset.GetLimiterIn(),
+		SamplingIn: protoReset.GetSamplingIn(),
+		Streams:    protoReset.GetStreams(),
+		LimiterOut: protoReset.GetLimiterOut(),
+	}
+}
+
+func (scr SamplerConfigUpdateReset) ToProto() *protos.ClientSamplerConfigUpdate_Reset {
+	return &protos.ClientSamplerConfigUpdate_Reset{
+		LimiterIn:  scr.LimiterIn,
+		SamplingIn: scr.SamplingIn,
+		Streams:    scr.Streams,
+		LimiterOut: scr.LimiterOut,
+	}
+}
+
 type SamplerConfigUpdate struct {
+	// If a field is set to true, it means that the field is reset to its default.
+	// If a configuration option is reset and set in the same request, it will be
+	// first resetted and then set to its new value.
+	Reset SamplerConfigUpdateReset
+
+	// All fields are optional. If a field is nil, it means that the field is not updated.
 	LimiterIn     *LimiterConfig
 	SamplingIn    *SamplingConfig
 	StreamUpdates []StreamUpdate
@@ -220,6 +267,8 @@ func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpda
 	}
 
 	return SamplerConfigUpdate{
+		Reset: NewSamplerConfigUpdateResetFromProto(protoUpdate.GetReset_()),
+
 		LimiterIn:     limiterIn,
 		SamplingIn:    samplingConfigIn,
 		StreamUpdates: streamUpdates,
@@ -260,6 +309,8 @@ func (scu SamplerConfigUpdate) ToProto() *protos.ClientSamplerConfigUpdate {
 	}
 
 	return &protos.ClientSamplerConfigUpdate{
+		Reset_: scu.Reset.ToProto(),
+
 		LimiterIn:     protoLimiterIn,
 		SamplingIn:    protoSamplingIn,
 		StreamUpdates: protoUpdateStreams,
