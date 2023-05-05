@@ -68,7 +68,7 @@ func (h *SamplerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 			if !ok {
 				return fmt.Errorf("received a message from the unexpected topic %s", message.Topic)
 			}
-			sampler.Sample(session.Context(), defs.JsonSample(string(message.Value), string(message.Key)))
+			sampler.Sample(session.Context(), defs.JSONSample(string(message.Value), string(message.Key)))
 
 			session.MarkMessage(message, "")
 
