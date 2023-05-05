@@ -6,13 +6,13 @@ import (
 	"github.com/neblic/platform/controlplane/protos"
 )
 
-type Stream_RuleLang int
+type StreamRuleLang int
 
 const (
 	SrlCel = iota + 1
 )
 
-func (srl Stream_RuleLang) String() string {
+func (srl StreamRuleLang) String() string {
 	switch srl {
 	case SrlCel:
 		return "CEL"
@@ -21,8 +21,8 @@ func (srl Stream_RuleLang) String() string {
 	}
 }
 
-func NewStreamRuleLangFromProto(lang protos.Stream_Rule_Language) Stream_RuleLang {
-	var srl Stream_RuleLang
+func NewStreamRuleLangFromProto(lang protos.Stream_Rule_Language) StreamRuleLang {
+	var srl StreamRuleLang
 	switch lang {
 	case protos.Stream_Rule_CEL:
 		srl = SrlCel
@@ -31,7 +31,7 @@ func NewStreamRuleLangFromProto(lang protos.Stream_Rule_Language) Stream_RuleLan
 	return srl
 }
 
-func (srl Stream_RuleLang) ToProto() protos.Stream_Rule_Language {
+func (srl StreamRuleLang) ToProto() protos.Stream_Rule_Language {
 	switch srl {
 	case SrlCel:
 		return protos.Stream_Rule_CEL
@@ -43,7 +43,7 @@ func (srl Stream_RuleLang) ToProto() protos.Stream_Rule_Language {
 type SamplerStreamRuleUID string
 
 type StreamRule struct {
-	Lang Stream_RuleLang
+	Lang StreamRuleLang
 	Rule string
 }
 
@@ -131,13 +131,13 @@ func NewSamplingConfigFromProto(sr *protos.Sampling) SamplingConfig {
 	}
 }
 
-func (sr SamplingConfig) ToProto() *protos.Sampling {
-	switch sr.SamplingType {
+func (sc SamplingConfig) ToProto() *protos.Sampling {
+	switch sc.SamplingType {
 	case DeterministicSamplingType:
 		return &protos.Sampling{
 			Sampling: &protos.Sampling_DeterministicSampling{
 				DeterministicSampling: &protos.DeterministicSampling{
-					SampleRate: sr.DeterministicSampling.SampleRate,
+					SampleRate: sc.DeterministicSampling.SampleRate,
 				},
 			},
 		}

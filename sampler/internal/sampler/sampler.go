@@ -197,8 +197,8 @@ func (p *Sampler) Sample(ctx context.Context, sample defs.Sample) bool {
 		err        error
 	)
 	switch sample.Type {
-	case defs.JsonSampleType:
-		evalSample, err = rule.NewEvalSampleFromJSON(sample.Json)
+	case defs.JSONSampleType:
+		evalSample, err = rule.NewEvalSampleFromJSON(sample.JSON)
 	case defs.NativeSampleType:
 		evalSample, err = rule.NewEvalSampleFromNative(sample.Native)
 	case defs.ProtoSampleType:

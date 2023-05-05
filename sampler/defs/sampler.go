@@ -10,7 +10,7 @@ type SampleType uint8
 
 const (
 	UnknownSampleType SampleType = iota
-	JsonSampleType
+	JSONSampleType
 	NativeSampleType
 	ProtoSampleType
 )
@@ -19,18 +19,18 @@ type Sample struct {
 	Determinant string
 
 	Type   SampleType
-	Json   string
+	JSON   string
 	Native any
 	Proto  proto.Message
 }
 
-// JsonSample creates a data sample encoded as a JSON string.
-func JsonSample(json string, determinant string) Sample {
+// JSONSample creates a data sample encoded as a JSON string.
+func JSONSample(json string, determinant string) Sample {
 	return Sample{
 		Determinant: determinant,
 
-		Type: JsonSampleType,
-		Json: json,
+		Type: JSONSampleType,
+		JSON: json,
 	}
 }
 
