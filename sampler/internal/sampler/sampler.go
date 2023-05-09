@@ -37,36 +37,36 @@ type Sampler struct {
 }
 
 func New(
-	opts *Options,
+	settings *Settings,
 	logger logging.Logger,
 ) (*Sampler, error) {
-	ruleBuilder, err := rule.NewBuilder(opts.Schema)
+	ruleBuilder, err := rule.NewBuilder(settings.Schema)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't build CEL rule builder: %w", err)
 	}
 
 	var clientOpts []csampler.Option
 	clientOpts = append(clientOpts, csampler.WithLogger(logger))
-	if opts.EnableTLS {
+	if settings.EnableTLS {
 		clientOpts = append(clientOpts, csampler.WithTLS())
 	}
 
 	// provider already checked that it is a valid type
-	switch opts.Auth.Type {
+	switch settings.Auth.Type {
 	case "bearer":
-		clientOpts = append(clientOpts, csampler.WithAuthBearer(opts.Auth.Bearer.Token))
+		clientOpts = append(clientOpts, csampler.WithAuthBearer(settings.Auth.Bearer.Token))
 	}
 
 	// TODO: Once we have refactored the sampler client to reuse the same grpc connection internally,
 	// move control plane connection to provider
-	controlPlaneClient := csampler.New(opts.Name, opts.Resource, clientOpts...)
+	controlPlaneClient := csampler.New(settings.Name, settings.Resource, clientOpts...)
 
 	var samplerIn sampling.Sampler
-	switch opts.SamplingIn.SamplingType {
+	switch settings.SamplingIn.SamplingType {
 	case data.DeterministicSamplingType:
 		deterministicSampler, err := sampling.NewDeterministicSampler(
-			uint(opts.SamplingIn.DeterministicSampling.SampleRate),
-			opts.SamplingIn.DeterministicSampling.SampleEmptyDeterminant)
+			uint(settings.SamplingIn.DeterministicSampling.SampleRate),
+			settings.SamplingIn.DeterministicSampling.SampleEmptyDeterminant)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't initialize the deterministic sampler: %w", err)
 		}
@@ -74,30 +74,30 @@ func New(
 	}
 
 	p := &Sampler{
-		name:         opts.Name,
-		resourceName: opts.Resource,
+		name:         settings.Name,
+		resourceName: settings.Resource,
 
 		ruleBuilder: ruleBuilder,
 		streams:     make(map[data.SamplerStreamUID]*rule.Rule),
 
 		controlPlaneClient: controlPlaneClient,
-		limiterIn:          rate.NewLimiter(rate.Limit(opts.LimiterIn.Limit), int(opts.LimiterIn.Limit)),
+		limiterIn:          rate.NewLimiter(rate.Limit(settings.LimiterIn.Limit), int(settings.LimiterIn.Limit)),
 		samplerIn:          samplerIn,
-		exporter:           opts.Exporter,
-		limiterOut:         rate.NewLimiter(rate.Limit(opts.LimiterOut.Limit), int(opts.LimiterOut.Limit)),
+		exporter:           settings.Exporter,
+		limiterOut:         rate.NewLimiter(rate.Limit(settings.LimiterOut.Limit), int(settings.LimiterOut.Limit)),
 
-		errFwrder: opts.ErrFwrder,
-		logger:    logger.With("sampler_name", opts.Name, "sampler_uid", controlPlaneClient.UID()),
+		errFwrder: settings.ErrFwrder,
+		logger:    logger.With("sampler_name", settings.Name, "sampler_uid", controlPlaneClient.UID()),
 	}
 
 	go p.listenControlEvents()
 
-	err = controlPlaneClient.Connect(opts.ControlPlaneAddr)
+	err = controlPlaneClient.Connect(settings.ControlPlaneAddr)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't connect to the control plane: %w", err)
 	}
 
-	go p.updateStats(opts.UpdateStatsPeriod)
+	go p.updateStats(settings.UpdateStatsPeriod)
 
 	return p, nil
 }
@@ -175,6 +175,8 @@ func (p *Sampler) updateConfig(config data.SamplerConfig) {
 		}
 		p.limiterOut = rate.NewLimiter(limit, int(config.LimiterOut.Limit))
 	}
+
+	// TODO: configure digesters
 }
 
 func (p *Sampler) buildSamplingRule(streamRule data.StreamRule) (*rule.Rule, error) {
@@ -191,36 +193,26 @@ func (p *Sampler) buildSamplingRule(streamRule data.StreamRule) (*rule.Rule, err
 	}
 }
 
-func (p *Sampler) Sample(ctx context.Context, sample defs.Sample) bool {
-	var (
-		evalSample *rule.EvalSample
-		err        error
-	)
-	switch sample.Type {
-	case defs.JSONSampleType:
-		evalSample, err = rule.NewEvalSampleFromJSON(sample.JSON)
-	case defs.NativeSampleType:
-		evalSample, err = rule.NewEvalSampleFromNative(sample.Native)
-	case defs.ProtoSampleType:
-		evalSample, err = rule.NewEvalSampleFromProto(sample.Proto)
-	default:
-		return false
-	}
+func (p *Sampler) buildSample(sampleData *sample.Data, streams []data.SamplerStreamUID) (exporter.SamplerSamples, error) {
+	dataJSON, err := sampleData.JSON()
 	if err != nil {
-		p.forwardError(err)
-		return false
+		return exporter.SamplerSamples{}, fmt.Errorf("couldn't get sampler body: %w", err)
 	}
 
-	sampled, err := p.sample(ctx, evalSample, sample.Determinant)
-	if err != nil {
-		p.forwardError(err)
-		return false
-	}
-
-	return sampled
+	return exporter.SamplerSamples{
+		ResourceName: p.resourceName,
+		SamplerName:  p.name,
+		Samples: []exporter.Sample{{
+			Ts:       time.Now(),
+			Type:     exporter.RawSampleType,
+			Streams:  streams,
+			Encoding: exporter.JSONSampleEncoding,
+			Data:     []byte(dataJSON),
+		}},
+	}, nil
 }
 
-func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample, determinant string) (bool, error) {
+func (p *Sampler) sample(ctx context.Context, sampleData *sample.Data, determinant string) (bool, error) {
 	p.samplingStats.SamplesEvaluated++
 
 	if p.limiterIn != nil && !p.limiterIn.Allow() {
@@ -237,38 +229,30 @@ func (p *Sampler) sample(ctx context.Context, evalSample *rule.EvalSample, deter
 	}
 
 	// assign sample to all matching streams based on their rules
-	var matches []sample.Match
+	var streams []data.SamplerStreamUID
 	for streamUID, streamRule := range p.streams {
-		if match, err := streamRule.Eval(ctx, evalSample); err != nil {
+		if match, err := streamRule.Eval(ctx, sampleData); err != nil {
 			p.forwardError(err)
 		} else if match {
-			matches = append(matches, sample.Match{
-				StreamUID: streamUID,
-			})
+			streams = append(streams, streamUID)
 		}
 	}
 
-	if len(matches) > 0 {
+	if len(streams) > 0 {
 		if p.limiterOut != nil && !p.limiterOut.Allow() {
 			return false, nil
 		}
 
-		sampleMap, err := evalSample.Map()
+		// TODO: hand over sample to digester
+		// * it will handle what digests generate and when to export them, asynchronously
+
+		// TODO: make sure the exporter follows a similar async handling logic of samples as the digester
+		resourceSample, err := p.buildSample(sampleData, streams)
 		if err != nil {
-			return false, fmt.Errorf("couldn't build sample to export: %w", err)
+			return false, err
 		}
 
-		if err := p.exporter.Export(ctx, []sample.ResourceSamples{{
-			ResourceName: p.resourceName,
-			SamplerName:  p.name,
-			SamplersSamples: []sample.SamplerSamples{{
-				Samples: []sample.Sample{{
-					Ts:      time.Now(),
-					Data:    sampleMap,
-					Matches: matches,
-				}},
-			}},
-		}}); err != nil {
+		if err := p.exporter.Export(ctx, []exporter.SamplerSamples{resourceSample}); err != nil {
 			return false, fmt.Errorf("failure to export samples: %w", err)
 		}
 
@@ -287,6 +271,30 @@ func (p *Sampler) forwardError(err error) {
 		default:
 		}
 	}
+}
+
+func (p *Sampler) Sample(ctx context.Context, smpl defs.Sample) bool {
+	var (
+		sampleData *sample.Data
+	)
+	switch smpl.Type {
+	case defs.JSONSampleType:
+		sampleData = sample.NewSampleDataFromJSON(smpl.JSON)
+	case defs.NativeSampleType:
+		sampleData = sample.NewSampleDataFromNative(smpl.Native)
+	case defs.ProtoSampleType:
+		sampleData = sample.NewSampleDataFromProto(smpl.Proto)
+	default:
+		return false
+	}
+
+	sampled, err := p.sample(ctx, sampleData, smpl.Determinant)
+	if err != nil {
+		p.forwardError(err)
+		return false
+	}
+
+	return sampled
 }
 
 func (p *Sampler) Close() error {

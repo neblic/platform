@@ -6,6 +6,7 @@ import (
 
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/sampler/defs"
+	"github.com/neblic/platform/sampler/internal/sample"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -34,8 +35,7 @@ func TestEvalJSON(t *testing.T) {
 			rule, err := rb.Build(tc.filter)
 			require.NoError(t, err)
 
-			s, err := NewEvalSampleFromJSON(tc.sample)
-			require.NoError(t, err)
+			s := sample.NewSampleDataFromJSON(tc.sample)
 
 			gotMatch, err := rule.Eval(context.Background(), s)
 			require.NoError(t, err)
@@ -80,8 +80,7 @@ func TestEvalNative(t *testing.T) {
 			rule, err := rb.Build(tc.filter)
 			require.NoError(t, err)
 
-			s, err := NewEvalSampleFromNative(tc.sample)
-			require.NoError(t, err)
+			s := sample.NewSampleDataFromNative(tc.sample)
 
 			gotMatch, err := rule.Eval(context.Background(), s)
 			require.NoError(t, err)
@@ -121,8 +120,7 @@ func TestEvalProto(t *testing.T) {
 			rule, err := rb.Build(tc.filter)
 			require.NoError(t, err)
 
-			s, err := NewEvalSampleFromProto(tc.sample)
-			require.NoError(t, err)
+			s := sample.NewSampleDataFromProto(tc.sample)
 
 			gotMatch, err := rule.Eval(context.Background(), s)
 			require.NoError(t, err)

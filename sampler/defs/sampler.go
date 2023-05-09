@@ -25,6 +25,7 @@ type Sample struct {
 }
 
 // JSONSample creates a data sample encoded as a JSON string.
+// The JSON string must be a valid JSON object.
 func JSONSample(json string, determinant string) Sample {
 	return Sample{
 		Determinant: determinant,
