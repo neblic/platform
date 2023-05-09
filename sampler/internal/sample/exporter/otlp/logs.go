@@ -1,19 +1,23 @@
 package otlp
 
 import (
-	"github.com/neblic/platform/sampler/internal/sample"
+	"github.com/neblic/platform/sampler/internal/sample/exporter"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 	conventions "go.opentelemetry.io/collector/semconv/v1.9.0"
 )
 
 const (
-	rlSamplerNameKey      = "sampler_name"
-	lrClientUIDsAttrKey   = "client_uids"
-	lrSamplingRuleUIDsKey = "sampling_rule_uids"
+	rlSamplerNameKey       = "sampler_name"
+	lrSampleTypeKey        = "sample_type"
+	lrSampleEncodingKey    = "sample_encoding"
+	lrSampleStreamsUIDsKey = "stream_uids"
 )
 
-func fromResourceSamples(resourceSmpls []sample.ResourceSamples) plog.Logs {
+// TODO: in general, the produced log could be more compact but this way, we keep it human-readable
+// eventually, we will want to binary encode as much as possible and create a human-readable
+// representation when necessary
+func fromSamplerSamples(resourceSmpls []exporter.SamplerSamples) plog.Logs {
 	logs := plog.NewLogs()
 
 	rlogs := logs.ResourceLogs()
@@ -22,36 +26,36 @@ func fromResourceSamples(resourceSmpls []sample.ResourceSamples) plog.Logs {
 		resourceSmpl := resourceSmpls[i]
 
 		rlog := rlogs.AppendEmpty()
-		rlog.Resource().Attributes().PutStr(conventions.AttributeServiceName, resourceSmpl.ResourceName)
 		rlog.Resource().Attributes().PutStr(rlSamplerNameKey, resourceSmpl.SamplerName)
+		rlog.Resource().Attributes().PutStr(conventions.AttributeServiceName, resourceSmpl.ResourceName)
 
+		// we consider each sampler name to be an scope
+		// each samples batch belongs to one sampler, so we only have one scope
 		slogs := rlog.ScopeLogs()
-		slogs.EnsureCapacity(len(resourceSmpl.SamplersSamples))
-		for j := 0; j < len(resourceSmpl.SamplersSamples); j++ {
-			samplerSamples := resourceSmpl.SamplersSamples[j]
+		slog := slogs.AppendEmpty()
 
-			slog := slogs.AppendEmpty()
-			logRecords := slog.LogRecords()
-			logRecords.EnsureCapacity(len(samplerSamples.Samples))
-			for k := 0; k < len(samplerSamples.Samples); k++ {
-				sample := samplerSamples.Samples[k]
+		// TODO: it could also make sense to add the sampler name as a scope attribute
+		// slog.Scope().Attributes().PutStr(rlSamplerNameKey, resourceSmpl.SamplerName)
 
-				// we consider each sample to be a LogRecord
-				logRecord := logRecords.AppendEmpty()
+		logRecords := slog.LogRecords()
+		logRecords.EnsureCapacity(len(resourceSmpl.Samples))
+		for j := 0; j < len(resourceSmpl.Samples); j++ {
+			smpl := resourceSmpl.Samples[j]
 
-				logRecord.SetTimestamp(pcommon.Timestamp(sample.Ts.UnixNano()))
-				logRecord.Body().SetEmptyMap().FromRaw(sample.Data)
-				lrClientUIDs := logRecord.Attributes().PutEmptySlice(lrClientUIDsAttrKey)
-				lrSamplingRuleUIDs := logRecord.Attributes().PutEmptySlice(lrSamplingRuleUIDsKey)
+			// we consider each sample to be a LogRecord
+			logRecord := logRecords.AppendEmpty()
+			logRecord.SetTimestamp(pcommon.Timestamp(smpl.Ts.UnixNano()))
+			logRecord.Body().SetEmptyBytes().FromRaw(smpl.Data)
 
-				// build attributes values
-				lrClientUIDs.EnsureCapacity(len(sample.Matches))
-				lrSamplingRuleUIDs.EnsureCapacity(len(sample.Matches))
-				for _, match := range sample.Matches {
-					lrSamplingRuleUIDs.AppendEmpty().SetStr(string(match.StreamUID))
-				}
-
+			// build attributes values
+			lrSamplingRuleUIDs := logRecord.Attributes().PutEmptySlice(lrSampleStreamsUIDsKey)
+			lrSamplingRuleUIDs.EnsureCapacity(len(smpl.Streams))
+			for _, stream := range smpl.Streams {
+				lrSamplingRuleUIDs.AppendEmpty().SetStr(string(stream))
 			}
+
+			logRecord.Attributes().PutStr(lrSampleTypeKey, smpl.Type.String())
+			logRecord.Attributes().PutStr(lrSampleEncodingKey, smpl.Encoding.String())
 		}
 	}
 

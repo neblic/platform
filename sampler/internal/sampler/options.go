@@ -19,7 +19,7 @@ type AuthOptions struct {
 	Bearer AuthBearerOptions
 }
 
-type Options struct {
+type Settings struct {
 	Name     string
 	Resource string
 	Schema   defs.Schema

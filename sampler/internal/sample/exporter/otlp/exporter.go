@@ -5,11 +5,11 @@ import (
 	"fmt"
 
 	"github.com/neblic/platform/logging"
-	"github.com/neblic/platform/sampler/internal/sample"
+	"github.com/neblic/platform/sampler/internal/sample/exporter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configtls"
-	"go.opentelemetry.io/collector/exporter"
+	collectorexporter "go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/pdata/plog"
 	"go.opentelemetry.io/otel/metric"
@@ -17,7 +17,7 @@ import (
 )
 
 type Exporter struct { // implements sample.Exporter
-	logsExporter exporter.Logs
+	logsExporter collectorexporter.Logs
 }
 
 func New(ctx context.Context, logger logging.Logger, exportServerAddr string, opts *Options) (*Exporter, error) {
@@ -38,7 +38,7 @@ func New(ctx context.Context, logger logging.Logger, exportServerAddr string, op
 		cfg.Headers["authorization"] = configopaque.String(fmt.Sprintf("Bearer %s", opts.Auth.Bearer.Token))
 	}
 
-	settings := exporter.CreateSettings{
+	settings := collectorexporter.CreateSettings{
 		TelemetrySettings: component.TelemetrySettings{
 			Logger: logger.ZapLogger(),
 			// The Exporter doesn't need to generate traces or metrics
@@ -63,8 +63,8 @@ func New(ctx context.Context, logger logging.Logger, exportServerAddr string, op
 }
 
 // Export internally perform samples batches
-func (e *Exporter) Export(ctx context.Context, resourceSamples []sample.ResourceSamples) error {
-	logs := fromResourceSamples(resourceSamples)
+func (e *Exporter) Export(ctx context.Context, resourceSamples []exporter.SamplerSamples) error {
+	logs := fromSamplerSamples(resourceSamples)
 
 	return e.exportLogs(ctx, logs)
 }
