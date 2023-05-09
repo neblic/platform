@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.1.0
 // - protoc             v3.21.6
-// source: internal/protos/controlplane.proto
+// source: protos/controlplane.proto
 
 package protos
 
@@ -201,5 +201,5 @@ var ControlPlane_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: "internal/protos/controlplane.proto",
+	Metadata: "protos/controlplane.proto",
 }

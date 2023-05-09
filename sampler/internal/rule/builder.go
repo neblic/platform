@@ -17,10 +17,6 @@ const sampleKey = "sample"
 func NewBuilder(ruleSchema defs.Schema) (*Builder, error) {
 	var celEnvOpts []cel.EnvOption
 	switch s := ruleSchema.(type) {
-	case defs.DynamicSchema:
-		celEnvOpts = append(celEnvOpts,
-			cel.Variable(sampleKey, cel.MapType(cel.StringType, cel.DynType)),
-		)
 	case defs.ProtoSchema:
 		typ := string(s.Proto.ProtoReflect().Descriptor().FullName())
 		celEnvOpts = append(celEnvOpts,
@@ -28,6 +24,10 @@ func NewBuilder(ruleSchema defs.Schema) (*Builder, error) {
 			cel.Variable(sampleKey,
 				cel.ObjectType(typ),
 			),
+		)
+	case defs.DynamicSchema:
+		celEnvOpts = append(celEnvOpts,
+			cel.Variable(sampleKey, cel.MapType(cel.StringType, cel.DynType)),
 		)
 	default:
 		return nil, fmt.Errorf("unknown schema %T", ruleSchema)

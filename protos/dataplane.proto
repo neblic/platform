@@ -1,0 +1,71 @@
+syntax = "proto3";
+option go_package = "github.com/neblic/platform/sampler/protos";
+
+message IntNumType { int64 count = 1; }
+message UIntNumType { int64 count = 1; }
+message FloatNumType { int64 count = 1; }
+message NumberType {
+  // if more than one is set, multiple types detected
+  IntNumType integer_num = 1;
+  UIntNumType uinteger_num = 2;
+  FloatNumType float_num = 3;
+}
+
+message StringType { int64 count = 1; }
+message BooleanType { int64 count = 1; }
+
+message Value {
+  // if more than one is set, multiple types detected
+  NumberType number = 1;
+  StringType string = 2;
+  BooleanType boolean = 3;
+  ArrayType array = 4;
+  ObjType obj = 5;
+}
+message ObjType {
+  int64 count = 1;
+  map<string, Value> fields = 2;
+
+  // TODO: Add special field for stats about the rest of the fields
+  // when there are more than the configured maximum
+}
+
+message FixedLengthOrderedArrayType { repeated Value fields = 1; }
+message VariableLengthArrayType {
+  int64 min_length = 1;
+  int64 max_length = 2;
+  // to be able to calculate the average when aggregating digests
+  int64 sum_length = 3;
+}
+message ArrayType {
+  int64 count = 1;
+  // only one should be set, when multiple lenghts are detected,
+  // the array is considered variable length
+  FixedLengthOrderedArrayType fixed_length_ordered_array = 2;
+  VariableLengthArrayType variable_length_array = 3;
+}
+
+message StructureDigest { ObjType obj = 1; }
+
+// used for testing
+message TestSample {
+  double double = 1;
+  float float = 2;
+  int32 int32 = 3;
+  int64 int64 = 4;
+  uint32 uint32 = 5;
+  uint64 uint64 = 6;
+  sint32 sint32 = 7;
+  sint64 sint64 = 8;
+  fixed32 fixed32 = 9;
+  fixed64 fixed64 = 10;
+  sfixed32 sfixed32 = 11;
+  sfixed64 sfixed64 = 12;
+  bool bool = 13;
+  string string = 14;
+  bytes bytes = 15;
+  repeated int32 array = 16;
+  map<int32, int32> map = 17;
+  TestSample nested_msg = 18;
+  repeated TestSample nested_msgs = 19;
+}
