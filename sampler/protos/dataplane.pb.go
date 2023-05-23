@@ -677,6 +677,7 @@ func (x *StructureDigest) GetObj() *ObjType {
 	return nil
 }
 
+// used for testing
 type TestSample struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

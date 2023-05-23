@@ -309,7 +309,7 @@ var _ = Describe("ControlPlane", func() {
 					samplerConfigUpdate := &data.SamplerConfigUpdate{
 						StreamUpdates: []data.StreamUpdate{
 							{
-								Op:     data.StreamRuleUpsert,
+								Op:     data.StreamUpsert,
 								Stream: testStream,
 							},
 						},
@@ -359,7 +359,7 @@ var _ = Describe("ControlPlane", func() {
 					samplerConfigUpdate := &data.SamplerConfigUpdate{
 						StreamUpdates: []data.StreamUpdate{
 							{
-								Op:     data.StreamRuleUpsert,
+								Op:     data.StreamUpsert,
 								Stream: testStream,
 							},
 						},
@@ -445,7 +445,7 @@ var _ = Describe("ControlPlane", func() {
 					samplerConfigUpdate := &data.SamplerConfigUpdate{
 						StreamUpdates: []data.StreamUpdate{
 							{
-								Op:     data.StreamRuleUpsert,
+								Op:     data.StreamUpsert,
 								Stream: testStream,
 							},
 						},

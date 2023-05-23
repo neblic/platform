@@ -13,12 +13,14 @@ type Commands struct {
 func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Completers) *Commands {
 	return &Commands{
 		Commands: interpoler.CommandNodes{
+
 			// resources
 			{
 				Name:        "resources:list",
 				Description: "List all resources",
 				Executor:    controlPlaneExecutors.ListResources,
 			},
+
 			// samplers
 			{
 				Name:        "samplers:list",
@@ -41,6 +43,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 					},
 				},
 			},
+
 			// samplers:config:list
 			{
 				Name:        "samplers:config:list",
@@ -63,6 +66,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 					},
 				},
 			},
+
 			// samplers:limiterin
 			{
 				Name:        "samplers:limiterin:set",
@@ -110,6 +114,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 					},
 				},
 			},
+
 			// samplers:samplerin:deterministic
 			{
 				Name:        "samplers:samplerin:set:deterministic",
@@ -166,6 +171,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 					},
 				},
 			},
+
 			// samplers:limiterout
 			{
 				Name:        "samplers:limiterout:set",
@@ -213,6 +219,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 					},
 				},
 			},
+
 			// streams
 			{
 				Name:        "streams:list",
@@ -327,6 +334,8 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				},
 				Executor: controlPlaneExecutors.DeleteStreams,
 			},
+
+			// TODO: digests
 		},
 	}
 }

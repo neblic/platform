@@ -229,7 +229,7 @@ func (e *Executors) CreateStreams(ctx context.Context, parameters interpoler.Par
 		update := &data.SamplerConfigUpdate{
 			StreamUpdates: []data.StreamUpdate{
 				{
-					Op: data.StreamRuleUpsert,
+					Op: data.StreamUpsert,
 					Stream: data.Stream{
 						UID: streamUID,
 						StreamRule: data.StreamRule{
@@ -287,7 +287,7 @@ func (e *Executors) UpdateStreams(ctx context.Context, parameters interpoler.Par
 		update := &data.SamplerConfigUpdate{
 			StreamUpdates: []data.StreamUpdate{
 				{
-					Op: data.StreamRuleUpsert,
+					Op: data.StreamUpsert,
 					Stream: data.Stream{
 						UID: data.SamplerStreamUID(streamUIDParameter.Value),
 						StreamRule: data.StreamRule{
@@ -346,7 +346,7 @@ func (e *Executors) DeleteStreams(ctx context.Context, parameters interpoler.Par
 		update := &data.SamplerConfigUpdate{
 			StreamUpdates: []data.StreamUpdate{
 				{
-					Op: data.StreamRuleDelete,
+					Op: data.StreamDelete,
 					Stream: data.Stream{
 						UID: data.SamplerStreamUID(streamUIDParameter.Value),
 					},
@@ -391,14 +391,14 @@ func (e *Executors) setMultipleSamplersConfig(ctx context.Context, parameters in
 
 func (e *Executors) SamplerLimiterInSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	limitParameter, _ := parameters.Get("limit")
-	limitInt64, err := limitParameter.AsInt64()
+	limitInt32, err := limitParameter.AsInt32()
 	if err != nil {
 		return fmt.Errorf("limit must be an integer")
 	}
 
 	update := &data.SamplerConfigUpdate{
 		LimiterIn: &data.LimiterConfig{
-			Limit: limitInt64,
+			Limit: limitInt32,
 		},
 	}
 
@@ -417,14 +417,14 @@ func (e *Executors) SamplerLimiterInUnset(ctx context.Context, parameters interp
 
 func (e *Executors) SamplerLimiterOutSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	limitParameter, _ := parameters.Get("limit")
-	limitInt64, err := limitParameter.AsInt64()
+	limitInt32, err := limitParameter.AsInt32()
 	if err != nil {
 		return fmt.Errorf("limit must be an integer")
 	}
 
 	update := &data.SamplerConfigUpdate{
 		LimiterOut: &data.LimiterConfig{
-			Limit: limitInt64,
+			Limit: limitInt32,
 		},
 	}
 
