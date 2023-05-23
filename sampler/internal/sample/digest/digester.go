@@ -12,38 +12,10 @@ import (
 )
 
 // // Move to data package
-type DigestType uint8
-
-const (
-	DigestTypeNone DigestType = iota
-	DigestTypeSt
-)
-
-type SamplerDigestUID string
 
 const defaultDigestStMaxProcessedFields = 100
-
-type DigestStConfig struct {
-	MaxProcessedFields int
-}
-
 const defaultDigestFlushPeriod = time.Minute
 const defaultDigestBufferSize = 1000
-
-type DigestConfig struct {
-	UID SamplerDigestUID
-
-	// digest specific config
-	Type DigestType
-	St   DigestStConfig
-
-	// common config
-	StreamUID   data.SamplerStreamUID
-	FlushPeriod time.Duration
-	BufferSize  int
-}
-
-type DigestsConfig []DigestConfig
 
 /////
 
@@ -63,8 +35,8 @@ type Digester struct {
 	notifyErr func(error)
 	exporter  exporter.Exporter
 
-	digestsConfig DigestsConfig
-	workers       map[SamplerDigestUID]*worker
+	digestsConfig []data.Digest
+	workers       map[data.SamplerDigestUID]*worker
 }
 
 func NewDigester(ctx context.Context, settings Settings) *Digester {
@@ -76,14 +48,14 @@ func NewDigester(ctx context.Context, settings Settings) *Digester {
 		notifyErr: settings.NotifyErr,
 		exporter:  settings.Exporter,
 
-		workers: make(map[SamplerDigestUID]*worker),
+		workers: make(map[data.SamplerDigestUID]*worker),
 	}
 }
 
-func (d *Digester) buildWorkerSettings(digestCfg DigestConfig) (workerSettings, error) {
+func (d *Digester) buildWorkerSettings(digestCfg data.Digest) (workerSettings, error) {
 	var digest Digest
 	switch digestCfg.Type {
-	case DigestTypeSt:
+	case data.DigestTypeSt:
 		digest = NewStDigest(digestCfg.St.MaxProcessedFields, d.notifyErr)
 	default:
 		return workerSettings{}, errors.New("unknown digest type")
@@ -114,7 +86,7 @@ func (d *Digester) buildWorkerSettings(digestCfg DigestConfig) (workerSettings, 
 	}, nil
 }
 
-func (d *Digester) SetDigestsConfig(digestsCfg DigestsConfig) {
+func (d *Digester) SetDigestsConfig(digestsCfg []data.Digest) {
 	for _, digestCfg := range digestsCfg {
 		if existingWorker, ok := d.workers[digestCfg.UID]; ok {
 			existingWorker.stop()
@@ -133,7 +105,7 @@ func (d *Digester) SetDigestsConfig(digestsCfg DigestsConfig) {
 		go w.run()
 	}
 
-	digestCfgsMap := make(map[SamplerDigestUID]DigestConfig)
+	digestCfgsMap := make(map[data.SamplerDigestUID]data.Digest)
 	for _, digestCfg := range digestsCfg {
 		digestCfgsMap[digestCfg.UID] = digestCfg
 	}

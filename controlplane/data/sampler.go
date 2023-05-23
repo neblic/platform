@@ -2,8 +2,10 @@ package data
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/neblic/platform/controlplane/protos"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 type StreamRuleLang int
@@ -66,7 +68,7 @@ func (sr StreamRule) ToProto() *protos.Stream_Rule {
 }
 
 type LimiterConfig struct {
-	Limit int64
+	Limit int32
 }
 
 func NewLimiterFromProto(sr *protos.Limiter) LimiterConfig {
@@ -173,16 +175,177 @@ func (s Stream) ToProto() *protos.Stream {
 	}
 }
 
-type StreamRuleUpdateOp int
+type StreamUpdateOp int
 
 const (
-	StreamRuleUpsert StreamRuleUpdateOp = iota + 1
-	StreamRuleDelete
+	StreamUpsert StreamUpdateOp = iota + 1
+	StreamDelete
 )
 
 type StreamUpdate struct {
-	Op     StreamRuleUpdateOp
+	Op     StreamUpdateOp
 	Stream Stream
+}
+
+func NewStreamUpdateFromProto(streamUpdate *protos.ClientStreamUpdate) StreamUpdate {
+	if streamUpdate == nil {
+		return StreamUpdate{}
+	}
+
+	var op StreamUpdateOp
+	switch streamUpdate.GetOp() {
+	case protos.ClientStreamUpdate_UPSERT:
+		op = StreamUpsert
+	case protos.ClientStreamUpdate_DELETE:
+		op = StreamDelete
+	}
+
+	return StreamUpdate{
+		Op:     op,
+		Stream: NewStreamFromProto(streamUpdate.GetStream()),
+	}
+}
+
+func (s *StreamUpdate) ToProto() *protos.ClientStreamUpdate {
+	protoOp := protos.ClientStreamUpdate_UNKNOWN
+	switch s.Op {
+	case StreamUpsert:
+		protoOp = protos.ClientStreamUpdate_UPSERT
+	case StreamDelete:
+		protoOp = protos.ClientStreamUpdate_DELETE
+	}
+
+	return &protos.ClientStreamUpdate{
+		Op:     protoOp,
+		Stream: s.Stream.ToProto(),
+	}
+}
+
+type DigestType uint8
+
+const (
+	DigestTypeUnknown DigestType = iota
+	DigestTypeSt
+)
+
+type SamplerDigestUID string
+
+type DigestSt struct {
+	MaxProcessedFields int
+}
+
+func NewDigestStFromProto(protoDigestSt *protos.Digest_St) DigestSt {
+	if protoDigestSt == nil {
+		return DigestSt{}
+	}
+
+	return DigestSt{
+		MaxProcessedFields: int(protoDigestSt.MaxProcessedFields),
+	}
+}
+
+func (d *DigestSt) ToProto() *protos.Digest_St {
+	return &protos.Digest_St{
+		MaxProcessedFields: int32(d.MaxProcessedFields),
+	}
+}
+
+type Digest struct {
+	UID         SamplerDigestUID
+	StreamUID   SamplerStreamUID
+	FlushPeriod time.Duration
+	BufferSize  int
+
+	// digest specific config
+	Type DigestType
+	St   DigestSt
+}
+
+func NewDigestFromProto(protoDigest *protos.Digest) Digest {
+	if protoDigest == nil {
+		return Digest{}
+	}
+
+	digest := Digest{
+		UID:         SamplerDigestUID(protoDigest.GetUid()),
+		StreamUID:   SamplerStreamUID(protoDigest.GetStreamUid()),
+		FlushPeriod: protoDigest.GetFlushPeriod().AsDuration(),
+		BufferSize:  int(protoDigest.GetBufferSizue()),
+	}
+
+	switch t := protoDigest.GetType().(type) {
+	case *protos.Digest_St_:
+		digest.Type = DigestTypeSt
+		digest.St = NewDigestStFromProto(t.St)
+	default:
+		digest.Type = DigestTypeUnknown
+	}
+
+	return digest
+}
+
+func (d *Digest) ToProto() *protos.Digest {
+	protoDigest := &protos.Digest{
+		Uid:         string(d.UID),
+		StreamUid:   string(d.StreamUID),
+		FlushPeriod: durationpb.New(d.FlushPeriod),
+		BufferSizue: int32(d.BufferSize),
+	}
+
+	switch d.Type {
+	case DigestTypeSt:
+		protoDigest.Type = &protos.Digest_St_{
+			St: d.St.ToProto(),
+		}
+	}
+
+	return protoDigest
+}
+
+type DigestUpdateOp int
+
+const (
+	DigestUpsert DigestUpdateOp = iota + 1
+	DigestDelete
+)
+
+type DigestUpdate struct {
+	Op     DigestUpdateOp
+	Digest Digest
+}
+
+func NewDigestUpdateFromProto(digestUpdate *protos.ClientDigestUpdate) DigestUpdate {
+	if digestUpdate == nil {
+		return DigestUpdate{}
+	}
+
+	var op DigestUpdateOp
+	switch digestUpdate.GetOp() {
+	case protos.ClientDigestUpdate_UPSERT:
+		op = DigestUpsert
+	case protos.ClientDigestUpdate_DELETE:
+		op = DigestDelete
+	}
+
+	return DigestUpdate{
+		Op:     op,
+		Digest: NewDigestFromProto(digestUpdate.GetDigest()),
+	}
+}
+
+func (s *DigestUpdate) ToProto() *protos.ClientDigestUpdate {
+	protoOp := protos.ClientDigestUpdate_UNKNOWN
+	switch s.Op {
+	case DigestUpsert:
+		protoOp = protos.ClientDigestUpdate_UPSERT
+	case DigestDelete:
+		protoOp = protos.ClientDigestUpdate_DELETE
+	}
+
+	return &protos.ClientDigestUpdate{
+		Op:     protoOp,
+		Digest: s.Digest.ToProto(),
+	}
 }
 
 type SamplerConfigUpdateReset struct {
@@ -190,6 +353,7 @@ type SamplerConfigUpdateReset struct {
 	SamplingIn bool
 	Streams    bool
 	LimiterOut bool
+	Digests    bool
 }
 
 func NewSamplerConfigUpdateResetFromProto(protoReset *protos.ClientSamplerConfigUpdate_Reset) SamplerConfigUpdateReset {
@@ -198,19 +362,21 @@ func NewSamplerConfigUpdateResetFromProto(protoReset *protos.ClientSamplerConfig
 	}
 
 	return SamplerConfigUpdateReset{
+		Streams:    protoReset.GetStreams(),
 		LimiterIn:  protoReset.GetLimiterIn(),
 		SamplingIn: protoReset.GetSamplingIn(),
-		Streams:    protoReset.GetStreams(),
 		LimiterOut: protoReset.GetLimiterOut(),
+		Digests:    protoReset.GetDigests(),
 	}
 }
 
 func (scr SamplerConfigUpdateReset) ToProto() *protos.ClientSamplerConfigUpdate_Reset {
 	return &protos.ClientSamplerConfigUpdate_Reset{
+		Streams:    scr.Streams,
 		LimiterIn:  scr.LimiterIn,
 		SamplingIn: scr.SamplingIn,
-		Streams:    scr.Streams,
 		LimiterOut: scr.LimiterOut,
+		Digests:    scr.Digests,
 	}
 }
 
@@ -221,10 +387,11 @@ type SamplerConfigUpdate struct {
 	Reset SamplerConfigUpdateReset
 
 	// All fields are optional. If a field is nil, it means that the field is not updated.
+	StreamUpdates []StreamUpdate
 	LimiterIn     *LimiterConfig
 	SamplingIn    *SamplingConfig
-	StreamUpdates []StreamUpdate
 	LimiterOut    *LimiterConfig
+	DigestUpdates []DigestUpdate
 }
 
 func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpdate) SamplerConfigUpdate {
@@ -245,25 +412,19 @@ func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpda
 	}
 
 	var streamUpdates []StreamUpdate
-	for _, rule := range protoUpdate.GetStreamUpdates() {
-		var op StreamRuleUpdateOp
-		switch rule.GetOp() {
-		case protos.ClientStreamUpdate_UPSERT:
-			op = StreamRuleUpsert
-		case protos.ClientStreamUpdate_DELETE:
-			op = StreamRuleDelete
-		}
-
-		streamUpdates = append(streamUpdates, StreamUpdate{
-			Op:     op,
-			Stream: NewStreamFromProto(rule.GetStream()),
-		})
+	for _, streamUpdate := range protoUpdate.GetStreamUpdates() {
+		streamUpdates = append(streamUpdates, NewStreamUpdateFromProto(streamUpdate))
 	}
 
 	var limiterOut *LimiterConfig
 	if protoUpdate.GetLimiterOut() != nil {
 		newSrOut := NewLimiterFromProto(protoUpdate.GetLimiterOut())
 		limiterOut = &newSrOut
+	}
+
+	var digestUpdates []DigestUpdate
+	for _, digestUpdate := range protoUpdate.GetDigestUpdates() {
+		digestUpdates = append(digestUpdates, NewDigestUpdateFromProto(digestUpdate))
 	}
 
 	return SamplerConfigUpdate{
@@ -273,6 +434,7 @@ func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpda
 		SamplingIn:    samplingConfigIn,
 		StreamUpdates: streamUpdates,
 		LimiterOut:    limiterOut,
+		DigestUpdates: digestUpdates,
 	}
 }
 
@@ -288,19 +450,8 @@ func (scu SamplerConfigUpdate) ToProto() *protos.ClientSamplerConfigUpdate {
 	}
 
 	var protoUpdateStreams []*protos.ClientStreamUpdate
-	for _, ruleUpdate := range scu.StreamUpdates {
-		protoOp := protos.ClientStreamUpdate_UNKNOWN
-		switch ruleUpdate.Op {
-		case StreamRuleUpsert:
-			protoOp = protos.ClientStreamUpdate_UPSERT
-		case StreamRuleDelete:
-			protoOp = protos.ClientStreamUpdate_DELETE
-		}
-
-		protoUpdateStreams = append(protoUpdateStreams, &protos.ClientStreamUpdate{
-			Op:     protoOp,
-			Stream: ruleUpdate.Stream.ToProto(),
-		})
+	for _, streamUpdate := range scu.StreamUpdates {
+		protoUpdateStreams = append(protoUpdateStreams, streamUpdate.ToProto())
 	}
 
 	var protoLimiterOut *protos.Limiter
@@ -308,13 +459,19 @@ func (scu SamplerConfigUpdate) ToProto() *protos.ClientSamplerConfigUpdate {
 		protoLimiterOut = scu.LimiterOut.ToProto()
 	}
 
+	var protoUpdateDigests []*protos.ClientDigestUpdate
+	for _, digestUpdate := range scu.DigestUpdates {
+		protoUpdateDigests = append(protoUpdateDigests, digestUpdate.ToProto())
+	}
+
 	return &protos.ClientSamplerConfigUpdate{
 		Reset_: scu.Reset.ToProto(),
 
+		StreamUpdates: protoUpdateStreams,
 		LimiterIn:     protoLimiterIn,
 		SamplingIn:    protoSamplingIn,
-		StreamUpdates: protoUpdateStreams,
 		LimiterOut:    protoLimiterOut,
+		DigestUpdates: protoUpdateDigests,
 	}
 }
 
@@ -328,11 +485,13 @@ type SamplerConfig struct {
 	LimiterIn  *LimiterConfig
 	SamplingIn *SamplingConfig
 	LimiterOut *LimiterConfig
+	Digests    map[SamplerDigestUID]Digest
 }
 
 func NewSamplerConfig() *SamplerConfig {
 	return &SamplerConfig{
 		Streams: make(map[SamplerStreamUID]Stream),
+		Digests: make(map[SamplerDigestUID]Digest),
 	}
 }
 
@@ -341,6 +500,14 @@ func NewSamplerConfigFromProto(config *protos.SamplerConfig) SamplerConfig {
 		return SamplerConfig{}
 	}
 
+	var streams map[SamplerStreamUID]Stream
+	if len(config.GetStreams()) > 0 {
+		streams = make(map[SamplerStreamUID]Stream)
+	}
+
+	for _, protoSR := range config.GetStreams() {
+		streams[SamplerStreamUID(protoSR.GetUid())] = NewStreamFromProto(protoSR)
+	}
 	var limiterIn *LimiterConfig
 	if config.LimiterIn != nil {
 		p := NewLimiterFromProto(config.GetLimiterIn())
@@ -353,30 +520,43 @@ func NewSamplerConfigFromProto(config *protos.SamplerConfig) SamplerConfig {
 		samplingIn = &p
 	}
 
-	streams := map[SamplerStreamUID]Stream{}
-	for _, protoSR := range config.GetStreams() {
-		streams[SamplerStreamUID(protoSR.GetUid())] = NewStreamFromProto(protoSR)
-	}
-
 	var limiterOut *LimiterConfig
 	if config.LimiterOut != nil {
 		p := NewLimiterFromProto(config.GetLimiterOut())
 		limiterOut = &p
 	}
 
+	var digests map[SamplerDigestUID]Digest
+	if len(config.GetDigests()) > 0 {
+		digests = make(map[SamplerDigestUID]Digest)
+	}
+	for _, protoDigest := range config.GetDigests() {
+		digests[SamplerDigestUID(protoDigest.GetUid())] = NewDigestFromProto(protoDigest)
+	}
+
 	return SamplerConfig{
+		Streams:    streams,
 		LimiterIn:  limiterIn,
 		SamplingIn: samplingIn,
-		Streams:    streams,
 		LimiterOut: limiterOut,
+		Digests:    digests,
 	}
 }
 
 func (pc SamplerConfig) IsEmpty() bool {
-	return pc.LimiterIn == nil && pc.SamplingIn == nil && len(pc.Streams) == 0 && pc.LimiterOut == nil
+	return (len(pc.Streams) == 0 &&
+		pc.LimiterIn == nil &&
+		pc.SamplingIn == nil &&
+		pc.LimiterOut == nil &&
+		len(pc.Digests) == 0)
 }
 
 func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
+	var protoStreams []*protos.Stream
+	for _, stream := range pc.Streams {
+		protoStreams = append(protoStreams, stream.ToProto())
+	}
+
 	var protoLimiterIn *protos.Limiter
 	if pc.LimiterIn != nil {
 		protoLimiterIn = pc.LimiterIn.ToProto()
@@ -387,21 +567,22 @@ func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
 		protoSamplingIn = pc.SamplingIn.ToProto()
 	}
 
-	var protoStream []*protos.Stream
-	for _, stream := range pc.Streams {
-		protoStream = append(protoStream, stream.ToProto())
-	}
-
 	var protoLimiterOut *protos.Limiter
 	if pc.LimiterOut != nil {
 		protoLimiterOut = pc.LimiterOut.ToProto()
 	}
 
+	var protoDigests []*protos.Digest
+	for _, digest := range pc.Digests {
+		protoDigests = append(protoDigests, digest.ToProto())
+	}
+
 	return &protos.SamplerConfig{
+		Streams:    protoStreams,
 		LimiterIn:  protoLimiterIn,
 		SamplingIn: protoSamplingIn,
-		Streams:    protoStream,
 		LimiterOut: protoLimiterOut,
+		Digests:    protoDigests,
 	}
 }
 

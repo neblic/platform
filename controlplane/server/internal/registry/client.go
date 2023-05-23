@@ -115,6 +115,21 @@ func (c *Client) UpdateSamplerConfig(uid data.SamplerUID, name, resource string,
 		updatedConfig = data.NewSamplerConfig()
 	}
 
+	// Streams
+	if update.Reset.Streams {
+		updatedConfig.Streams = make(map[data.SamplerStreamUID]data.Stream)
+	}
+	for _, rule := range update.StreamUpdates {
+		switch rule.Op {
+		case data.StreamUpsert:
+			updatedConfig.Streams[rule.Stream.UID] = rule.Stream
+		case data.StreamDelete:
+			delete(updatedConfig.Streams, rule.Stream.UID)
+		default:
+			c.logger.Error(fmt.Sprintf("received unkown sampling rule update operation: %d", rule.Op))
+		}
+	}
+
 	// LimiterIn
 	if update.Reset.LimiterIn {
 		updatedConfig.LimiterIn = nil
@@ -131,27 +146,27 @@ func (c *Client) UpdateSamplerConfig(uid data.SamplerUID, name, resource string,
 		updatedConfig.SamplingIn = update.SamplingIn
 	}
 
-	// Streams
-	if update.Reset.Streams {
-		updatedConfig.Streams = make(map[data.SamplerStreamUID]data.Stream)
-	}
-	for _, rule := range update.StreamUpdates {
-		switch rule.Op {
-		case data.StreamRuleUpsert:
-			updatedConfig.Streams[rule.Stream.UID] = rule.Stream
-		case data.StreamRuleDelete:
-			delete(updatedConfig.Streams, rule.Stream.UID)
-		default:
-			c.logger.Error(fmt.Sprintf("received unkown sampling rule update operation: %d", rule.Op))
-		}
-	}
-
 	// LimiterOut
 	if update.Reset.LimiterOut {
 		updatedConfig.LimiterOut = nil
 	}
 	if update.LimiterOut != nil {
 		updatedConfig.LimiterIn = update.LimiterOut
+	}
+
+	// Digests
+	if update.Reset.Digests {
+		updatedConfig.Digests = make(map[data.SamplerDigestUID]data.Digest)
+	}
+	for _, rule := range update.DigestUpdates {
+		switch rule.Op {
+		case data.DigestUpsert:
+			updatedConfig.Digests[rule.Digest.UID] = rule.Digest
+		case data.DigestDelete:
+			delete(updatedConfig.Digests, rule.Digest.UID)
+		default:
+			c.logger.Error(fmt.Sprintf("received unkown sampling rule update operation: %d", rule.Op))
+		}
 	}
 
 	if err := c.configs.Set(uid, name, resource, updatedConfig); err != nil {

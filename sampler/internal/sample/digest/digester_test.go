@@ -40,32 +40,32 @@ func (e *mockExporter) Close(context.Context) error {
 
 func TestBuildWorkers(t *testing.T) {
 	tcs := map[string]struct {
-		oldCfg, newCfg            DigestsConfig
-		expectedWorkersDigestUIDs []SamplerDigestUID
+		oldCfg, newCfg            []data.Digest
+		expectedWorkersDigestUIDs []data.SamplerDigestUID
 	}{
 		"New worker": {
-			oldCfg: DigestsConfig{},
-			newCfg: DigestsConfig{
-				{UID: "sample_digest_uid", Type: DigestTypeSt},
+			oldCfg: []data.Digest{},
+			newCfg: []data.Digest{
+				{UID: "sample_digest_uid", Type: data.DigestTypeSt},
 			},
-			expectedWorkersDigestUIDs: []SamplerDigestUID{"sample_digest_uid"},
+			expectedWorkersDigestUIDs: []data.SamplerDigestUID{"sample_digest_uid"},
 		},
 		"Delete worker": {
-			oldCfg: DigestsConfig{
-				{UID: "sample_digest_uid", Type: DigestTypeSt},
+			oldCfg: []data.Digest{
+				{UID: "sample_digest_uid", Type: data.DigestTypeSt},
 			},
-			newCfg:                    DigestsConfig{},
-			expectedWorkersDigestUIDs: []SamplerDigestUID{},
+			newCfg:                    []data.Digest{},
+			expectedWorkersDigestUIDs: []data.SamplerDigestUID{},
 		},
 		// TODO: actually check that the worker settings have been updated
 		"Update worker": {
-			oldCfg: DigestsConfig{
-				{UID: "sample_digest_uid", Type: DigestTypeSt, St: DigestStConfig{MaxProcessedFields: 10}},
+			oldCfg: []data.Digest{
+				{UID: "sample_digest_uid", Type: data.DigestTypeSt, St: data.DigestSt{MaxProcessedFields: 10}},
 			},
-			newCfg: DigestsConfig{
-				{UID: "sample_digest_uid", Type: DigestTypeSt, St: DigestStConfig{MaxProcessedFields: 20}},
+			newCfg: []data.Digest{
+				{UID: "sample_digest_uid", Type: data.DigestTypeSt, St: data.DigestSt{MaxProcessedFields: 20}},
 			},
-			expectedWorkersDigestUIDs: []SamplerDigestUID{"sample_digest_uid"},
+			expectedWorkersDigestUIDs: []data.SamplerDigestUID{"sample_digest_uid"},
 		},
 	}
 
@@ -83,7 +83,7 @@ func TestBuildWorkers(t *testing.T) {
 			d.SetDigestsConfig(tc.oldCfg)
 			d.SetDigestsConfig(tc.newCfg)
 
-			var gotWorkersDigestUIDs []SamplerDigestUID
+			var gotWorkersDigestUIDs []data.SamplerDigestUID
 			for workerDigestUID := range d.workers {
 				gotWorkersDigestUIDs = append(gotWorkersDigestUIDs, workerDigestUID)
 			}

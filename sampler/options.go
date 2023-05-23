@@ -103,7 +103,7 @@ func WithBearerAuth(token string) Option {
 
 // WithLimiterInLimit establishes the initial limiter in rate limit
 // in samples per second
-func WithLimiterInLimit(l int64) Option {
+func WithLimiterInLimit(l int32) Option {
 	return newFuncOption(func(o *options) {
 		o.limiterIn.Limit = l
 	})
@@ -125,7 +125,7 @@ func WithDeterministicSamplingIn(samplingRate int32) Option {
 
 // WithLimiterOutLimit establishes the initial limiter out rate limit
 // in samples per second
-func WithLimiterOutLimit(l int64) Option {
+func WithLimiterOutLimit(l int32) Option {
 	return newFuncOption(func(o *options) {
 		o.limiterOut.Limit = l
 	})
