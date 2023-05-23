@@ -3,6 +3,7 @@ option go_package = "github.com/neblic/platform/controlplane/protos";
 
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
 
 /** common **/
 
@@ -30,7 +31,7 @@ message Limiter {
   // limit determines the maximum number of exported samples per second.
   // -1 means no exported samples limit
   // 0 means no samples will be exported
-  int64 limit = 1;
+  int32 limit = 1;
 }
 
 message Stream {
@@ -45,6 +46,21 @@ message Stream {
 
   string uid = 1;
   Rule rule = 2;
+}
+
+message Digest {
+  message St {
+    int32 max_processed_fields = 1;
+  }
+
+  string uid = 1;
+  string stream_uid = 2;
+  google.protobuf.Duration flush_period = 3;
+  int32 buffer_sizue = 4;
+
+  oneof Type {
+    St st = 5;
+  }
 }
 
 // Used to get and update the sampler configuration.
@@ -79,6 +95,8 @@ message SamplerConfig {
   // sampler. It protects the application from overloading the network due to
   // the sampler exporting a large amount of samples.
   Limiter limiter_out = 4;
+  // Configure the sampler digests.
+  repeated Digest digests = 5;
 }
 
 message SamplerSamplingStats {
@@ -233,6 +251,17 @@ message ClientStreamUpdate {
   Stream stream = 2;
 }
 
+message ClientDigestUpdate {
+  enum Op {
+    UNKNOWN = 0;
+    UPSERT = 1;
+    DELETE = 2;
+  }
+
+  Op op = 1;
+  Digest digest = 2;
+}
+
 message ClientSamplerConfigUpdate {
   // If a field is set to true, it means that the field is reset to its default.
   // If a configuration option is reset and set in the same request, it will be
@@ -242,6 +271,7 @@ message ClientSamplerConfigUpdate {
     bool limiter_in = 2;
     bool sampling_in = 3;
     bool limiter_out = 4;
+    bool digests = 5;
   }
   Reset reset = 1;
 
@@ -251,6 +281,7 @@ message ClientSamplerConfigUpdate {
   Limiter limiter_in = 3;
   Sampling sampling_in = 4;
   Limiter limiter_out = 5;
+  repeated ClientDigestUpdate digest_updates = 6;
 }
 
 message ClientSamplerConfReq {
