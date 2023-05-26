@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/neblic/platform/cmd/neblictl/internal"
@@ -38,7 +38,7 @@ func NewExecutors(controlPlaneClient *Client) *Executors {
 	}
 }
 
-func (e *Executors) ListResources(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) ResourcesList(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get all samplers
 	samplers, err := e.controlPlaneClient.getAllSamplers(ctx, false)
 
@@ -68,22 +68,21 @@ func (e *Executors) ListResources(ctx context.Context, parameters interpoler.Par
 	return nil
 }
 
-func (e *Executors) ListSamplers(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	samplerParameter, _ := parameters.Get("sampler")
-	resourceParameter, _ := parameters.Get("resource")
+func (e *Executors) SamplersList(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	samplerParameter, _ := parameters.Get("sampler-name")
+	resourceParameter, _ := parameters.Get("resource-name")
 
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
 		return err
 	}
 
-	header := []string{"Resource", "Sampler", "Samples Evaluated", "Samples Exported"}
+	header := []string{"Resource", "Sampler", "Stats"}
 	rows := [][]string{}
 	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
 		rows = append(rows, []string{resourceAndSamplerEntry.resource,
 			resourceAndSamplerEntry.sampler,
-			strconv.FormatUint(samplerData.SamplingStats.SamplesEvaluated, 10),
-			strconv.FormatUint(samplerData.SamplingStats.SamplesExported, 10),
+			samplerData.SamplingStats.CLIInfo(),
 		})
 	}
 
@@ -104,9 +103,9 @@ func (e *Executors) ListSamplers(ctx context.Context, parameters interpoler.Para
 	return nil
 }
 
-func (e *Executors) ConfigListSamplers(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	samplerParameter, _ := parameters.Get("sampler")
-	resourceParameter, _ := parameters.Get("resource")
+func (e *Executors) SamplersListConfig(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	samplerParameter, _ := parameters.Get("sampler-name")
+	resourceParameter, _ := parameters.Get("resource-name")
 
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
@@ -123,7 +122,7 @@ func (e *Executors) ConfigListSamplers(ctx context.Context, parameters interpole
 
 		samplingIn := "default"
 		if samplerData.Config.SamplingIn != nil {
-			samplingIn = fmt.Sprintf("%s", samplerData.Config.SamplingIn)
+			samplingIn = fmt.Sprintf("%s", samplerData.Config.SamplingIn.CLIInfo())
 		}
 
 		limiterOut := "default"
@@ -156,20 +155,20 @@ func (e *Executors) ConfigListSamplers(ctx context.Context, parameters interpole
 	return nil
 }
 
-func (e *Executors) ListStreams(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) StreamsList(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
-	samplerParameter, _ := parameters.Get("sampler")
-	resourceParameter, _ := parameters.Get("resource")
+	samplerParameter, _ := parameters.Get("sampler-name")
+	resourceParameter, _ := parameters.Get("resource-name")
 
 	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 
 	// Build table rows
-	header := []string{"Resource", "Sampler", "Stream UID", "Stream Rule"}
+	header := []string{"Resource", "Sampler", "Stream"}
 	rows := [][]string{}
 	for _, samplerData := range resourceAndSamplers {
 		for _, stream := range samplerData.Config.Streams {
-			rows = append(rows, []string{samplerData.Resource, samplerData.Name, string(stream.UID), stream.StreamRule.Rule})
+			rows = append(rows, []string{samplerData.Resource, samplerData.Name, stream.CLIInfo()})
 		}
 	}
 
@@ -192,11 +191,11 @@ func (e *Executors) ListStreams(ctx context.Context, parameters interpoler.Param
 	return nil
 }
 
-func (e *Executors) CreateStreams(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	resourceParameter, _ := parameters.Get("resource")
-	samplerParameter, _ := parameters.Get("sampler")
+func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	resourceParameter, _ := parameters.Get("resource-name")
+	samplerParameter, _ := parameters.Get("sampler-name")
 	streamRuleParameter, _ := parameters.Get("rule")
-	streamUIDParameter, streamUIDParameterSet := parameters.Get("uid") // optional
+	streamUIDParameter, streamUIDParameterSet := parameters.Get("stream-uid") // optional
 
 	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
@@ -255,10 +254,10 @@ func (e *Executors) CreateStreams(ctx context.Context, parameters interpoler.Par
 	return nil
 }
 
-func (e *Executors) UpdateStreams(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	resourceParameter, _ := parameters.Get("resource")
-	samplerParameter, _ := parameters.Get("sampler")
-	streamUIDParameter, _ := parameters.Get("uid")
+func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	resourceParameter, _ := parameters.Get("resource-name")
+	samplerParameter, _ := parameters.Get("sampler-name")
+	streamUIDParameter, _ := parameters.Get("stream-uid")
 	updatedRuleParameter, _ := parameters.Get("updated-rule")
 
 	// Compute list of targeted resources and samplers
@@ -313,11 +312,11 @@ func (e *Executors) UpdateStreams(ctx context.Context, parameters interpoler.Par
 	return nil
 }
 
-func (e *Executors) DeleteStreams(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) StreamsDelete(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	// Get options
-	resourceParameter, _ := parameters.Get("resource")
-	samplerParameter, _ := parameters.Get("sampler")
-	streamUIDParameter, _ := parameters.Get("uid")
+	resourceParameter, _ := parameters.Get("resource-name")
+	samplerParameter, _ := parameters.Get("sampler-name")
+	streamUIDParameter, _ := parameters.Get("stream-uid")
 
 	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
@@ -369,8 +368,8 @@ func (e *Executors) DeleteStreams(ctx context.Context, parameters interpoler.Par
 }
 
 func (e *Executors) setMultipleSamplersConfig(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer, update *data.SamplerConfigUpdate) error {
-	samplerParameter, _ := parameters.Get("sampler")
-	resourceParameter, _ := parameters.Get("resource")
+	samplerParameter, _ := parameters.Get("sampler-name")
+	resourceParameter, _ := parameters.Get("resource-name")
 
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
@@ -389,7 +388,7 @@ func (e *Executors) setMultipleSamplersConfig(ctx context.Context, parameters in
 	return nil
 }
 
-func (e *Executors) SamplerLimiterInSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) SamplersLimiterInSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	limitParameter, _ := parameters.Get("limit")
 	limitInt32, err := limitParameter.AsInt32()
 	if err != nil {
@@ -405,7 +404,7 @@ func (e *Executors) SamplerLimiterInSet(ctx context.Context, parameters interpol
 	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
 }
 
-func (e *Executors) SamplerLimiterInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) SamplersLimiterInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	update := &data.SamplerConfigUpdate{
 		Reset: data.SamplerConfigUpdateReset{
 			LimiterIn: true,
@@ -415,7 +414,7 @@ func (e *Executors) SamplerLimiterInUnset(ctx context.Context, parameters interp
 	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
 }
 
-func (e *Executors) SamplerLimiterOutSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) SamplersLimiterOutSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	limitParameter, _ := parameters.Get("limit")
 	limitInt32, err := limitParameter.AsInt32()
 	if err != nil {
@@ -431,7 +430,7 @@ func (e *Executors) SamplerLimiterOutSet(ctx context.Context, parameters interpo
 	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
 }
 
-func (e *Executors) SamplerLimiterOutUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) SamplersLimiterOutUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	update := &data.SamplerConfigUpdate{
 		Reset: data.SamplerConfigUpdateReset{
 			LimiterOut: true,
@@ -441,7 +440,7 @@ func (e *Executors) SamplerLimiterOutUnset(ctx context.Context, parameters inter
 	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
 }
 
-func (e *Executors) SamplerSamplerInSetDeterministic(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) SamplersSamplerInSetDeterministic(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	sampleRateParameter, _ := parameters.Get("sample_rate")
 	sampleRateInt32, err := sampleRateParameter.AsInt32()
 	if err != nil {
@@ -467,10 +466,148 @@ func (e *Executors) SamplerSamplerInSetDeterministic(ctx context.Context, parame
 	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
 }
 
-func (e *Executors) SamplerSamplerInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+func (e *Executors) SamplersSamplerInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	update := &data.SamplerConfigUpdate{
 		Reset: data.SamplerConfigUpdateReset{
 			SamplingIn: true,
+		},
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+}
+
+func (e *Executors) DigestsList(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	samplerParameter, _ := parameters.Get("sampler-name")
+	resourceParameter, _ := parameters.Get("resource-name")
+
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
+	if err != nil {
+		return err
+	}
+	header := []string{"Resource", "Sampler", "Digest"}
+	rows := [][]string{}
+
+	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
+		for _, stream := range samplerData.Config.Streams {
+			for _, digest := range samplerData.Config.Digests {
+				if stream.UID == digest.StreamUID {
+					rows = append(rows, []string{
+						resourceAndSamplerEntry.resource,
+						resourceAndSamplerEntry.sampler,
+						digest.CLIInfo(),
+					})
+				}
+			}
+		}
+	}
+
+	// Sort rows first by resource and then by sampler.
+	slices.SortStableFunc(rows, func(a []string, b []string) bool {
+		if a[0] != b[0] {
+			return a[0] < b[0]
+		} else {
+			return a[1] < b[1]
+		}
+	})
+
+	// Write table
+	writeTable(header, rows, []int{0, 1}, writer)
+
+	if err != nil && errors.Is(err, context.Canceled) {
+		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
+	}
+
+	return nil
+}
+
+func (e *Executors) DigestsStructureCreate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	digestUID := uuid.NewString()
+	digestUIDParameter, digestUIDParameterOk := parameters.Get("digest-uid")
+	if digestUIDParameterOk {
+		digestUID = digestUIDParameter.Value
+	}
+
+	streamUIDParameter, _ := parameters.Get("stream-uid")
+
+	flushPeriodParameter, _ := parameters.Get("flush-period")
+	flushPeriodInt32, err := flushPeriodParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("flush-period must be an integer")
+	}
+
+	maxProcessedFieldsParameter, _ := parameters.Get("max-processed-fields")
+	maxProcessedFieldsInt32, err := maxProcessedFieldsParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("flush-period must be an integer")
+	}
+
+	update := &data.SamplerConfigUpdate{
+		DigestUpdates: []data.DigestUpdate{
+			{
+				Op: data.DigestUpsert,
+				Digest: data.Digest{
+					UID:         data.SamplerDigestUID(digestUID),
+					StreamUID:   data.SamplerStreamUID(streamUIDParameter.Value),
+					FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
+					Type:        data.DigestTypeSt,
+					St: data.DigestSt{
+						MaxProcessedFields: int(maxProcessedFieldsInt32),
+					},
+				},
+			},
+		},
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+}
+
+func (e *Executors) DigestsStructureUpdate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	digestUIDParameter, _ := parameters.Get("digest-uid")
+	streamUIDParameter, _ := parameters.Get("stream-uid")
+
+	flushPeriodParameter, _ := parameters.Get("flush-period")
+	flushPeriodInt32, err := flushPeriodParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("flush-period must be an integer")
+	}
+
+	maxProcessedFieldsParameter, _ := parameters.Get("max-processed-fields")
+	maxProcessedFieldsInt32, err := maxProcessedFieldsParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("flush-period must be an integer")
+	}
+
+	update := &data.SamplerConfigUpdate{
+		DigestUpdates: []data.DigestUpdate{
+			{
+				Op: data.DigestUpsert,
+				Digest: data.Digest{
+					UID:         data.SamplerDigestUID(digestUIDParameter.Value),
+					StreamUID:   data.SamplerStreamUID(streamUIDParameter.Value),
+					FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
+					Type:        data.DigestTypeSt,
+					St: data.DigestSt{
+						MaxProcessedFields: int(maxProcessedFieldsInt32),
+					},
+				},
+			},
+		},
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+}
+
+func (e *Executors) DigestsStructureDelete(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	digestUIDParameter, _ := parameters.Get("uid")
+
+	update := &data.SamplerConfigUpdate{
+		DigestUpdates: []data.DigestUpdate{
+			{
+				Op: data.DigestDelete,
+				Digest: data.Digest{
+					UID: data.SamplerDigestUID(digestUIDParameter.Value),
+				},
+			},
 		},
 	}
 
