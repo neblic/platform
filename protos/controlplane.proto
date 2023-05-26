@@ -46,6 +46,7 @@ message Stream {
 
   string uid = 1;
   Rule rule = 2;
+  bool export_raw_samples = 3;
 }
 
 message Digest {
