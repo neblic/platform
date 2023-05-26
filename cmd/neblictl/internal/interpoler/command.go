@@ -52,7 +52,6 @@ type Parameter struct {
 	Completer   CompleterFunc
 	Optional    bool
 	Default     string
-	DoNotFilter bool
 }
 
 type CommandNodes []*CommandNode

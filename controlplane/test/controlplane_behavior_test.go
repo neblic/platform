@@ -120,7 +120,7 @@ var _ = Describe("ControlPlane", func() {
 
 		Describe("When client connects to a TLS enabled server", func() {
 			It("should register with server automatically", func() {
-				c := client.New(uuid.New().CLIInfo(),
+				c := client.New(uuid.New().String(),
 					client.WithTLS(),
 					client.WithTLSCACert("./assets/localhost.crt"),
 					client.WithLogger(logger))
@@ -185,7 +185,7 @@ var _ = Describe("ControlPlane", func() {
 
 		Describe("When client connects to a TLS enabled server with bearer auth", func() {
 			It("should register with server automatically", func() {
-				c := client.New(uuid.New().CLIInfo(),
+				c := client.New(uuid.New().String(),
 					client.WithTLS(),
 					client.WithTLSCACert("./assets/localhost.crt"),
 					client.WithLogger(logger),
@@ -251,7 +251,7 @@ var _ = Describe("ControlPlane", func() {
 			// 1. Client registration
 			Describe("When client connects", func() {
 				It("should register with server automatically", func() {
-					c := client.New(uuid.New().CLIInfo(), client.WithLogger(logger))
+					c := client.New(uuid.New().String(), client.WithLogger(logger))
 					registered := waitClientRegistered(c)
 
 					err := c.Connect(s.Addr().String())
@@ -285,7 +285,7 @@ var _ = Describe("ControlPlane", func() {
 			// 1. sampler configuration
 			Describe("When client sends a configuration by sampler name", func() {
 				It("should be forwarded to the sampler", func() {
-					c := client.New(uuid.New().CLIInfo(), client.WithLogger(logger))
+					c := client.New(uuid.New().String(), client.WithLogger(logger))
 					clientRegistered := waitClientRegistered(c)
 					err := c.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
@@ -335,7 +335,7 @@ var _ = Describe("ControlPlane", func() {
 			})
 			Describe("When client sends a configuration by sampler id", func() {
 				It("should be forwarded to the sampler", func() {
-					c := client.New(uuid.New().CLIInfo(), client.WithLogger(logger))
+					c := client.New(uuid.New().String(), client.WithLogger(logger))
 					clientRegistered := waitClientRegistered(c)
 					err := c.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
@@ -388,7 +388,7 @@ var _ = Describe("ControlPlane", func() {
 			// 2. List Samplers
 			Describe("When client lists samplers", func() {
 				It("should receive all registered samplers", func() {
-					c := client.New(uuid.New().CLIInfo(), client.WithLogger(logger))
+					c := client.New(uuid.New().String(), client.WithLogger(logger))
 					clientRegistered := waitClientRegistered(c)
 					err := c.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
@@ -421,7 +421,7 @@ var _ = Describe("ControlPlane", func() {
 			// 3. Configuration recovery
 			Describe("When sampler reconnects", func() {
 				It("should recover the previous configuration", func() {
-					c := client.New(uuid.New().CLIInfo(), client.WithLogger(logger))
+					c := client.New(uuid.New().String(), client.WithLogger(logger))
 					clientRegistered := waitClientRegistered(c)
 					err := c.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())

@@ -18,24 +18,25 @@ func NewCompleters(controlPlaneClient *Client) *Completers {
 	}
 }
 
-func (c *Completers) ListResources(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
-	resourceParameter, _ := parameters.Get("resource")
-	samplerParameter, _ := parameters.Get("sampler")
-	streamUIDParameter, streamUIDParameterOk := parameters.Get("uid")
+// TODO: Generic sampler filter based on supplied parameters
+func (c *Completers) ListResourcesUID(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
+	samplerParameter, _ := parameters.Get("sampler-name")
+	streamUIDParameter, streamUIDParameterOk := parameters.Get("stream-uid")
 
-	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, true)
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, "*", samplerParameter.Value, true)
 
 	// Store resources in a map to remove duplicates
 	resourcesMap := map[string]bool{"*": true}
 	for _, sampler := range samplers {
-		if !streamUIDParameterOk || streamUIDParameter.DoNotFilter {
-			resourcesMap[sampler.Resource] = true
-		} else {
+		if streamUIDParameterOk {
 			for _, stream := range sampler.Config.Streams {
-				if streamUIDParameterOk && stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
+				if streamUIDParameterOk &&
+					stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
 					resourcesMap[sampler.Resource] = true
 				}
 			}
+		} else {
+			resourcesMap[sampler.Resource] = true
 		}
 	}
 
@@ -49,26 +50,25 @@ func (c *Completers) ListResources(ctx context.Context, parameters interpoler.Pa
 	return resources
 }
 
-// ListSamplers lists all the available samplers. If a resource parameter is provided, it will just
+// ListSamplersUID lists all the available samplers. If a resource parameter is provided, it will just
 // return the samplers that are part of the resource
-func (c *Completers) ListSamplers(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
-	resourceParameter, _ := parameters.Get("resource")
-	samplerParameter, _ := parameters.Get("sampler")
-	streamUIDParameter, streamUIDParameterOk := parameters.Get("uid")
+func (c *Completers) ListSamplersUID(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
+	resourceParameter, _ := parameters.Get("resource-name")
+	streamUIDParameter, streamUIDParameterOk := parameters.Get("stream-uid")
 
-	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, true)
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, "*", true)
 
 	// Store resources in a map to remove duplicates
 	samplersMap := map[string]bool{"*": true}
 	for _, sampler := range samplers {
-		if !streamUIDParameterOk || streamUIDParameter.DoNotFilter {
-			samplersMap[sampler.Name] = true
-		} else {
+		if streamUIDParameterOk {
 			for _, stream := range sampler.Config.Streams {
-				if streamUIDParameterOk && stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
+				if stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
 					samplersMap[sampler.Name] = true
 				}
 			}
+		} else {
+			samplersMap[sampler.Name] = true
 		}
 	}
 
@@ -83,9 +83,9 @@ func (c *Completers) ListSamplers(ctx context.Context, parameters interpoler.Par
 }
 
 func (c *Completers) ListStreamsUID(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
-	resourceParameter, _ := parameters.Get("resource")
-	samplerParameter, _ := parameters.Get("sampler")
-	streamUIDParameter, streamUIDParameterOk := parameters.Get("uid")
+	resourceParameter, _ := parameters.Get("resource-name")
+	samplerParameter, _ := parameters.Get("sampler-name")
+	digestUIDParameter, digestUIDParameterOk := parameters.Get("digest-uid")
 
 	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, true)
 	if len(samplers) == 0 {
@@ -95,11 +95,18 @@ func (c *Completers) ListStreamsUID(ctx context.Context, parameters interpoler.P
 	uidsSet := map[string]struct{}{}
 	for _, sampler := range samplers {
 		for _, stream := range sampler.Config.Streams {
-			if !streamUIDParameterOk || streamUIDParameter.DoNotFilter || (streamUIDParameterOk && stream.UID == data.SamplerStreamUID(streamUIDParameter.Value)) {
+			if digestUIDParameterOk {
+				for _, digest := range sampler.Config.Digests {
+					if digest.UID == data.SamplerDigestUID(digestUIDParameter.Value) {
+						uidsSet[string(stream.UID)] = struct{}{}
+					}
+				}
+			} else {
 				uidsSet[string(stream.UID)] = struct{}{}
 			}
 		}
 	}
+
 	var uids []string
 	for uid := range uidsSet {
 		uids = append(uids, uid)
@@ -108,4 +115,32 @@ func (c *Completers) ListStreamsUID(ctx context.Context, parameters interpoler.P
 
 	// Construct output
 	return uids
+}
+
+func (c *Completers) ListDigestsUID(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
+	resourceParameter, _ := parameters.Get("resource-name")
+	samplerParameter, _ := parameters.Get("sampler-name")
+	streamUIDParameter, streamUIDParameterOk := parameters.Get("stream-uid")
+
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, true)
+
+	// Store resources in a map to remove duplicates
+	digestsUIDMap := make(map[string]bool)
+	for _, sampler := range samplers {
+		for _, digest := range sampler.Config.Digests {
+			for _, stream := range sampler.Config.Streams {
+				if streamUIDParameterOk && stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
+					digestsUIDMap[string(digest.UID)] = true
+				}
+			}
+		}
+	}
+
+	digestsUID := []string{}
+	for resoure := range digestsUIDMap {
+		digestsUID = append(digestsUID, resoure)
+	}
+	sort.Strings(digestsUID)
+
+	return digestsUID
 }
