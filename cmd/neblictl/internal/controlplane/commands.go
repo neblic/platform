@@ -294,6 +294,15 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Optional:    true,
 						Default:     "*",
 					},
+					{
+						Name:        "export-raw",
+						Description: "Export raw samples",
+						Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
+							return []string{"true", "false"}
+						},
+						Optional: true,
+						Default:  "false",
+					},
 				},
 				Executor: controlPlaneExecutors.StreamsCreate,
 			},
@@ -324,6 +333,15 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Completer:   controlPlaneCompleters.ListSamplersUID,
 						Optional:    true,
 						Default:     "*",
+					},
+					{
+						Name:        "export-raw",
+						Description: "Export raw samples",
+						Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
+							return []string{"true", "false"}
+						},
+						Optional: true,
+						Default:  "false",
 					},
 				},
 				Executor: controlPlaneExecutors.StreamsUpdate,
