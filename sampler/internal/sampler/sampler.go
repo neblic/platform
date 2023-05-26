@@ -11,6 +11,7 @@ import (
 	"github.com/neblic/platform/sampler/defs"
 	"github.com/neblic/platform/sampler/internal/rule"
 	"github.com/neblic/platform/sampler/internal/sample"
+	"github.com/neblic/platform/sampler/internal/sample/digest"
 	"github.com/neblic/platform/sampler/internal/sample/exporter"
 	"github.com/neblic/platform/sampler/internal/sample/sampling"
 	"golang.org/x/time/rate"
@@ -19,21 +20,22 @@ import (
 var _ defs.Sampler = (*Sampler)(nil)
 
 type Sampler struct {
-	name         string
-	resourceName string
+	name          string
+	resourceName  string
+	samplingStats data.SamplerSamplingStats
 
+	streams    map[data.SamplerStreamUID]*rule.Rule
 	limiterIn  *rate.Limiter
 	samplerIn  sampling.Sampler
-	streams    map[data.SamplerStreamUID]*rule.Rule
 	limiterOut *rate.Limiter
 
 	controlPlaneClient *csampler.Sampler
+	digester           *digest.Digester
 	exporter           exporter.Exporter
 	ruleBuilder        *rule.Builder
-	samplingStats      data.SamplerSamplingStats
 
-	errFwrder chan error
-	logger    logging.Logger
+	forwardError func(error)
+	logger       logging.Logger
 }
 
 func New(
@@ -73,21 +75,39 @@ func New(
 		samplerIn = deterministicSampler
 	}
 
+	forwardError := func(err error) {
+		if settings.ErrFwrder != nil {
+			select {
+			case settings.ErrFwrder <- err:
+			default:
+			}
+		}
+	}
+
+	digesterSettings := digest.Settings{
+		ResourceName: settings.Resource,
+		SamplerName:  settings.Name,
+		NotifyErr:    forwardError,
+		Exporter:     settings.Exporter,
+	}
+	digester := digest.NewDigester(digesterSettings)
+
 	p := &Sampler{
 		name:         settings.Name,
 		resourceName: settings.Resource,
 
-		ruleBuilder: ruleBuilder,
-		streams:     make(map[data.SamplerStreamUID]*rule.Rule),
+		streams:    make(map[data.SamplerStreamUID]*rule.Rule),
+		limiterIn:  rate.NewLimiter(rate.Limit(settings.LimiterIn.Limit), int(settings.LimiterIn.Limit)),
+		samplerIn:  samplerIn,
+		limiterOut: rate.NewLimiter(rate.Limit(settings.LimiterOut.Limit), int(settings.LimiterOut.Limit)),
 
 		controlPlaneClient: controlPlaneClient,
-		limiterIn:          rate.NewLimiter(rate.Limit(settings.LimiterIn.Limit), int(settings.LimiterIn.Limit)),
-		samplerIn:          samplerIn,
+		digester:           digester,
 		exporter:           settings.Exporter,
-		limiterOut:         rate.NewLimiter(rate.Limit(settings.LimiterOut.Limit), int(settings.LimiterOut.Limit)),
+		ruleBuilder:        ruleBuilder,
 
-		errFwrder: settings.ErrFwrder,
-		logger:    logger.With("sampler_name", settings.Name, "sampler_uid", controlPlaneClient.UID()),
+		forwardError: forwardError,
+		logger:       logger.With("sampler_name", settings.Name, "sampler_uid", controlPlaneClient.UID()),
 	}
 
 	go p.listenControlEvents()
@@ -176,7 +196,9 @@ func (p *Sampler) updateConfig(config data.SamplerConfig) {
 		p.limiterOut = rate.NewLimiter(limit, int(config.LimiterOut.Limit))
 	}
 
-	// TODO: configure digesters
+	if config.Digests != nil {
+		p.digester.SetDigestsConfig(config.Digests)
+	}
 }
 
 func (p *Sampler) buildSamplingRule(streamRule data.StreamRule) (*rule.Rule, error) {
@@ -193,7 +215,7 @@ func (p *Sampler) buildSamplingRule(streamRule data.StreamRule) (*rule.Rule, err
 	}
 }
 
-func (p *Sampler) buildSample(sampleData *sample.Data, streams []data.SamplerStreamUID) (exporter.SamplerSamples, error) {
+func (p *Sampler) buildRawSample(streams []data.SamplerStreamUID, sampleData *sample.Data) (exporter.SamplerSamples, error) {
 	dataJSON, err := sampleData.JSON()
 	if err != nil {
 		return exporter.SamplerSamples{}, fmt.Errorf("couldn't get sampler body: %w", err)
@@ -210,6 +232,21 @@ func (p *Sampler) buildSample(sampleData *sample.Data, streams []data.SamplerStr
 			Data:     []byte(dataJSON),
 		}},
 	}, nil
+}
+
+func (p *Sampler) exportRawSample(ctx context.Context, streams []data.SamplerStreamUID, sampleData *sample.Data) error {
+	resourceSample, err := p.buildRawSample(streams, sampleData)
+	if err != nil {
+		return err
+	}
+
+	if err := p.exporter.Export(ctx, []exporter.SamplerSamples{resourceSample}); err != nil {
+		return fmt.Errorf("failure to export samples: %w", err)
+	}
+
+	p.samplingStats.SamplesExported++
+
+	return nil
 }
 
 func (p *Sampler) sample(ctx context.Context, sampleData *sample.Data, determinant string) (bool, error) {
@@ -243,34 +280,19 @@ func (p *Sampler) sample(ctx context.Context, sampleData *sample.Data, determina
 			return false, nil
 		}
 
-		// TODO: hand over sample to digester
-		// * it will handle what digests generate and when to export them, asynchronously
+		// forward sample to digester
+		p.digester.ProcessSample(streams, sampleData)
 
-		// TODO: make sure the exporter follows a similar async handling logic of samples as the digester
-		resourceSample, err := p.buildSample(sampleData, streams)
+		// export raw sample
+		err := p.exportRawSample(ctx, streams, sampleData)
 		if err != nil {
 			return false, err
 		}
-
-		if err := p.exporter.Export(ctx, []exporter.SamplerSamples{resourceSample}); err != nil {
-			return false, fmt.Errorf("failure to export samples: %w", err)
-		}
-
-		p.samplingStats.SamplesExported++
 
 		return true, nil
 	}
 
 	return false, nil
-}
-
-func (p *Sampler) forwardError(err error) {
-	if p.errFwrder != nil {
-		select {
-		case p.errFwrder <- err:
-		default:
-		}
-	}
 }
 
 func (p *Sampler) Sample(ctx context.Context, smpl defs.Sample) bool {

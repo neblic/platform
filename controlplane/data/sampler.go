@@ -49,6 +49,11 @@ type StreamRule struct {
 	Rule string
 }
 
+func (s StreamRule) String() string {
+	// Lang intentionally not shown since it is implicit it is always a CEL type for now
+	return fmt.Sprintf("%s", s.Rule)
+}
+
 func NewStreamRuleFromProto(sr *protos.Stream_Rule) StreamRule {
 	if sr == nil {
 		return StreamRule{}
@@ -104,10 +109,10 @@ type SamplingConfig struct {
 	DeterministicSampling DeterministicSamplingConfig
 }
 
-func (sc SamplingConfig) String() string {
+func (sc SamplingConfig) CLIInfo() string {
 	switch sc.SamplingType {
 	case DeterministicSamplingType:
-		return fmt.Sprintf("DeterministicSampling(SampleRate: %d, SampleEmptyDeterminant: %t)", sc.DeterministicSampling.SampleRate, sc.DeterministicSampling.SampleEmptyDeterminant)
+		return fmt.Sprintf("Type: Deterministic, SampleRate: %d, SampleEmptyDeterminant: %t", sc.DeterministicSampling.SampleRate, sc.DeterministicSampling.SampleEmptyDeterminant)
 	default:
 		return "Unknown"
 	}
@@ -155,6 +160,10 @@ type SamplerStreamUID string
 type Stream struct {
 	UID        SamplerStreamUID
 	StreamRule StreamRule
+}
+
+func (s Stream) CLIInfo() string {
+	return fmt.Sprintf("UID: %s, Rule: %s", s.UID, s.StreamRule)
 }
 
 func NewStreamFromProto(s *protos.Stream) Stream {
@@ -234,6 +243,10 @@ type DigestSt struct {
 	MaxProcessedFields int
 }
 
+func (ds DigestSt) CLIInfo() string {
+	return fmt.Sprintf("MaxProcessedFields: %d", ds.MaxProcessedFields)
+}
+
 func NewDigestStFromProto(protoDigestSt *protos.Digest_St) DigestSt {
 	if protoDigestSt == nil {
 		return DigestSt{}
@@ -261,6 +274,20 @@ type Digest struct {
 	St   DigestSt
 }
 
+func (d Digest) CLIInfo() string {
+	var t string
+	switch d.Type {
+	case DigestTypeSt:
+		t = fmt.Sprintf("Type: Structure, %s", d.St.CLIInfo())
+	default:
+		t = "Type: Unknown"
+	}
+
+	// flush period intentionally not shown given that for now, it is an internal configuration that will configured
+	// with a default value by the server
+	return fmt.Sprintf("UID: %s, StreamUID: %s, FlushPeriod: %s, %s", d.UID, d.StreamUID, d.FlushPeriod, t)
+}
+
 func NewDigestFromProto(protoDigest *protos.Digest) Digest {
 	if protoDigest == nil {
 		return Digest{}
@@ -270,7 +297,7 @@ func NewDigestFromProto(protoDigest *protos.Digest) Digest {
 		UID:         SamplerDigestUID(protoDigest.GetUid()),
 		StreamUID:   SamplerStreamUID(protoDigest.GetStreamUid()),
 		FlushPeriod: protoDigest.GetFlushPeriod().AsDuration(),
-		BufferSize:  int(protoDigest.GetBufferSizue()),
+		BufferSize:  int(protoDigest.GetBufferSize()),
 	}
 
 	switch t := protoDigest.GetType().(type) {
@@ -289,7 +316,7 @@ func (d *Digest) ToProto() *protos.Digest {
 		Uid:         string(d.UID),
 		StreamUid:   string(d.StreamUID),
 		FlushPeriod: durationpb.New(d.FlushPeriod),
-		BufferSizue: int32(d.BufferSize),
+		BufferSize:  int32(d.BufferSize),
 	}
 
 	switch d.Type {
@@ -589,6 +616,10 @@ func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
 type SamplerSamplingStats struct {
 	SamplesEvaluated uint64
 	SamplesExported  uint64
+}
+
+func (s SamplerSamplingStats) CLIInfo() string {
+	return fmt.Sprintf("Evaluated: %d, Exported: %d", s.SamplesEvaluated, s.SamplesExported)
 }
 
 func NewSamplerSamplingStatsFromProto(stats *protos.SamplerSamplingStats) SamplerSamplingStats {

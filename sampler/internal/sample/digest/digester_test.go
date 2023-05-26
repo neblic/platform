@@ -40,39 +40,39 @@ func (e *mockExporter) Close(context.Context) error {
 
 func TestBuildWorkers(t *testing.T) {
 	tcs := map[string]struct {
-		oldCfg, newCfg            []data.Digest
+		oldCfg, newCfg            map[data.SamplerDigestUID]data.Digest
 		expectedWorkersDigestUIDs []data.SamplerDigestUID
 	}{
 		"New worker": {
-			oldCfg: []data.Digest{},
-			newCfg: []data.Digest{
-				{UID: "sample_digest_uid", Type: data.DigestTypeSt},
+			oldCfg: nil,
+			newCfg: map[data.SamplerDigestUID]data.Digest{
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: data.DigestTypeSt},
 			},
-			expectedWorkersDigestUIDs: []data.SamplerDigestUID{"sample_digest_uid"},
+			expectedWorkersDigestUIDs: []data.SamplerDigestUID{"sampler_digest_uid"},
 		},
 		"Delete worker": {
-			oldCfg: []data.Digest{
-				{UID: "sample_digest_uid", Type: data.DigestTypeSt},
+			oldCfg: map[data.SamplerDigestUID]data.Digest{
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: data.DigestTypeSt},
 			},
-			newCfg:                    []data.Digest{},
+			newCfg:                    nil,
 			expectedWorkersDigestUIDs: []data.SamplerDigestUID{},
 		},
 		// TODO: actually check that the worker settings have been updated
 		"Update worker": {
-			oldCfg: []data.Digest{
-				{UID: "sample_digest_uid", Type: data.DigestTypeSt, St: data.DigestSt{MaxProcessedFields: 10}},
+			oldCfg: map[data.SamplerDigestUID]data.Digest{
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: data.DigestTypeSt, St: data.DigestSt{MaxProcessedFields: 10}},
 			},
-			newCfg: []data.Digest{
-				{UID: "sample_digest_uid", Type: data.DigestTypeSt, St: data.DigestSt{MaxProcessedFields: 20}},
+			newCfg: map[data.SamplerDigestUID]data.Digest{
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: data.DigestTypeSt, St: data.DigestSt{MaxProcessedFields: 20}},
 			},
-			expectedWorkersDigestUIDs: []data.SamplerDigestUID{"sample_digest_uid"},
+			expectedWorkersDigestUIDs: []data.SamplerDigestUID{"sampler_digest_uid"},
 		},
 	}
 
 	for name, tc := range tcs {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			d := NewDigester(context.Background(), Settings{
+			d := NewDigester(Settings{
 				ResourceName: testResourceName,
 				SamplerName:  testSamplerName,
 
@@ -132,7 +132,7 @@ func TestWorkerRun(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			testExporter := &mockExporter{}
 			tc.settings.exporter = testExporter
-			worker := newWorker(context.Background(), tc.settings)
+			worker := newWorker(tc.settings)
 			go worker.run()
 			for _, sample := range tc.samples {
 				worker.processSample(sample)

@@ -34,14 +34,14 @@ func TestFromSamplerSamples(t *testing.T) {
 							Type:     exporter.RawSampleType,
 							Streams:  []data.SamplerStreamUID{"some_sampling_rule_uid1111"},
 							Encoding: exporter.JSONSampleEncoding,
-							Data:     []byte(`{"id": "some_id111"}`),
+							Data:     []byte(`{\"id\": \"some_id111\"}`),
 						},
 						{
 							Ts:       ts,
 							Type:     exporter.RawSampleType,
 							Streams:  []data.SamplerStreamUID{"some_sampling_rule_uid1211"},
 							Encoding: exporter.JSONSampleEncoding,
-							Data:     []byte(`{"id": "some_id121"}`),
+							Data:     []byte(`{\"id\": \"some_id121\"}`),
 						},
 						{
 							Ts:   ts,
@@ -51,7 +51,7 @@ func TestFromSamplerSamples(t *testing.T) {
 								"some_sampling_rule_uid1222",
 							},
 							Encoding: exporter.JSONSampleEncoding,
-							Data:     []byte(`{"id": "some_id122"}`),
+							Data:     []byte(`{\"id\": \"some_id122\"}`),
 						},
 					},
 				},
@@ -98,8 +98,8 @@ func TestFromSamplerSamples(t *testing.T) {
 					cLogRecord := cScopeLog.LogRecords().At(k)
 					cSample := cResourceSample.Samples[k]
 
-					assert.Equal(t, cLogRecord.Timestamp().AsTime(), cSample.Ts.UTC())
-					assert.Equal(t, cLogRecord.Body().AsRaw(), cSample.Data)
+					assert.Equal(t, cSample.Ts.UTC(), cLogRecord.Timestamp().AsTime())
+					assert.Equal(t, string(cSample.Data), cLogRecord.Body().AsString())
 
 					lrSamplingRuleUIDs, ok := cLogRecord.Attributes().Get(lrSampleStreamsUIDsKey)
 					assert.True(t, ok)
