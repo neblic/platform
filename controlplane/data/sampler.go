@@ -158,8 +158,9 @@ func (sc SamplingConfig) ToProto() *protos.Sampling {
 type SamplerStreamUID string
 
 type Stream struct {
-	UID        SamplerStreamUID
-	StreamRule StreamRule
+	UID              SamplerStreamUID
+	StreamRule       StreamRule
+	ExportRawSamples bool
 }
 
 func (s Stream) CLIInfo() string {
@@ -172,15 +173,17 @@ func NewStreamFromProto(s *protos.Stream) Stream {
 	}
 
 	return Stream{
-		UID:        SamplerStreamUID(s.GetUid()),
-		StreamRule: NewStreamRuleFromProto(s.GetRule()),
+		UID:              SamplerStreamUID(s.GetUid()),
+		StreamRule:       NewStreamRuleFromProto(s.GetRule()),
+		ExportRawSamples: s.ExportRawSamples,
 	}
 }
 
 func (s Stream) ToProto() *protos.Stream {
 	return &protos.Stream{
-		Uid:  string(s.UID),
-		Rule: s.StreamRule.ToProto(),
+		Uid:              string(s.UID),
+		Rule:             s.StreamRule.ToProto(),
+		ExportRawSamples: s.ExportRawSamples,
 	}
 }
 

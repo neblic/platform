@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -197,6 +198,12 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 	streamRuleParameter, _ := parameters.Get("rule")
 	streamUIDParameter, streamUIDParameterSet := parameters.Get("stream-uid") // optional
 
+	exportRawParameter, _ := parameters.Get("export-raw")
+	exportRawBool, err := strconv.ParseBool(exportRawParameter.Value)
+	if err != nil {
+		return fmt.Errorf("export-raw must be a boolean")
+	}
+
 	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
 	if err != nil {
@@ -235,6 +242,7 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 							Lang: data.SrlCel,
 							Rule: streamRuleParameter.Value,
 						},
+						ExportRawSamples: exportRawBool,
 					},
 				},
 			},
@@ -259,6 +267,12 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 	samplerParameter, _ := parameters.Get("sampler-name")
 	streamUIDParameter, _ := parameters.Get("stream-uid")
 	updatedRuleParameter, _ := parameters.Get("updated-rule")
+
+	exportRawParameter, _ := parameters.Get("export-raw")
+	exportRawBool, err := strconv.ParseBool(exportRawParameter.Value)
+	if err != nil {
+		return fmt.Errorf("export-raw must be a boolean")
+	}
 
 	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, false)
@@ -293,6 +307,7 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 							Lang: data.SrlCel,
 							Rule: updatedRuleParameter.Value,
 						},
+						ExportRawSamples: exportRawBool,
 					},
 				},
 			},

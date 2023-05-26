@@ -113,7 +113,7 @@ var _ = Describe("Sampler", func() {
 		})
 	})
 
-	Describe("Exporting raw samples", func() {
+	Describe("Not exporting raw samples", func() {
 		var (
 			err      error
 			provider defs.Provider
@@ -133,17 +133,79 @@ var _ = Describe("Sampler", func() {
 									Language: protos.Stream_Rule_CEL, Rule: "sample.id==1",
 								},
 							},
+						},
+					}, configured),
+			)
+			controlPlaneServer.Start(GinkgoT())
+
+			// initialize and start a sampler provider
+			settings := sampler.Settings{
+				ResourceName:      "sampled_service",
+				ControlServerAddr: controlPlaneServer.Addr(),
+				DataServerAddr:    logsReceiverLn.Addr().String(),
+			}
+			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		When("there is a matching rule but exporting raw samples is disabled", func() {
+			It("should not export the sample", func() {
+				// create a sampler
+				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				Expect(err).ToNot(HaveOccurred())
+
+				// wait until the server has configured the sampler
+				<-configured
+
+				// send samples to sampler
+				require.Never(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+						return receiver.TotalItems.Load() >= 1
+					},
+					time.Millisecond*500, time.Millisecond)
+
+				Expect(p.Close()).ToNot(HaveOccurred())
+			})
+		})
+	})
+
+	Describe("Exporting raw samples", func() {
+		var (
+			err      error
+			provider defs.Provider
+		)
+		configured := make(chan struct{})
+
+		BeforeEach(func() {
+			// configure and run a control plane server that registers the sampler and sends a configuration
+			controlPlaneServer.SetSamplerHandlers(
+				mock.RegisterSamplerHandler,
+				sendSamplerConfigHandler(
+					&protos.SamplerConfig{
+						Streams: []*protos.Stream{
+							{
+								Uid: uuid.NewString(),
+								Rule: &protos.Stream_Rule{
+									Language: protos.Stream_Rule_CEL, Rule: "sample.id==1",
+								},
+								ExportRawSamples: true,
+							},
 							{
 								Uid: uuid.NewString(),
 								Rule: &protos.Stream_Rule{
 									Language: protos.Stream_Rule_CEL, Rule: "sample.ID==1",
 								},
+								ExportRawSamples: true,
 							},
 							{
 								Uid: uuid.NewString(),
 								Rule: &protos.Stream_Rule{
 									Language: protos.Stream_Rule_CEL, Rule: `sample.sampler_uid == "1"`,
 								},
+								ExportRawSamples: true,
 							},
 						},
 					}, configured),
@@ -307,23 +369,15 @@ var _ = Describe("Sampler", func() {
 				// wait until the server has configured the sampler
 				<-configured
 
-				// send samples to sampler until it is sampled
+				// send samples to sampler until we receive a gigest
 				// we do this so we are sure the config has been read and applied by the sampler
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
-						return sampled
-					},
-					time.Second, time.Millisecond)
-
-				// wait until a digest is sent (will contain the digest of the only sample sampled)
-				require.Eventually(GinkgoT(),
-					func() bool {
-						defer GinkgoRecover()
+						p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
 						totalItems := receiver.TotalItems.Load()
-						return totalItems == 2
+						return totalItems >= 1
 					},
 					time.Second, time.Millisecond)
 
@@ -358,6 +412,7 @@ var _ = Describe("Sampler", func() {
 							Rule: &protos.Stream_Rule{
 								Language: protos.Stream_Rule_CEL, Rule: "sample.id==1",
 							},
+							ExportRawSamples: true,
 						},
 					},
 				}, configured),

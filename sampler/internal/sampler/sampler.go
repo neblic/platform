@@ -19,12 +19,17 @@ import (
 
 var _ defs.Sampler = (*Sampler)(nil)
 
+type streamConfig struct {
+	rule            *rule.Rule
+	exportRawSample bool
+}
+
 type Sampler struct {
 	name          string
 	resourceName  string
 	samplingStats data.SamplerSamplingStats
 
-	streams    map[data.SamplerStreamUID]*rule.Rule
+	streams    map[data.SamplerStreamUID]streamConfig
 	limiterIn  *rate.Limiter
 	samplerIn  sampling.Sampler
 	limiterOut *rate.Limiter
@@ -96,7 +101,7 @@ func New(
 		name:         settings.Name,
 		resourceName: settings.Resource,
 
-		streams:    make(map[data.SamplerStreamUID]*rule.Rule),
+		streams:    make(map[data.SamplerStreamUID]streamConfig),
 		limiterIn:  rate.NewLimiter(rate.Limit(settings.LimiterIn.Limit), int(settings.LimiterIn.Limit)),
 		samplerIn:  samplerIn,
 		limiterOut: rate.NewLimiter(rate.Limit(settings.LimiterOut.Limit), int(settings.LimiterOut.Limit)),
@@ -173,7 +178,7 @@ func (p *Sampler) updateConfig(config data.SamplerConfig) {
 
 	// replace all existing streams
 	if config.Streams != nil {
-		newStreams := make(map[data.SamplerStreamUID]*rule.Rule)
+		newStreams := make(map[data.SamplerStreamUID]streamConfig)
 		for _, stream := range config.Streams {
 			builtRule, err := p.buildSamplingRule(stream.StreamRule)
 			if err != nil {
@@ -181,7 +186,10 @@ func (p *Sampler) updateConfig(config data.SamplerConfig) {
 				continue
 			}
 
-			newStreams[stream.UID] = builtRule
+			newStreams[stream.UID] = streamConfig{
+				rule:            builtRule,
+				exportRawSample: stream.ExportRawSamples,
+			}
 		}
 
 		p.streams = newStreams
@@ -267,11 +275,16 @@ func (p *Sampler) sample(ctx context.Context, sampleData *sample.Data, determina
 
 	// assign sample to all matching streams based on their rules
 	var streams []data.SamplerStreamUID
-	for streamUID, streamRule := range p.streams {
-		if match, err := streamRule.Eval(ctx, sampleData); err != nil {
+	var exportRawSample bool
+	for streamUID, stream := range p.streams {
+		if match, err := stream.rule.Eval(ctx, sampleData); err != nil {
 			p.forwardError(err)
 		} else if match {
 			streams = append(streams, streamUID)
+
+			if stream.exportRawSample {
+				exportRawSample = true
+			}
 		}
 	}
 
@@ -284,9 +297,11 @@ func (p *Sampler) sample(ctx context.Context, sampleData *sample.Data, determina
 		p.digester.ProcessSample(streams, sampleData)
 
 		// export raw sample
-		err := p.exportRawSample(ctx, streams, sampleData)
-		if err != nil {
-			return false, err
+		if exportRawSample {
+			err := p.exportRawSample(ctx, streams, sampleData)
+			if err != nil {
+				return false, err
+			}
 		}
 
 		return true, nil
