@@ -56,7 +56,7 @@ message Digest {
   string uid = 1;
   string stream_uid = 2;
   google.protobuf.Duration flush_period = 3;
-  int32 buffer_sizue = 4;
+  int32 buffer_size = 4;
 
   oneof Type {
     St st = 5;

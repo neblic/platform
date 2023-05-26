@@ -116,7 +116,7 @@ func (c *Client) UpdateSamplerConfig(uid data.SamplerUID, name, resource string,
 	}
 
 	// Streams
-	if update.Reset.Streams {
+	if update.Reset.Streams || updatedConfig.Streams == nil {
 		updatedConfig.Streams = make(map[data.SamplerStreamUID]data.Stream)
 	}
 	for _, rule := range update.StreamUpdates {
@@ -155,7 +155,7 @@ func (c *Client) UpdateSamplerConfig(uid data.SamplerUID, name, resource string,
 	}
 
 	// Digests
-	if update.Reset.Digests {
+	if update.Reset.Digests || updatedConfig.Digests == nil {
 		updatedConfig.Digests = make(map[data.SamplerDigestUID]data.Digest)
 	}
 	for _, rule := range update.DigestUpdates {

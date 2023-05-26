@@ -28,20 +28,18 @@ type Settings struct {
 }
 
 type Digester struct {
-	ctx          context.Context
 	resourceName string
 	samplerName  string
 
 	notifyErr func(error)
 	exporter  exporter.Exporter
 
-	digestsConfig []data.Digest
+	digestsConfig map[data.SamplerDigestUID]data.Digest
 	workers       map[data.SamplerDigestUID]*worker
 }
 
-func NewDigester(ctx context.Context, settings Settings) *Digester {
+func NewDigester(settings Settings) *Digester {
 	return &Digester{
-		ctx:          ctx,
 		resourceName: settings.ResourceName,
 		samplerName:  settings.SamplerName,
 
@@ -86,8 +84,8 @@ func (d *Digester) buildWorkerSettings(digestCfg data.Digest) (workerSettings, e
 	}, nil
 }
 
-func (d *Digester) SetDigestsConfig(digestsCfg []data.Digest) {
-	for _, digestCfg := range digestsCfg {
+func (d *Digester) SetDigestsConfig(digestCfgs map[data.SamplerDigestUID]data.Digest) {
+	for _, digestCfg := range digestCfgs {
 		if existingWorker, ok := d.workers[digestCfg.UID]; ok {
 			existingWorker.stop()
 			delete(d.workers, digestCfg.UID)
@@ -99,25 +97,20 @@ func (d *Digester) SetDigestsConfig(digestsCfg []data.Digest) {
 			continue
 		}
 
-		w := newWorker(d.ctx, newWorkerSettings)
+		w := newWorker(newWorkerSettings)
 		d.workers[digestCfg.UID] = w
 
 		go w.run()
 	}
 
-	digestCfgsMap := make(map[data.SamplerDigestUID]data.Digest)
-	for _, digestCfg := range digestsCfg {
-		digestCfgsMap[digestCfg.UID] = digestCfg
-	}
-
 	for uid, existingWorker := range d.workers {
-		if _, ok := digestCfgsMap[uid]; !ok {
+		if _, ok := digestCfgs[uid]; !ok {
 			existingWorker.stop()
 			delete(d.workers, uid)
 		}
 	}
 
-	d.digestsConfig = digestsCfg
+	d.digestsConfig = digestCfgs
 }
 
 func (d *Digester) ProcessSample(streams []data.SamplerStreamUID, sampleData *sample.Data) {
@@ -128,6 +121,14 @@ func (d *Digester) ProcessSample(streams []data.SamplerStreamUID, sampleData *sa
 			}
 		}
 	}
+}
+
+func (d *Digester) Close() error {
+	for _, worker := range d.workers {
+		worker.stop()
+	}
+
+	return nil
 }
 
 type workerSettings struct {
@@ -145,15 +146,13 @@ type workerSettings struct {
 }
 
 type worker struct {
-	ctx             context.Context
 	processSampleCh chan *sample.Data
 
 	workerSettings
 }
 
-func newWorker(ctx context.Context, settings workerSettings) *worker {
+func newWorker(settings workerSettings) *worker {
 	return &worker{
-		ctx:             ctx,
 		workerSettings:  settings,
 		processSampleCh: make(chan *sample.Data, settings.inChBufferSize),
 	}
@@ -177,8 +176,6 @@ func (w *worker) run() {
 loop:
 	for {
 		select {
-		case <-w.ctx.Done():
-			break loop
 		case sampleData, more := <-w.processSampleCh:
 			if !more {
 				break loop
@@ -221,7 +218,7 @@ func (w *worker) exportDigest() {
 	}
 
 	smpl := w.buildDigestSample(digestData)
-	err = w.exporter.Export(w.ctx, []exporter.SamplerSamples{smpl})
+	err = w.exporter.Export(context.Background(), []exporter.SamplerSamples{smpl})
 	if err != nil {
 		w.notifyErr(err)
 	}
@@ -232,4 +229,6 @@ func (w *worker) exportDigest() {
 
 func (w *worker) stop() {
 	close(w.processSampleCh)
+
+	//TODO: block until last digest have been sent
 }
