@@ -45,7 +45,11 @@ func fromSamplerSamples(resourceSmpls []exporter.SamplerSamples) plog.Logs {
 			// we consider each sample to be a LogRecord
 			logRecord := logRecords.AppendEmpty()
 			logRecord.SetTimestamp(pcommon.Timestamp(smpl.Ts.UnixNano()))
-			logRecord.Body().SetEmptyBytes().FromRaw(smpl.Data)
+			if smpl.Encoding == exporter.JSONSampleEncoding {
+				logRecord.Body().SetStr(string(smpl.Data))
+			} else {
+				logRecord.Body().SetEmptyBytes().FromRaw(smpl.Data)
+			}
 
 			// build attributes values
 			lrSamplingRuleUIDs := logRecord.Attributes().PutEmptySlice(lrSampleStreamsUIDsKey)
