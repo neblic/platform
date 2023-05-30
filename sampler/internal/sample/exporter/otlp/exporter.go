@@ -12,7 +12,7 @@ import (
 	collectorexporter "go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/pdata/plog"
-	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -43,7 +43,7 @@ func New(ctx context.Context, logger logging.Logger, exportServerAddr string, op
 			Logger: logger.ZapLogger(),
 			// The Exporter doesn't need to generate traces or metrics
 			TracerProvider: trace.NewNoopTracerProvider(),
-			MeterProvider:  metric.NewNoopMeterProvider(),
+			MeterProvider:  noop.NewMeterProvider(),
 		},
 	}
 
