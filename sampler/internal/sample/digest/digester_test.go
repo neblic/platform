@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/neblic/platform/controlplane/data"
+	dpsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/sampler/internal/sample"
-	"github.com/neblic/platform/sampler/internal/sample/exporter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,10 +25,10 @@ var testNotifyErr = func(t *testing.T) func(error) {
 }
 
 type mockExporter struct {
-	exportedSamplerSamples []exporter.SamplerSamples
+	exportedSamplerSamples []dpsample.SamplerSamples
 }
 
-func (e *mockExporter) Export(ctx context.Context, samplerSamples []exporter.SamplerSamples) error {
+func (e *mockExporter) Export(ctx context.Context, samplerSamples []dpsample.SamplerSamples) error {
 	e.exportedSamplerSamples = append(e.exportedSamplerSamples, samplerSamples...)
 
 	return nil
@@ -97,7 +97,7 @@ func TestWorkerRun(t *testing.T) {
 	tcs := map[string]struct {
 		settings       workerSettings
 		samples        []*sample.Data
-		expectedDigest exporter.SamplerSamples
+		expectedDigest dpsample.SamplerSamples
 	}{
 		"periodic digest": {
 			settings: workerSettings{
@@ -113,14 +113,14 @@ func TestWorkerRun(t *testing.T) {
 				sample.NewSampleDataFromJSON(`{ "field_double": 1 }`),
 				sample.NewSampleDataFromJSON(`{ "field_string": "some_string" }`),
 			},
-			expectedDigest: exporter.SamplerSamples{
+			expectedDigest: dpsample.SamplerSamples{
 				ResourceName: testResourceName,
 				SamplerName:  testSamplerName,
-				Samples: []exporter.Sample{
+				Samples: []dpsample.Sample{
 					{
-						Type:     exporter.StructDigestSampleType,
+						Type:     dpsample.StructDigestSampleType,
 						Streams:  []data.SamplerStreamUID{"stream_uid"},
-						Encoding: exporter.JSONSampleEncoding,
+						Encoding: dpsample.JSONSampleEncoding,
 						Data:     []byte(`{"obj":{"count":"2","fields":{"field_double":{"number":{"floatNum":{"count":"1"}}},"field_string":{"string":{"count":"1"}}}}}`),
 					},
 				},
