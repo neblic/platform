@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	dpsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/logging"
-	"github.com/neblic/platform/sampler/internal/sample/exporter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configtls"
@@ -63,8 +63,8 @@ func New(ctx context.Context, logger logging.Logger, exportServerAddr string, op
 }
 
 // Export internally perform samples batches
-func (e *Exporter) Export(ctx context.Context, resourceSamples []exporter.SamplerSamples) error {
-	logs := fromSamplerSamples(resourceSamples)
+func (e *Exporter) Export(ctx context.Context, resourceSamples []dpsample.SamplerSamples) error {
+	logs := dpsample.SamplesToOTLPLogs(resourceSamples)
 
 	return e.exportLogs(ctx, logs)
 }
