@@ -7,6 +7,7 @@ import (
 
 	"github.com/neblic/platform/controlplane/data"
 	csampler "github.com/neblic/platform/controlplane/sampler"
+	dpsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler/defs"
 	"github.com/neblic/platform/sampler/internal/rule"
@@ -223,20 +224,20 @@ func (p *Sampler) buildSamplingRule(streamRule data.StreamRule) (*rule.Rule, err
 	}
 }
 
-func (p *Sampler) buildRawSample(streams []data.SamplerStreamUID, sampleData *sample.Data) (exporter.SamplerSamples, error) {
+func (p *Sampler) buildRawSample(streams []data.SamplerStreamUID, sampleData *sample.Data) (dpsample.SamplerSamples, error) {
 	dataJSON, err := sampleData.JSON()
 	if err != nil {
-		return exporter.SamplerSamples{}, fmt.Errorf("couldn't get sampler body: %w", err)
+		return dpsample.SamplerSamples{}, fmt.Errorf("couldn't get sampler body: %w", err)
 	}
 
-	return exporter.SamplerSamples{
+	return dpsample.SamplerSamples{
 		ResourceName: p.resourceName,
 		SamplerName:  p.name,
-		Samples: []exporter.Sample{{
+		Samples: []dpsample.Sample{{
 			Ts:       time.Now(),
-			Type:     exporter.RawSampleType,
+			Type:     dpsample.RawSampleType,
 			Streams:  streams,
-			Encoding: exporter.JSONSampleEncoding,
+			Encoding: dpsample.JSONSampleEncoding,
 			Data:     []byte(dataJSON),
 		}},
 	}, nil
@@ -248,7 +249,7 @@ func (p *Sampler) exportRawSample(ctx context.Context, streams []data.SamplerStr
 		return err
 	}
 
-	if err := p.exporter.Export(ctx, []exporter.SamplerSamples{resourceSample}); err != nil {
+	if err := p.exporter.Export(ctx, []dpsample.SamplerSamples{resourceSample}); err != nil {
 		return fmt.Errorf("failure to export samples: %w", err)
 	}
 
@@ -342,7 +343,7 @@ func (p *Sampler) Close() error {
 	}
 
 	if err := p.exporter.Close(context.Background()); err != nil {
-		return fmt.Errorf("error closing samples exporter: %w", err)
+		return fmt.Errorf("error closing samples dp. %w", err)
 	}
 
 	return nil

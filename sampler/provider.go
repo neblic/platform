@@ -6,6 +6,7 @@ import (
 
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler/defs"
+	"github.com/neblic/platform/sampler/internal/sample/exporter"
 	exporterotlp "github.com/neblic/platform/sampler/internal/sample/exporter/otlp"
 	"github.com/neblic/platform/sampler/internal/sampler"
 )
@@ -16,7 +17,7 @@ type Provider struct {
 	opts        *options
 	samplersErr chan error
 
-	sampleExporter *exporterotlp.Exporter
+	sampleExporter exporter.Exporter
 	logger         logging.Logger
 }
 

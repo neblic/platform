@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/neblic/platform/controlplane/data"
+	dpsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/sampler/internal/sample"
 	"github.com/neblic/platform/sampler/internal/sample/exporter"
 )
@@ -197,15 +198,15 @@ loop:
 	ticker.Stop()
 }
 
-func (w *worker) buildDigestSample(digestData []byte) exporter.SamplerSamples {
-	return exporter.SamplerSamples{
+func (w *worker) buildDigestSample(digestData []byte) dpsample.SamplerSamples {
+	return dpsample.SamplerSamples{
 		ResourceName: w.resourceName,
 		SamplerName:  w.samplerName,
-		Samples: []exporter.Sample{{
+		Samples: []dpsample.Sample{{
 			Ts:       time.Now(),
-			Type:     exporter.StructDigestSampleType,
+			Type:     dpsample.StructDigestSampleType,
 			Streams:  []data.SamplerStreamUID{w.streamUID},
-			Encoding: exporter.JSONSampleEncoding,
+			Encoding: dpsample.JSONSampleEncoding,
 			Data:     digestData,
 		}},
 	}
@@ -222,7 +223,7 @@ func (w *worker) exportDigest() {
 	}
 
 	smpl := w.buildDigestSample(digestData)
-	err = w.exporter.Export(context.Background(), []exporter.SamplerSamples{smpl})
+	err = w.exporter.Export(context.Background(), []dpsample.SamplerSamples{smpl})
 	if err != nil {
 		w.notifyErr(err)
 	}

@@ -42,6 +42,6 @@ gen-proto:
 
 	docker run --rm -v${PWD}:${PWD} -w${PWD} otel/build-protobuf \
 	-I/usr/include/google/protobuf --proto_path=${PWD} \
-	--go_opt=module=github.com/neblic/platform/sampler --go_out=${PWD}/sampler \
-	--go-grpc_opt=module=github.com/neblic/platform/sampler --go-grpc_out=${PWD}/sampler/ \
+	--go_opt=module=github.com/neblic/platform/dataplane --go_out=${PWD}/dataplane \
+	--go-grpc_opt=module=github.com/neblic/platform/dataplane --go-grpc_out=${PWD}/dataplane \
 	${PWD}/protos/dataplane.proto
