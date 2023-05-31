@@ -294,7 +294,9 @@ func (p *Sampler) sample(ctx context.Context, sampleData *sample.Data, determina
 		}
 
 		// forward sample to digester
-		p.digester.ProcessSample(streams, sampleData)
+		if p.digester.ProcessSample(streams, sampleData) == true {
+			p.samplingStats.SamplesDigested += 1
+		}
 
 		// export raw sample
 		if exportRawSample {

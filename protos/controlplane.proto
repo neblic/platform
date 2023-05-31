@@ -103,6 +103,7 @@ message SamplerConfig {
 message SamplerSamplingStats {
   uint64 samples_evaluated = 1;
   uint64 samples_exported = 2;
+  uint64 samples_digested = 3;
 }
 
 message Schema {
