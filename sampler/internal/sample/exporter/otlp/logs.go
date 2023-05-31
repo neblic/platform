@@ -52,10 +52,10 @@ func fromSamplerSamples(resourceSmpls []exporter.SamplerSamples) plog.Logs {
 			}
 
 			// build attributes values
-			lrSamplingRuleUIDs := logRecord.Attributes().PutEmptySlice(lrSampleStreamsUIDsKey)
-			lrSamplingRuleUIDs.EnsureCapacity(len(smpl.Streams))
+			lrStreamUIDs := logRecord.Attributes().PutEmptySlice(lrSampleStreamsUIDsKey)
+			lrStreamUIDs.EnsureCapacity(len(smpl.Streams))
 			for _, stream := range smpl.Streams {
-				lrSamplingRuleUIDs.AppendEmpty().SetStr(string(stream))
+				lrStreamUIDs.AppendEmpty().SetStr(string(stream))
 			}
 
 			logRecord.Attributes().PutStr(lrSampleTypeKey, smpl.Type.String())
