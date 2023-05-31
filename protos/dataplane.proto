@@ -36,6 +36,8 @@ message VariableLengthArrayType {
   int64 max_length = 2;
   // to be able to calculate the average when aggregating digests
   int64 sum_length = 3;
+
+  // TODO: Register array type, if possible
 }
 message ArrayType {
   int64 count = 1;

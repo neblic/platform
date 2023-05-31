@@ -113,14 +113,18 @@ func (d *Digester) SetDigestsConfig(digestCfgs map[data.SamplerDigestUID]data.Di
 	d.digestsConfig = digestCfgs
 }
 
-func (d *Digester) ProcessSample(streams []data.SamplerStreamUID, sampleData *sample.Data) {
+func (d *Digester) ProcessSample(streams []data.SamplerStreamUID, sampleData *sample.Data) bool {
+	processed := false
 	for _, stream := range streams {
 		for _, worker := range d.workers {
 			if worker.streamUID == stream {
 				worker.processSample(sampleData)
+				processed = true
 			}
 		}
 	}
+
+	return processed
 }
 
 func (d *Digester) Close() error {

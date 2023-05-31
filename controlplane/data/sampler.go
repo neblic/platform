@@ -619,10 +619,11 @@ func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
 type SamplerSamplingStats struct {
 	SamplesEvaluated uint64
 	SamplesExported  uint64
+	SamplesDigested  uint64
 }
 
 func (s SamplerSamplingStats) CLIInfo() string {
-	return fmt.Sprintf("Evaluated: %d, Exported: %d", s.SamplesEvaluated, s.SamplesExported)
+	return fmt.Sprintf("Evaluated: %d, Exported: %d, Digested: %d", s.SamplesEvaluated, s.SamplesExported, s.SamplesDigested)
 }
 
 func NewSamplerSamplingStatsFromProto(stats *protos.SamplerSamplingStats) SamplerSamplingStats {
@@ -633,6 +634,7 @@ func NewSamplerSamplingStatsFromProto(stats *protos.SamplerSamplingStats) Sample
 	return SamplerSamplingStats{
 		SamplesEvaluated: stats.GetSamplesEvaluated(),
 		SamplesExported:  stats.GetSamplesExported(),
+		SamplesDigested:  stats.GetSamplesDigested(),
 	}
 }
 
@@ -640,6 +642,7 @@ func (s SamplerSamplingStats) ToProto() *protos.SamplerSamplingStats {
 	return &protos.SamplerSamplingStats{
 		SamplesEvaluated: s.SamplesEvaluated,
 		SamplesExported:  s.SamplesExported,
+		SamplesDigested:  s.SamplesDigested,
 	}
 }
 
