@@ -9,12 +9,12 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/onsi/ginkgo/v2 v2.9.1
 	github.com/onsi/gomega v1.27.4
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector v0.72.0
 	go.opentelemetry.io/collector/component v0.72.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.72.0
 	go.opentelemetry.io/collector/pdata v1.0.0-rc6
-	go.opentelemetry.io/collector/semconv v0.72.0
+	go.opentelemetry.io/collector/semconv v0.79.0
 	go.opentelemetry.io/otel/metric v0.36.0
 	go.opentelemetry.io/otel/trace v1.14.0
 	go.uber.org/atomic v1.10.0
