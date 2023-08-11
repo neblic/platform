@@ -170,7 +170,7 @@ func (w *worker) String() string {
 func (w *worker) processSample(sampleData *sample.Data) {
 	select {
 	case w.processSampleCh <- sampleData:
-		w.samplesToFlush += 1
+		w.samplesToFlush++
 	default:
 		w.notifyErr(fmt.Errorf("%s buffer is full", w))
 	}
@@ -204,9 +204,9 @@ func (w *worker) buildDigestSample(digestData []byte) dpsample.SamplerSamples {
 		SamplerName:  w.samplerName,
 		Samples: []dpsample.Sample{{
 			Ts:       time.Now(),
-			Type:     dpsample.StructDigestSampleType,
+			Type:     dpsample.StructDigestType,
 			Streams:  []data.SamplerStreamUID{w.streamUID},
-			Encoding: dpsample.JSONSampleEncoding,
+			Encoding: dpsample.JSONEncoding,
 			Data:     digestData,
 		}},
 	}

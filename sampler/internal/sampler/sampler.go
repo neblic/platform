@@ -235,9 +235,9 @@ func (p *Sampler) buildRawSample(streams []data.SamplerStreamUID, sampleData *sa
 		SamplerName:  p.name,
 		Samples: []dpsample.Sample{{
 			Ts:       time.Now(),
-			Type:     dpsample.RawSampleType,
+			Type:     dpsample.RawType,
 			Streams:  streams,
-			Encoding: dpsample.JSONSampleEncoding,
+			Encoding: dpsample.JSONEncoding,
 			Data:     []byte(dataJSON),
 		}},
 	}, nil
@@ -296,7 +296,7 @@ func (p *Sampler) sample(ctx context.Context, sampleData *sample.Data, determina
 
 		// forward sample to digester
 		if p.digester.ProcessSample(streams, sampleData) == true {
-			p.samplingStats.SamplesDigested += 1
+			p.samplingStats.SamplesDigested++
 		}
 
 		// export raw sample

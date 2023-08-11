@@ -29,26 +29,26 @@ func TestFromSamplerSamples(t *testing.T) {
 					Samples: []Sample{
 						{
 							Ts:       ts,
-							Type:     RawSampleType,
+							Type:     RawType,
 							Streams:  []data.SamplerStreamUID{"some_sampling_rule_uid1111"},
-							Encoding: JSONSampleEncoding,
+							Encoding: JSONEncoding,
 							Data:     []byte(`{\"id\": \"some_id111\"}`),
 						},
 						{
 							Ts:       ts,
-							Type:     RawSampleType,
+							Type:     RawType,
 							Streams:  []data.SamplerStreamUID{"some_sampling_rule_uid1211"},
-							Encoding: JSONSampleEncoding,
+							Encoding: JSONEncoding,
 							Data:     []byte(`{\"id\": \"some_id121\"}`),
 						},
 						{
 							Ts:   ts,
-							Type: RawSampleType,
+							Type: RawType,
 							Streams: []data.SamplerStreamUID{
 								"some_sampling_rule_uid1221",
 								"some_sampling_rule_uid1222",
 							},
-							Encoding: JSONSampleEncoding,
+							Encoding: JSONEncoding,
 							Data:     []byte(`{\"id\": \"some_id122\"}`),
 						},
 					},
@@ -59,9 +59,9 @@ func TestFromSamplerSamples(t *testing.T) {
 					Samples: []Sample{
 						{
 							Ts:       ts,
-							Type:     RawSampleType,
+							Type:     RawType,
 							Streams:  []data.SamplerStreamUID{"some_sampling_rule_uid2"},
-							Encoding: JSONSampleEncoding,
+							Encoding: JSONEncoding,
 							Data:     []byte(`{"id": "some_id2"}`),
 						},
 					},

@@ -49,7 +49,7 @@ func OTLPLogsToSamples(logs plog.Logs) []SamplerSamples {
 				sample.Encoding = ParseSampleEncoding(sampleEncoding.Str())
 			}
 
-			if sample.Encoding == JSONSampleEncoding {
+			if sample.Encoding == JSONEncoding {
 				sample.Data = []byte(logRecord.Body().Str())
 			} else {
 				sample.Data = logRecord.Body().Bytes().AsRaw()
@@ -108,7 +108,7 @@ func SamplesToOTLPLogs(resourceSmpls []SamplerSamples) plog.Logs {
 			logRecord.Attributes().PutStr(lrSampleTypeKey, smpl.Type.String())
 			logRecord.Attributes().PutStr(lrSampleEncodingKey, smpl.Encoding.String())
 
-			if smpl.Encoding == JSONSampleEncoding {
+			if smpl.Encoding == JSONEncoding {
 				logRecord.Body().SetStr(string(smpl.Data))
 			} else {
 				logRecord.Body().SetEmptyBytes().FromRaw(smpl.Data)
@@ -126,71 +126,71 @@ func SamplesToOTLPLogs(resourceSmpls []SamplerSamples) plog.Logs {
 	return logs
 }
 
-type SampleType uint8
+type Type uint8
 
 const (
-	UnknownSampleType SampleType = iota
-	RawSampleType
-	StructDigestSampleType
+	UnknownType Type = iota
+	RawType
+	StructDigestType
 )
 
-type SampleEncoding uint8
+type Encoding uint8
 
-func (s SampleType) String() string {
+func (s Type) String() string {
 	switch s {
-	case UnknownSampleType:
+	case UnknownType:
 		return "unknown"
-	case RawSampleType:
+	case RawType:
 		return "raw"
-	case StructDigestSampleType:
+	case StructDigestType:
 		return "struct-digest"
 	default:
 		return "unknown"
 	}
 }
 
-func ParseSampleType(t string) SampleType {
+func ParseSampleType(t string) Type {
 	switch t {
 	case "raw":
-		return RawSampleType
+		return RawType
 	case "struct-digest":
-		return StructDigestSampleType
+		return StructDigestType
 	default:
-		return UnknownSampleType
+		return UnknownType
 	}
 }
 
 const (
-	UnknownSampleEncoding SampleEncoding = iota
-	JSONSampleEncoding
+	UnknownEncoding Encoding = iota
+	JSONEncoding
 )
 
-func (s SampleEncoding) String() string {
+func (s Encoding) String() string {
 	switch s {
-	case UnknownSampleEncoding:
+	case UnknownEncoding:
 		return "unknown"
-	case JSONSampleEncoding:
+	case JSONEncoding:
 		return "json"
 	default:
 		return "unknown"
 	}
 }
 
-func ParseSampleEncoding(enc string) SampleEncoding {
+func ParseSampleEncoding(enc string) Encoding {
 	switch enc {
 	case "json":
-		return JSONSampleEncoding
+		return JSONEncoding
 	default:
-		return UnknownSampleEncoding
+		return UnknownEncoding
 	}
 }
 
 // Sample defines a sample to be exported
 type Sample struct {
 	Ts       time.Time
-	Type     SampleType
+	Type     Type
 	Streams  []data.SamplerStreamUID
-	Encoding SampleEncoding
+	Encoding Encoding
 	Data     []byte
 }
 

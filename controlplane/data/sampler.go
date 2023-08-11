@@ -49,9 +49,9 @@ type StreamRule struct {
 	Rule string
 }
 
-func (s StreamRule) String() string {
+func (sr StreamRule) String() string {
 	// Lang intentionally not shown since it is implicit it is always a CEL type for now
-	return fmt.Sprintf("%s", s.Rule)
+	return fmt.Sprintf("%s", sr.Rule)
 }
 
 func NewStreamRuleFromProto(sr *protos.Stream_Rule) StreamRule {
@@ -260,9 +260,9 @@ func NewDigestStFromProto(protoDigestSt *protos.Digest_St) DigestSt {
 	}
 }
 
-func (d *DigestSt) ToProto() *protos.Digest_St {
+func (ds *DigestSt) ToProto() *protos.Digest_St {
 	return &protos.Digest_St{
-		MaxProcessedFields: int32(d.MaxProcessedFields),
+		MaxProcessedFields: int32(ds.MaxProcessedFields),
 	}
 }
 

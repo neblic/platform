@@ -76,17 +76,17 @@ func (s *St) updateNum(prev *protos.NumberType, x interface{}) (*protos.NumberTy
 		if prev.IntegerNum == nil {
 			prev.IntegerNum = &protos.IntNumType{}
 		}
-		prev.IntegerNum.Count += 1
+		prev.IntegerNum.Count++
 	case uint64:
 		if prev.UintegerNum == nil {
 			prev.UintegerNum = &protos.UIntNumType{}
 		}
-		prev.UintegerNum.Count += 1
+		prev.UintegerNum.Count++
 	case float64:
 		if prev.FloatNum == nil {
 			prev.FloatNum = &protos.FloatNumType{}
 		}
-		prev.FloatNum.Count += 1
+		prev.FloatNum.Count++
 	default:
 		return nil, fmt.Errorf("invalid number type %T", x)
 	}
@@ -102,7 +102,7 @@ func (s *St) updateString(prev *protos.StringType, x string) (*protos.StringType
 	if prev == nil {
 		prev = &protos.StringType{}
 	}
-	prev.Count += 1
+	prev.Count++
 
 	return prev, nil
 }
@@ -115,7 +115,7 @@ func (s *St) updateBoolean(prev *protos.BooleanType, x bool) (*protos.BooleanTyp
 	if prev == nil {
 		prev = &protos.BooleanType{}
 	}
-	prev.Count += 1
+	prev.Count++
 
 	return prev, nil
 }
@@ -183,7 +183,7 @@ func (s *St) updateArray(prev *protos.ArrayType, x interface{}) (*protos.ArrayTy
 	if prev == nil {
 		prev = &protos.ArrayType{}
 	}
-	prev.Count += 1
+	prev.Count++
 
 	if prev.GetFixedLengthOrderedArray() == nil && prev.GetVariableLengthArray() == nil {
 		prev.FixedLengthOrderedArray = &protos.FixedLengthOrderedArrayType{
@@ -244,7 +244,7 @@ func (s *St) updateObj(prev *protos.ObjType, x interface{}) (*protos.ObjType, er
 			Fields: make(map[string]*protos.Value),
 		}
 	}
-	prev.Count += 1
+	prev.Count++
 
 	for _, k := range v.MapKeys() {
 		kv := v.MapIndex(k)
@@ -266,7 +266,7 @@ func (s *St) updateObj(prev *protos.ObjType, x interface{}) (*protos.ObjType, er
 }
 
 func (s *St) incrFieldsProcessed() error {
-	s.fieldsProcessed += 1
+	s.fieldsProcessed++
 
 	if s.fieldsProcessed > s.maxProcessedFields {
 		return fmt.Errorf("%w %d", errMaxFieldsProcessed, s.maxProcessedFields)

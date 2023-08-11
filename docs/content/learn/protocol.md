@@ -68,5 +68,5 @@ Given that the registration request includes a session id, the `Server` is capab
 ## Appendix A: Protobuf definitions
 
 ``` protobuf
---8<-- "./controlplane/internal/protos/controlplane.proto"
+--8<-- "./protos/controlplane.proto"
 ```
