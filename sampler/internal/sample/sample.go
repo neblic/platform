@@ -207,7 +207,7 @@ func protoValueToNative(fd protoreflect.FieldDescriptor, val protoreflect.Value)
 
 func protoObjectToMap(pb protoreflect.Message) (map[string]any, error) {
 	var (
-		obj    map[string]any = make(map[string]any)
+		obj    = make(map[string]any)
 		aggErr error
 	)
 
@@ -234,7 +234,7 @@ func protoObjectToMap(pb protoreflect.Message) (map[string]any, error) {
 			obj[fd.TextName()] = m
 		} else if fd.IsList() {
 			var l []any
-			for i := 0; i < value.List().Len(); i += 1 {
+			for i := 0; i < value.List().Len(); i++ {
 				valNative, err := protoValueToNative(fd, value.List().Get(i))
 				if err != nil {
 					aggErr = errors.Join(aggErr, fmt.Errorf("couldn't convert proto list element to native type: %w", err))

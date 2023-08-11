@@ -320,13 +320,13 @@ var _ = Describe("Sampler", func() {
 
 		BeforeEach(func() {
 			// configure and run a control plane server that registers the sampler and sends a configuration
-			stream_uid := uuid.NewString()
+			streamUID := uuid.NewString()
 			controlPlaneServer.SetSamplerHandlers(
 				mock.RegisterSamplerHandler,
 				sendSamplerConfigHandler(&protos.SamplerConfig{
 					Streams: []*protos.Stream{
 						{
-							Uid: stream_uid,
+							Uid: streamUID,
 							Rule: &protos.Stream_Rule{
 								Language: protos.Stream_Rule_CEL, Rule: "sample.id==1",
 							},
@@ -335,7 +335,7 @@ var _ = Describe("Sampler", func() {
 					Digests: []*protos.Digest{
 						{
 							Uid:         uuid.NewString(),
-							StreamUid:   stream_uid,
+							StreamUid:   streamUID,
 							FlushPeriod: durationpb.New(200 * time.Millisecond),
 							Type: &protos.Digest_St_{
 								St: &protos.Digest_St{},

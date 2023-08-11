@@ -118,9 +118,9 @@ func TestWorkerRun(t *testing.T) {
 				SamplerName:  testSamplerName,
 				Samples: []dpsample.Sample{
 					{
-						Type:     dpsample.StructDigestSampleType,
+						Type:     dpsample.StructDigestType,
 						Streams:  []data.SamplerStreamUID{"stream_uid"},
-						Encoding: dpsample.JSONSampleEncoding,
+						Encoding: dpsample.JSONEncoding,
 						Data:     []byte(`{"obj":{"count":"2","fields":{"field_double":{"number":{"floatNum":{"count":"1"}}},"field_string":{"string":{"count":"1"}}}}}`),
 					},
 				},
