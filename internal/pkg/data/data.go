@@ -87,7 +87,10 @@ func (s *Data) JSON() (string, error) {
 
 	switch s.Origin {
 	case ProtoOrigin:
-		jsonStr, err := protojson.Marshal(s.proto)
+		marshaler := protojson.MarshalOptions{
+			UseProtoNames: true,
+		}
+		jsonStr, err := marshaler.Marshal(s.proto)
 		if err != nil {
 			return "", fmt.Errorf("couldn't marshal to JSON struct: %w", err)
 		}
