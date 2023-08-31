@@ -156,6 +156,10 @@ func (d *Disk[K, V]) Set(key K, value V) error {
 		return fmt.Errorf("could not write configuration to a temporary file: %v", err)
 	}
 
+	if err := tmpFile.Sync(); err != nil {
+		return fmt.Errorf("could not sync to disk the temporary file: %v", err)
+	}
+
 	if err := tmpFile.Close(); err != nil {
 		return fmt.Errorf("could not close the temporary file: %v", err)
 	}
