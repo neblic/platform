@@ -1,4 +1,4 @@
-GOMODULES = . cmd/neblictl cmd/kafka-sampler 
+GOMODULES = . cmd/neblictl cmd/kafka-sampler
 
 .PHONY: gobuild
 gobuild:
