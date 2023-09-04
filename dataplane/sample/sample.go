@@ -3,7 +3,7 @@ package sample
 import (
 	"time"
 
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
 
@@ -43,7 +43,7 @@ func OTLPLogsToSamples(logs plog.Logs) []SamplerSamples {
 
 			sample.Ts = logRecord.Timestamp().AsTime()
 			if sampleType, ok := logRecord.Attributes().Get(lrSampleTypeKey); ok {
-				sample.Type = ParseSampleType(sampleType.Str())
+				sample.Type = control.ParseSampleType(sampleType.Str())
 			}
 			if sampleEncoding, ok := logRecord.Attributes().Get(lrSampleEncodingKey); ok {
 				sample.Encoding = ParseSampleEncoding(sampleEncoding.Str())
@@ -57,10 +57,10 @@ func OTLPLogsToSamples(logs plog.Logs) []SamplerSamples {
 
 			lrStreamUIDs, ok := logRecord.Attributes().Get(lrSampleStreamsUIDsKey)
 			if ok {
-				var streamUIDs []data.SamplerStreamUID
+				var streamUIDs []control.SamplerStreamUID
 				for k := 0; k < lrStreamUIDs.Slice().Len(); k++ {
 					lrStreamUID := lrStreamUIDs.Slice().At(k)
-					streamUIDs = append(streamUIDs, data.SamplerStreamUID(lrStreamUID.Str()))
+					streamUIDs = append(streamUIDs, control.SamplerStreamUID(lrStreamUID.Str()))
 				}
 				sample.Streams = streamUIDs
 			}
@@ -126,39 +126,7 @@ func SamplesToOTLPLogs(resourceSmpls []SamplerSamples) plog.Logs {
 	return logs
 }
 
-type Type uint8
-
-const (
-	UnknownType Type = iota
-	RawType
-	StructDigestType
-)
-
 type Encoding uint8
-
-func (s Type) String() string {
-	switch s {
-	case UnknownType:
-		return "unknown"
-	case RawType:
-		return "raw"
-	case StructDigestType:
-		return "struct-digest"
-	default:
-		return "unknown"
-	}
-}
-
-func ParseSampleType(t string) Type {
-	switch t {
-	case "raw":
-		return RawType
-	case "struct-digest":
-		return StructDigestType
-	default:
-		return UnknownType
-	}
-}
 
 const (
 	UnknownEncoding Encoding = iota
@@ -175,7 +143,6 @@ func (s Encoding) String() string {
 		return "unknown"
 	}
 }
-
 func ParseSampleEncoding(enc string) Encoding {
 	switch enc {
 	case "json":
@@ -188,8 +155,8 @@ func ParseSampleEncoding(enc string) Encoding {
 // Sample defines a sample to be exported
 type Sample struct {
 	Ts       time.Time
-	Type     Type
-	Streams  []data.SamplerStreamUID
+	Type     control.SampleType
+	Streams  []control.SamplerStreamUID
 	Encoding Encoding
 	Data     []byte
 }

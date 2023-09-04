@@ -5,8 +5,7 @@ import (
 	"testing"
 
 	"github.com/neblic/platform/controlplane/protos"
-	"github.com/neblic/platform/sampler/defs"
-	"github.com/neblic/platform/sampler/internal/sample"
+	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -29,13 +28,13 @@ func TestEvalJSON(t *testing.T) {
 		wantMatch: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(defs.DynamicSchema{})
+			rb, err := NewBuilder(DynamicSchema{})
 			require.NoError(t, err)
 
 			rule, err := rb.Build(tc.filter)
 			require.NoError(t, err)
 
-			s := sample.NewSampleDataFromJSON(tc.sample)
+			s := data.NewSampleDataFromJSON(tc.sample)
 
 			gotMatch, err := rule.Eval(context.Background(), s)
 			require.NoError(t, err)
@@ -74,13 +73,13 @@ func TestEvalNative(t *testing.T) {
 		wantMatch: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(defs.NewDynamicSchema())
+			rb, err := NewBuilder(NewDynamicSchema())
 			require.NoError(t, err)
 
 			rule, err := rb.Build(tc.filter)
 			require.NoError(t, err)
 
-			s := sample.NewSampleDataFromNative(tc.sample)
+			s := data.NewSampleDataFromNative(tc.sample)
 
 			gotMatch, err := rule.Eval(context.Background(), s)
 			require.NoError(t, err)
@@ -100,11 +99,12 @@ func TestEvalProto(t *testing.T) {
 		wantMatch bool
 	}{{
 		name:   "simple match",
-		filter: `sample.register_req.sampler_name == "sampler_name_value"`,
+		filter: `sample.name == "sampler_name_value"`,
 		sample: &protos.SamplerToServer{
+			Name:       "sampler_name_value",
 			SamplerUid: "sampler_uid_value",
 			Message: &protos.SamplerToServer_RegisterReq{
-				RegisterReq: &protos.SamplerRegisterReq{SamplerName: "sampler_name_value"},
+				RegisterReq: &protos.SamplerRegisterReq{},
 			}},
 		wantMatch: true,
 	}, {
@@ -114,13 +114,13 @@ func TestEvalProto(t *testing.T) {
 		wantMatch: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(defs.NewProtoSchema(&protos.SamplerToServer{}))
+			rb, err := NewBuilder(NewProtoSchema(&protos.SamplerToServer{}))
 			require.NoError(t, err)
 
 			rule, err := rb.Build(tc.filter)
 			require.NoError(t, err)
 
-			s := sample.NewSampleDataFromProto(tc.sample)
+			s := data.NewSampleDataFromProto(tc.sample)
 
 			gotMatch, err := rule.Eval(context.Background(), s)
 			require.NoError(t, err)

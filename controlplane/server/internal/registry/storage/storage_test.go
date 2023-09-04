@@ -6,26 +6,38 @@ import (
 )
 
 func initializeStorage(storage Storage[TestKey, *TestValue]) {
-	err := storage.Set(TestKey{String: "key1"}, &TestValue{String: "value1"})
+	err := storage.Set(TestKey{Key: "key1"}, &TestValue{Value: "value1"})
 	if err != nil {
 		panic(err)
 	}
-	err = storage.Set(TestKey{String: "key3"}, &TestValue{String: "value3"})
+	err = storage.Set(TestKey{Key: "key3"}, &TestValue{Value: "value3"})
 	if err != nil {
 		panic(err)
 	}
 }
 
 type TestKey struct {
-	String string
+	Key string
 }
 
-func (k TestKey) Hash() string {
-	return k.String
+func (k TestKey) ToString() string {
+	return k.Key
+}
+
+func (k *TestKey) FromString(str string) {
+	k.Key = str
 }
 
 type TestValue struct {
-	String string
+	Value string
+}
+
+func (k TestValue) ToString() string {
+	return k.Value
+}
+
+func (k *TestValue) FromString(str string) {
+	k.Value = str
 }
 
 func StorageGetSuite(t *testing.T, storageProvider func() Storage[TestKey, *TestValue]) {
@@ -42,15 +54,15 @@ func StorageGetSuite(t *testing.T, storageProvider func() Storage[TestKey, *Test
 		{
 			name: "get value that exists",
 			args: args{
-				key: TestKey{String: "key1"},
+				key: TestKey{Key: "key1"},
 			},
-			want:    &TestValue{String: "value1"},
+			want:    &TestValue{Value: "value1"},
 			wantErr: nil,
 		},
 		{
 			name: "get value that does not exists",
 			args: args{
-				key: TestKey{String: "key2"},
+				key: TestKey{Key: "key2"},
 			},
 			want:    nil,
 			wantErr: ErrUnknownKey,
@@ -71,6 +83,41 @@ func StorageGetSuite(t *testing.T, storageProvider func() Storage[TestKey, *Test
 	}
 }
 
+func StorageRangeSuite(t *testing.T, storageProvider func() Storage[TestKey, *TestValue]) {
+
+	tests := []struct {
+		name    string
+		want    map[TestKey]*TestValue
+		wantErr error
+	}{
+		{
+			name: "successful range",
+			want: map[TestKey]*TestValue{
+				{Key: "key1"}: {Value: "value1"},
+				{Key: "key3"}: {Value: "value3"},
+			},
+			wantErr: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			s := storageProvider()
+			got := map[TestKey]*TestValue{}
+			err := s.Range(func(key TestKey, value *TestValue) {
+				got[key] = value
+			})
+			if err != tt.wantErr {
+				t.Errorf("Storage.Range() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Storage.Range() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func StorageSetSuite(t *testing.T, storageProvider func() Storage[TestKey, *TestValue]) {
 
 	type args struct {
@@ -86,10 +133,10 @@ func StorageSetSuite(t *testing.T, storageProvider func() Storage[TestKey, *Test
 		{
 			name: "test setting non existing value",
 			args: args{
-				key:   TestKey{String: "key2"},
-				value: &TestValue{String: "value2"},
+				key:   TestKey{Key: "key2"},
+				value: &TestValue{Value: "value2"},
 			},
-			want:    &TestValue{String: "value2"},
+			want:    &TestValue{Value: "value2"},
 			wantErr: false,
 		},
 	}
@@ -126,14 +173,14 @@ func StorageDeleteSuite(t *testing.T, storageProvider func() Storage[TestKey, *T
 		{
 			name: "delete existing key",
 			args: args{
-				key: TestKey{String: "key1"},
+				key: TestKey{Key: "key1"},
 			},
 			wantErr: nil,
 		},
 		{
 			name: "delete non existing key",
 			args: args{
-				key: TestKey{String: "key2"},
+				key: TestKey{Key: "key2"},
 			},
 			wantErr: ErrUnknownKey,
 		},

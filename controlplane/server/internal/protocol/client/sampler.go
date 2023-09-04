@@ -3,16 +3,26 @@ package client
 import (
 	"fmt"
 
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
+	"github.com/neblic/platform/controlplane/server/internal/defs"
 )
 
 func (c *Client) handleListSamplersReq(_ *protos.ClientListSamplersReq) (*protos.ServerToClient, error) {
-	samplers := c.samplerReg.GetRegisteredSamplers()
+
 	var protoSamplers []*protos.Sampler
-	for _, p := range samplers {
-		protoSamplers = append(protoSamplers, p.Data.ToProto())
-	}
+	c.samplerRegistry.RangeRegisteredInstances(func(sampler *defs.Sampler, instance *defs.SamplerInstance) (carryon bool) {
+		protoSamplers = append(protoSamplers, &protos.Sampler{
+			Name:          sampler.Name,
+			Resource:      sampler.Resource,
+			Uid:           string(instance.UID),
+			Config:        sampler.Config.ToProto(),
+			SamplingStats: instance.Stats.ToProto(),
+		})
+
+		// We want to carry on until all the registered instances have been processed
+		return true
+	})
 
 	serverToClientRes := c.stream.FromServerMsg()
 	serverToClientRes.Message = &protos.ServerToClient_ListSamplersRes{
@@ -29,31 +39,21 @@ func (c *Client) handleListSamplersReq(_ *protos.ClientListSamplersReq) (*protos
 
 func (c *Client) handleSamplerConfReq(req *protos.ClientSamplerConfReq) (*protos.ServerToClient, error) {
 	if req.GetSamplerConfigUpdate() == nil {
-		if err := c.clientReg.DeleteSamplerConfig(
-			data.SamplerUID(req.GetSamplerUid()),
-			req.GetSamplerName(),
+		if err := c.samplerRegistry.DeleteSamplerConfig(
 			req.GetSamplerResource(),
+			req.GetSamplerName(),
 		); err != nil {
 			return nil, fmt.Errorf("error deleting sampler configuration: %w", err)
 		}
 	} else {
-		update := data.NewSamplerConfigUpdateFromProto(req.GetSamplerConfigUpdate())
-		if err := c.clientReg.UpdateSamplerConfig(
-			data.SamplerUID(req.GetSamplerUid()),
-			req.GetSamplerName(),
+		update := control.NewSamplerConfigUpdateFromProto(req.GetSamplerConfigUpdate())
+		if err := c.samplerRegistry.UpdateSamplerConfig(
 			req.GetSamplerResource(),
+			req.GetSamplerName(),
 			update,
 		); err != nil {
 			return nil, fmt.Errorf("error updating sampler configuration: %w", err)
 		}
-	}
-
-	if err := c.samplerReg.MarkDirty(
-		req.GetSamplerName(),
-		req.GetSamplerResource(),
-		data.SamplerUID(req.GetSamplerUid()),
-	); err != nil {
-		return nil, fmt.Errorf("error marking sampler as dirty: %w", err)
 	}
 
 	serverToClientRes := c.stream.FromServerMsg()

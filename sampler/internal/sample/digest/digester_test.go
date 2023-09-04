@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	dpsample "github.com/neblic/platform/dataplane/sample"
-	"github.com/neblic/platform/sampler/internal/sample"
+	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -40,32 +40,32 @@ func (e *mockExporter) Close(context.Context) error {
 
 func TestBuildWorkers(t *testing.T) {
 	tcs := map[string]struct {
-		oldCfg, newCfg            map[data.SamplerDigestUID]data.Digest
-		expectedWorkersDigestUIDs []data.SamplerDigestUID
+		oldCfg, newCfg            map[control.SamplerDigestUID]control.Digest
+		expectedWorkersDigestUIDs []control.SamplerDigestUID
 	}{
 		"New worker": {
 			oldCfg: nil,
-			newCfg: map[data.SamplerDigestUID]data.Digest{
-				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: data.DigestTypeSt},
+			newCfg: map[control.SamplerDigestUID]control.Digest{
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt},
 			},
-			expectedWorkersDigestUIDs: []data.SamplerDigestUID{"sampler_digest_uid"},
+			expectedWorkersDigestUIDs: []control.SamplerDigestUID{"sampler_digest_uid"},
 		},
 		"Delete worker": {
-			oldCfg: map[data.SamplerDigestUID]data.Digest{
-				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: data.DigestTypeSt},
+			oldCfg: map[control.SamplerDigestUID]control.Digest{
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt},
 			},
 			newCfg:                    nil,
-			expectedWorkersDigestUIDs: []data.SamplerDigestUID{},
+			expectedWorkersDigestUIDs: []control.SamplerDigestUID{},
 		},
 		// TODO: actually check that the worker settings have been updated
 		"Update worker": {
-			oldCfg: map[data.SamplerDigestUID]data.Digest{
-				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: data.DigestTypeSt, St: data.DigestSt{MaxProcessedFields: 10}},
+			oldCfg: map[control.SamplerDigestUID]control.Digest{
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt, St: control.DigestSt{MaxProcessedFields: 10}},
 			},
-			newCfg: map[data.SamplerDigestUID]data.Digest{
-				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: data.DigestTypeSt, St: data.DigestSt{MaxProcessedFields: 20}},
+			newCfg: map[control.SamplerDigestUID]control.Digest{
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt, St: control.DigestSt{MaxProcessedFields: 20}},
 			},
-			expectedWorkersDigestUIDs: []data.SamplerDigestUID{"sampler_digest_uid"},
+			expectedWorkersDigestUIDs: []control.SamplerDigestUID{"sampler_digest_uid"},
 		},
 	}
 
@@ -83,7 +83,7 @@ func TestBuildWorkers(t *testing.T) {
 			d.SetDigestsConfig(tc.oldCfg)
 			d.SetDigestsConfig(tc.newCfg)
 
-			var gotWorkersDigestUIDs []data.SamplerDigestUID
+			var gotWorkersDigestUIDs []control.SamplerDigestUID
 			for workerDigestUID := range d.workers {
 				gotWorkersDigestUIDs = append(gotWorkersDigestUIDs, workerDigestUID)
 			}
@@ -96,7 +96,7 @@ func TestBuildWorkers(t *testing.T) {
 func TestWorkerRun(t *testing.T) {
 	tcs := map[string]struct {
 		settings       workerSettings
-		samples        []*sample.Data
+		samples        []*data.Data
 		expectedDigest dpsample.SamplerSamples
 	}{
 		"periodic digest": {
@@ -109,17 +109,17 @@ func TestWorkerRun(t *testing.T) {
 				inChBufferSize: 10,
 				notifyErr:      testNotifyErr(t),
 			},
-			samples: []*sample.Data{
-				sample.NewSampleDataFromJSON(`{ "field_double": 1 }`),
-				sample.NewSampleDataFromJSON(`{ "field_string": "some_string" }`),
+			samples: []*data.Data{
+				data.NewSampleDataFromJSON(`{ "field_double": 1 }`),
+				data.NewSampleDataFromJSON(`{ "field_string": "some_string" }`),
 			},
 			expectedDigest: dpsample.SamplerSamples{
 				ResourceName: testResourceName,
 				SamplerName:  testSamplerName,
 				Samples: []dpsample.Sample{
 					{
-						Type:     dpsample.StructDigestType,
-						Streams:  []data.SamplerStreamUID{"stream_uid"},
+						Type:     control.StructDigestSampleType,
+						Streams:  []control.SamplerStreamUID{"stream_uid"},
 						Encoding: dpsample.JSONEncoding,
 						Data:     []byte(`{"obj":{"count":"2","fields":{"field_double":{"number":{"floatNum":{"count":"1"}}},"field_string":{"string":{"count":"1"}}}}}`),
 					},

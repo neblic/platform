@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	data "github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/internal/stream"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/logging"
 )
 
 type Client struct {
-	uid  data.ClientUID
+	uid  control.ClientUID
 	opts *options
 
 	clientStream *stream.Stream[*protos.ServerToClient, *protos.ClientToServer]
@@ -28,7 +28,7 @@ func New(uid string, clientOptions ...Option) *Client {
 	}
 
 	c := &Client{
-		uid:  data.ClientUID(uid),
+		uid:  control.ClientUID(uid),
 		opts: opts,
 	}
 
@@ -78,11 +78,11 @@ func (c *Client) Errors() chan error {
 	return c.clientStream.Errors()
 }
 
-func (c *Client) UID() data.ClientUID {
+func (c *Client) UID() control.ClientUID {
 	return c.uid
 }
 
-func (c *Client) ListSamplers(ctx context.Context) ([]*data.Sampler, error) {
+func (c *Client) ListSamplers(ctx context.Context) ([]*control.Sampler, error) {
 	req := c.clientStream.ToServerMsg()
 	req.Message = &protos.ClientToServer_ListSamplersReq{
 		ListSamplersReq: &protos.ClientListSamplersReq{},
@@ -105,23 +105,21 @@ func (c *Client) ListSamplers(ctx context.Context) ([]*data.Sampler, error) {
 		return nil, fmt.Errorf("error getting samplers list: %s", status.GetErrorMessage())
 	}
 
-	var samplers []*data.Sampler
+	var samplers []*control.Sampler
 	for _, protosSampler := range listSamplersRes.ListSamplersRes.GetSamplers() {
-		samplers = append(samplers, data.NewSamplerFromProto(protosSampler))
+		samplers = append(samplers, control.NewSamplerFromProto(protosSampler))
 	}
 
 	return samplers, nil
 }
 
-// ConfigureSampler sends a configuration to a sampler. Specifying the samplerName is mandatory. If the parameter samplerUID is set,
-// only the sampler with the specified UID will be configured.
-func (c *Client) ConfigureSampler(ctx context.Context, samplerName, samplerResource string, samplerUID data.SamplerUID, update *data.SamplerConfigUpdate) error {
+// ConfigureSampler sends a configuration to a sampler
+func (c *Client) ConfigureSampler(ctx context.Context, samplerResource, samplerName string, update *control.SamplerConfigUpdate) error {
 	req := c.clientStream.ToServerMsg()
 	req.Message = &protos.ClientToServer_SamplerConfReq{
 		SamplerConfReq: &protos.ClientSamplerConfReq{
 			SamplerName:         samplerName,
 			SamplerResource:     samplerResource,
-			SamplerUid:          string(samplerUID),
 			SamplerConfigUpdate: update.ToProto(),
 		},
 	}

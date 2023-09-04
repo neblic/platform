@@ -14,25 +14,6 @@ receivers:
         # auth:
         #   authenticator: bearerauth
 processors:
-  resource:
-    # Required if using Loki as a store
-    # Attributes processor: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/attributesprocessor
-    # can create a new attribute that Loki will pick as a label using the sampler_name label
-    attributes:
-    - action: insert
-      key: loki.resource.labels
-      value: sampler_name
-
-exporters:
-  # Uncomment to enable simple summary messages witht the amount of `Data Samples` exported
-  # logging:
-
-  # Grafana Loki exporter: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/lokiexporter
-  loki:
-    # Where Loki will receive `Data Samples` (Loki push endpoint: https://grafana.com/docs/loki/latest/api/#push-log-entries-to-loki)
-    endpoint: "${env:LOKI_LOG_PUSH_ENDPOINT}"
-
-extensions:
   # Required: Neblic extension configuration
   neblic:
     # Collector id, if not provided, a random uid is used
@@ -55,6 +36,25 @@ extensions:
     #  bearer:
     #     token: some_secret_token
 
+  resource:
+    # Required if using Loki as a store
+    # Attributes processor: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/attributesprocessor
+    # can create a new attribute that Loki will pick as a label using the sampler_name label
+    attributes:
+    - action: insert
+      key: loki.resource.labels
+      value: sampler_name
+
+exporters:
+  # Uncomment to enable simple summary messages witht the amount of `Data Samples` exported
+  # logging:
+
+  # Grafana Loki exporter: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/lokiexporter
+  loki:
+    # Where Loki will receive `Data Samples` (Loki push endpoint: https://grafana.com/docs/loki/latest/api/#push-log-entries-to-loki)
+    endpoint: "${env:LOKI_LOG_PUSH_ENDPOINT}"
+
+extensions:
   # Bearer authentication configuration. If the OTLP receiver has Bearer authentication enabled, it needs to be configured.
   # bearerauth:
     # Bearer authentication token
@@ -72,10 +72,8 @@ service:
       receivers:
       - otlp
       processors:
+      - neblic
       - resource
       exporters:
       # - logging
       - loki
-
-  # Required: Enables the Neblic extension
-  extensions: [neblic]

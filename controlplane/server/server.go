@@ -32,8 +32,8 @@ type Server struct {
 	grpcServer *grpc.Server
 	protos.UnimplementedControlPlaneServer
 
-	clientRegistry  *registry.Client
-	samplerRegistry *registry.Sampler
+	clientRegistry  *registry.ClientRegistry
+	samplerRegistry *registry.SamplerRegistry
 	opts            *options
 
 	reconcileNow        chan struct{}
@@ -59,13 +59,13 @@ func New(uid string, serverOptions ...Option) (*Server, error) {
 
 	// Initialize client registry
 	var err error
-	s.clientRegistry, err = registry.NewClient(s.logger, opts.registry)
+	s.clientRegistry, err = registry.NewClientRegistry(s.logger)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client registry: %v", err)
 	}
 
 	// Initialize sampler registry
-	s.samplerRegistry, err = registry.NewSampler(s.logger, s.reconcileNow)
+	s.samplerRegistry, err = registry.NewSamplerRegistry(s.logger, s.reconcileNow, *opts.storage)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing sampler registry: %v", err)
 	}
@@ -136,6 +136,10 @@ func (s *Server) Addr() net.Addr {
 	return s.lis.Addr()
 }
 
+func (s *Server) SamplerRegistry() *registry.SamplerRegistry {
+	return s.samplerRegistry
+}
+
 func (s *Server) SamplerConn(stream protos.ControlPlane_SamplerConnServer) error {
 	h := protocolsampler.New(s.logger, s.uid, s.samplerRegistry, s.opts.stream)
 
@@ -165,20 +169,22 @@ func (s *Server) Stop(timeout time.Duration) error {
 }
 
 func (s *Server) reconcileSamplerConfigs() {
-	for _, sampler := range s.samplerRegistry.GetRegisteredSamplers() {
-		if sampler.Dirty {
-			config := s.clientRegistry.GetSamplerConfig(sampler.Data.UID, sampler.Data.Name, sampler.Data.Resource)
-			if config != nil {
-				if err := sampler.Conn.Configure(config); err != nil {
-					s.logger.Error(fmt.Sprintf("Error configuring sampler: %s", err))
-				} else {
-					sampler.Data.Config = *config
-				}
-			}
+	start := time.Now()
+	numReconciliations := 0
 
-			sampler.Dirty = false
+	instances := s.samplerRegistry.GetRegisteredInstances()
+	for _, instance := range instances {
+		if instance.Dirty {
+			if err := instance.Conn.Configure(&instance.Sampler.Config); err != nil {
+				s.logger.Error(fmt.Sprintf("Error configuring sampler: %s", err))
+			}
+			instance.Dirty = false
+
+			numReconciliations++
 		}
 	}
+
+	s.logger.Info("reconciliation performed", "elapsed", time.Since(start).String(), "num_reconciliations", numReconciliations)
 }
 
 func (s *Server) reconcileConfigLoop() {

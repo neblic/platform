@@ -11,12 +11,12 @@ exporters:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/lokiexporter v0.77.0
 processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.77.0
-receivers:
-  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.77.0
-extensions:
   - import: github.com/neblic/platform/controlplane/server/otelcolext
     gomod: github.com/neblic/platform v0.0.0
     path: .
+receivers:
+  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.77.0
+extensions:
   - import: github.com/neblic/platform/controlplane/server/otelcolext/bearerauthextension
     gomod: github.com/neblic/platform v0.0.0
     path: .

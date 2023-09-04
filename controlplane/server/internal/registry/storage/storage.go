@@ -6,12 +6,9 @@ var (
 	ErrUnknownKey = fmt.Errorf("unknown key")
 )
 
-type Hasher interface {
-	Hash() string
-}
-
-type Storage[K Hasher, V any] interface {
+type Storage[K comparable, V any] interface {
 	Get(K) (V, error)
+	Range(func(key K, value V)) error
 	Set(K, V) error
 	Delete(K) error
 }

@@ -10,7 +10,7 @@ require (
 	github.com/neblic/platform v0.0.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/term v1.1.0
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
+	golang.org/x/exp v0.0.0-20230801115018-d63ba01acd4b
 	golang.org/x/sys v0.8.0
 )
 

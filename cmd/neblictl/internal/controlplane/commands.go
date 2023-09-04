@@ -484,7 +484,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 			},
 			{
 				Name:        "digests:delete",
-				Description: "Delete structure digests",
+				Description: "Delete digest",
 				Parameters: []interpoler.Parameter{
 					{
 						Name:        "uid",
@@ -506,7 +506,136 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Default:     "*",
 					},
 				},
-				Executor: controlPlaneExecutors.DigestsStructureDelete,
+				Executor: controlPlaneExecutors.DigestsDelete,
+			},
+
+			// Events
+			{
+				Name:        "events:list",
+				Description: "List configured events",
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "resource-name",
+						Description: "Filter by resource",
+						Completer:   controlPlaneCompleters.ListResourcesUID,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler-name",
+						Description: "Filter by sampler",
+						Completer:   controlPlaneCompleters.ListSamplersUID,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+				Executor: controlPlaneExecutors.EventsList,
+			},
+			{
+				Name:        "events:create",
+				Description: "Create events",
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "event-uid",
+						Description: "event uid",
+						Optional:    true,
+					},
+					{
+						Name:        "stream-uid",
+						Description: "Stream uid",
+						Completer:   controlPlaneCompleters.ListStreamsUID,
+					},
+					{
+						Name:        "sample-type",
+						Description: "Sample type",
+						Completer:   controlPlaneCompleters.ListSampleType,
+					},
+					{
+						Name:        "rule",
+						Description: "CEL rule that will create events from elements in the the stream-uid",
+					},
+					{
+						Name:        "resource-name",
+						Description: "Filter by resource",
+						Completer:   controlPlaneCompleters.ListResourcesUID,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler-name",
+						Description: "Filter by sampler",
+						Completer:   controlPlaneCompleters.ListSamplersUID,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+				Executor: controlPlaneExecutors.EventsCreate,
+			},
+			{
+				Name:        "events:update",
+				Description: "Update events",
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "event-uid",
+						Description: "Event uid",
+						Completer:   controlPlaneCompleters.ListEventsUID,
+					},
+					{
+						Name:        "stream-uid",
+						Description: "Stream uid",
+						Completer:   controlPlaneCompleters.ListStreamsUID,
+					},
+					{
+						Name:        "sample-type",
+						Description: "Sample type",
+						Completer:   controlPlaneCompleters.ListSampleType,
+					},
+					{
+						Name:        "rule",
+						Description: "CEL rule that will create events from elements in the the stream-uid",
+					},
+					{
+						Name:        "resource-name",
+						Description: "Filter by resource",
+						Completer:   controlPlaneCompleters.ListResourcesUID,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler-name",
+						Description: "Filter by sampler",
+						Completer:   controlPlaneCompleters.ListSamplersUID,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+				Executor: controlPlaneExecutors.EventsUpdate,
+			},
+			{
+				Name:        "events:delete",
+				Description: "Delete events",
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "uid",
+						Description: "event uid",
+						Completer:   controlPlaneCompleters.ListEventsUID,
+					},
+					{
+						Name:        "resource-name",
+						Description: "Filter by resource",
+						Completer:   controlPlaneCompleters.ListResourcesUID,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler-name",
+						Description: "Filter by sampler",
+						Completer:   controlPlaneCompleters.ListSamplersUID,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+				Executor: controlPlaneExecutors.EventsDelete,
 			},
 		},
 	}
