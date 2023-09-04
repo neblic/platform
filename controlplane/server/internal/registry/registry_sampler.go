@@ -150,6 +150,7 @@ func (sr *SamplerRegistry) sendDirtyNotification() {
 
 // RangeRegisteredInstances locks the registry until all the instances have been processed
 // CAUTION: do not perform any action that may require registry access or it may cause a deadlock
+
 func (sr *SamplerRegistry) RangeRegisteredInstances(fn func(sampler *defs.Sampler, instance *defs.SamplerInstance) (carryon bool)) {
 	sr.m.Lock()
 	defer sr.m.Unlock()
