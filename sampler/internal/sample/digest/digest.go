@@ -1,13 +1,13 @@
 package digest
 
-import "github.com/neblic/platform/sampler/internal/sample"
+import "github.com/neblic/platform/internal/pkg/data"
 
 type digest interface {
 	isDigest()
 }
 
 type Digest interface {
-	AddSampleData(*sample.Data) error
+	AddSampleData(*data.Data) error
 	JSON() ([]byte, error)
 	Reset()
 	String() string

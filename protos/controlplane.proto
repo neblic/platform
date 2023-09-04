@@ -34,16 +34,16 @@ message Limiter {
   int32 limit = 1;
 }
 
-message Stream {
-  message Rule {
-    enum Language {
-      UNKNOWN = 0;
-      CEL = 1;
-    }
-    Language language = 1;
-    string rule = 2;
+message Rule {
+  enum Language {
+    UNKNOWN = 0;
+    CEL = 1;
   }
+  Language language = 1;
+  string expression = 2;
+}
 
+message Stream {
   string uid = 1;
   Rule rule = 2;
   bool export_raw_samples = 3;
@@ -62,6 +62,20 @@ message Digest {
   oneof Type {
     St st = 5;
   }
+}
+
+enum SampleType {
+  UNKNOWN = 0;
+  RAW = 1;
+  STRUCT_DIGEST = 2;
+  EVENT = 3;
+}
+
+message Event {
+  string uid = 1;
+  string stream_uid = 2;
+  SampleType sample_type = 3;
+  Rule rule = 4;
 }
 
 // Used to get and update the sampler configuration.
@@ -98,6 +112,8 @@ message SamplerConfig {
   Limiter limiter_out = 4;
   // Configure the sampler digests.
   repeated Digest digests = 5;
+  // Configure the sampler events.
+  repeated Event events = 6;
 }
 
 message SamplerSamplingStats {
@@ -138,14 +154,16 @@ message Sampler {
 
 message SamplerToServer {
   google.protobuf.Timestamp timestamp = 1;
-  string sampler_uid = 2;
+  string name = 2;
+  string resouce = 3;
+  string sampler_uid = 4;
   oneof Message {
     // Messages
-    SamplerStatsMsg sampler_stats_msg = 3;
+    SamplerStatsMsg sampler_stats_msg = 5;
     // Requests
-    SamplerRegisterReq register_req = 4;
+    SamplerRegisterReq register_req = 6;
     // Responses
-    ServerSamplerConfRes conf_res = 5;
+    ServerSamplerConfRes conf_res = 7;
   }
 }
 
@@ -198,8 +216,6 @@ message SamplerStatsMsg { SamplerSamplingStats sampling_stats = 2; }
 // register
 
 message SamplerRegisterReq {
-  string sampler_name = 1;
-  string resource = 2;
   map<string, string> tags = 3;
 }
 
@@ -264,6 +280,17 @@ message ClientDigestUpdate {
   Digest digest = 2;
 }
 
+message ClientEventUpdate {
+  enum Op {
+    UNKNOWN = 0;
+    UPSERT = 1;
+    DELETE = 2;
+  }
+
+  Op op = 1;
+  Event event = 2;
+}
+
 message ClientSamplerConfigUpdate {
   // If a field is set to true, it means that the field is reset to its default.
   // If a configuration option is reset and set in the same request, it will be
@@ -274,6 +301,7 @@ message ClientSamplerConfigUpdate {
     bool sampling_in = 3;
     bool limiter_out = 4;
     bool digests = 5;
+    bool events = 6;
   }
   Reset reset = 1;
 
@@ -284,6 +312,7 @@ message ClientSamplerConfigUpdate {
   Sampling sampling_in = 4;
   Limiter limiter_out = 5;
   repeated ClientDigestUpdate digest_updates = 6;
+  repeated ClientEventUpdate event_updates = 7;
 }
 
 message ClientSamplerConfReq {
@@ -292,11 +321,8 @@ message ClientSamplerConfReq {
   string sampler_name = 1;
   // Name of the resource where the sampler is defined
   string sampler_resource = 2;
-  // If sampler_uid is set, only the sampler with the specified uid will be
-  // configured.
-  string sampler_uid = 3;
   // Update configuration options. If not set, resets all configuration options
-  ClientSamplerConfigUpdate sampler_config_update = 4;
+  ClientSamplerConfigUpdate sampler_config_update = 3;
 }
 
 message ClientSamplerConfRes { Status status = 1; }

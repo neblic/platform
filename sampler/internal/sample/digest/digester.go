@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	dpsample "github.com/neblic/platform/dataplane/sample"
-	"github.com/neblic/platform/sampler/internal/sample"
+	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/neblic/platform/sampler/internal/sample/exporter"
 )
 
@@ -35,8 +35,8 @@ type Digester struct {
 	notifyErr func(error)
 	exporter  exporter.Exporter
 
-	digestsConfig map[data.SamplerDigestUID]data.Digest
-	workers       map[data.SamplerDigestUID]*worker
+	digestsConfig map[control.SamplerDigestUID]control.Digest
+	workers       map[control.SamplerDigestUID]*worker
 }
 
 func NewDigester(settings Settings) *Digester {
@@ -47,14 +47,14 @@ func NewDigester(settings Settings) *Digester {
 		notifyErr: settings.NotifyErr,
 		exporter:  settings.Exporter,
 
-		workers: make(map[data.SamplerDigestUID]*worker),
+		workers: make(map[control.SamplerDigestUID]*worker),
 	}
 }
 
-func (d *Digester) buildWorkerSettings(digestCfg data.Digest) (workerSettings, error) {
+func (d *Digester) buildWorkerSettings(digestCfg control.Digest) (workerSettings, error) {
 	var digest Digest
 	switch digestCfg.Type {
-	case data.DigestTypeSt:
+	case control.DigestTypeSt:
 		digest = NewStDigest(digestCfg.St.MaxProcessedFields, d.notifyErr)
 	default:
 		return workerSettings{}, errors.New("unknown digest type")
@@ -85,7 +85,7 @@ func (d *Digester) buildWorkerSettings(digestCfg data.Digest) (workerSettings, e
 	}, nil
 }
 
-func (d *Digester) SetDigestsConfig(digestCfgs map[data.SamplerDigestUID]data.Digest) {
+func (d *Digester) SetDigestsConfig(digestCfgs map[control.SamplerDigestUID]control.Digest) {
 	for _, digestCfg := range digestCfgs {
 		if existingWorker, ok := d.workers[digestCfg.UID]; ok {
 			existingWorker.stop()
@@ -114,7 +114,7 @@ func (d *Digester) SetDigestsConfig(digestCfgs map[data.SamplerDigestUID]data.Di
 	d.digestsConfig = digestCfgs
 }
 
-func (d *Digester) ProcessSample(streams []data.SamplerStreamUID, sampleData *sample.Data) bool {
+func (d *Digester) ProcessSample(streams []control.SamplerStreamUID, sampleData *data.Data) bool {
 	processed := false
 	for _, stream := range streams {
 		for _, worker := range d.workers {
@@ -137,7 +137,7 @@ func (d *Digester) Close() error {
 }
 
 type workerSettings struct {
-	streamUID    data.SamplerStreamUID
+	streamUID    control.SamplerStreamUID
 	resourceName string
 	samplerName  string
 
@@ -151,7 +151,7 @@ type workerSettings struct {
 }
 
 type worker struct {
-	processSampleCh chan *sample.Data
+	processSampleCh chan *data.Data
 
 	workerSettings
 }
@@ -159,7 +159,7 @@ type worker struct {
 func newWorker(settings workerSettings) *worker {
 	return &worker{
 		workerSettings:  settings,
-		processSampleCh: make(chan *sample.Data, settings.inChBufferSize),
+		processSampleCh: make(chan *data.Data, settings.inChBufferSize),
 	}
 }
 
@@ -167,7 +167,7 @@ func (w *worker) String() string {
 	return fmt.Sprintf("worker(StreamUID: %s, Digest: %s)", w.streamUID, w.digest)
 }
 
-func (w *worker) processSample(sampleData *sample.Data) {
+func (w *worker) processSample(sampleData *data.Data) {
 	select {
 	case w.processSampleCh <- sampleData:
 		w.samplesToFlush++
@@ -204,8 +204,8 @@ func (w *worker) buildDigestSample(digestData []byte) dpsample.SamplerSamples {
 		SamplerName:  w.samplerName,
 		Samples: []dpsample.Sample{{
 			Ts:       time.Now(),
-			Type:     dpsample.StructDigestType,
-			Streams:  []data.SamplerStreamUID{w.streamUID},
+			Type:     control.StructDigestSampleType,
+			Streams:  []control.SamplerStreamUID{w.streamUID},
 			Encoding: dpsample.JSONEncoding,
 			Data:     digestData,
 		}},

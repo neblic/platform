@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/cel-go/cel"
-	"github.com/neblic/platform/sampler/defs"
-	"github.com/neblic/platform/sampler/internal/sample"
+	"github.com/neblic/platform/internal/pkg/data"
 )
 
 type sampleCompatibility uint8
@@ -18,12 +17,12 @@ const (
 )
 
 type Rule struct {
-	schema     defs.Schema
+	schema     Schema
 	prg        cel.Program
 	sampleComp sampleCompatibility
 }
 
-func New(schema defs.Schema, prg cel.Program) *Rule {
+func New(schema Schema, prg cel.Program) *Rule {
 	r := &Rule{
 		schema: schema,
 		prg:    prg,
@@ -33,26 +32,26 @@ func New(schema defs.Schema, prg cel.Program) *Rule {
 	return r
 }
 
-func (r *Rule) setCompatibility(schema defs.Schema) {
+func (r *Rule) setCompatibility(schema Schema) {
 	switch schema.(type) {
-	case defs.DynamicSchema:
+	case DynamicSchema:
 		r.sampleComp = jsonComp | nativeComp | protoComp
-	case defs.ProtoSchema:
+	case ProtoSchema:
 		r.sampleComp = protoComp
 	}
 }
 
-func (r *Rule) checkCompatibility(sampleData *sample.Data) error {
+func (r *Rule) checkCompatibility(sampleData *data.Data) error {
 	switch sampleData.Origin {
-	case sample.JSONOrig:
+	case data.JSONOrigin:
 		if !(r.sampleComp&jsonComp != 0) {
 			return fmt.Errorf("incompatible sample format")
 		}
-	case sample.NativeOrig:
+	case data.NativeOrigin:
 		if !(r.sampleComp&nativeComp != 0) {
 			return fmt.Errorf("incompatible sample format")
 		}
-	case sample.ProtoOrig:
+	case data.ProtoOrigin:
 		if !(r.sampleComp&protoComp != 0) {
 			return fmt.Errorf("incompatible sample format")
 		}
@@ -63,7 +62,7 @@ func (r *Rule) checkCompatibility(sampleData *sample.Data) error {
 	return nil
 }
 
-func (r *Rule) Eval(ctx context.Context, sampleData *sample.Data) (bool, error) {
+func (r *Rule) Eval(ctx context.Context, sampleData *data.Data) (bool, error) {
 	if err := r.checkCompatibility(sampleData); err != nil {
 		return false, err
 	}
@@ -73,7 +72,7 @@ func (r *Rule) Eval(ctx context.Context, sampleData *sample.Data) (bool, error) 
 		err  error
 	)
 	switch sampleData.Origin {
-	case sample.ProtoOrig:
+	case data.ProtoOrigin:
 		smpl, err = sampleData.Proto()
 		if err != nil {
 			return false, fmt.Errorf("failed to get proto message from sample: %w", err)

@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/neblic/platform/controlplane/server/internal/protocol/stream"
-	"github.com/neblic/platform/controlplane/server/internal/registry"
+	"github.com/neblic/platform/controlplane/server/internal/registry/storage"
 	"github.com/neblic/platform/logging"
 )
 
@@ -35,7 +35,7 @@ type options struct {
 	stream               *stream.Options
 	tls                  *tlsOptions
 	auth                 *authOptions
-	registry             *registry.Options
+	storage              *storage.Options
 	reconciliationPeriod time.Duration
 	logger               logging.Logger
 }
@@ -49,7 +49,7 @@ func newDefaultOptions() *options {
 			authType: "",
 		},
 		stream:               stream.NewOptionsDefault(),
-		registry:             registry.NewOptionsDefault(),
+		storage:              storage.NewOptionsDefault(),
 		reconciliationPeriod: time.Second * time.Duration(5),
 		logger:               logging.NewNopLogger(),
 	}
@@ -94,8 +94,8 @@ func WithAuthBearer(token string) Option {
 // to disk. Path contains the root folder where the data will be stored
 func WithDiskStorage(path string) Option {
 	return newFuncOption(func(po *options) {
-		po.registry.StorageType = registry.DiskStorage
-		po.registry.Path = path
+		po.storage.Type = storage.DiskType
+		po.storage.Path = path
 	})
 }
 

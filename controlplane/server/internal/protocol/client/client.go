@@ -3,17 +3,17 @@ package client
 import (
 	"fmt"
 
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
-	internalclient "github.com/neblic/platform/controlplane/server/internal/defs/client"
+	"github.com/neblic/platform/controlplane/server/internal/defs"
 	"github.com/neblic/platform/controlplane/server/internal/protocol/stream"
 	"github.com/neblic/platform/controlplane/server/internal/registry"
 	"github.com/neblic/platform/logging"
 )
 
 type Client struct {
-	clientReg  *registry.Client
-	samplerReg *registry.Sampler
+	clientRegistry  *registry.ClientRegistry
+	samplerRegistry *registry.SamplerRegistry
 
 	registeredOnce bool
 	stream         *stream.Stream[*protos.ClientToServer, *protos.ServerToClient]
@@ -24,8 +24,8 @@ type Client struct {
 func New(
 	logger logging.Logger,
 	serverUID string,
-	clientReg *registry.Client,
-	samplerReg *registry.Sampler,
+	clientRegistry *registry.ClientRegistry,
+	samplerRegistry *registry.SamplerRegistry,
 	opts *stream.Options) *Client {
 
 	if logger == nil {
@@ -33,8 +33,8 @@ func New(
 	}
 
 	c := &Client{
-		clientReg:  clientReg,
-		samplerReg: samplerReg,
+		clientRegistry:  clientRegistry,
+		samplerRegistry: samplerRegistry,
 	}
 
 	c.logger = logger.With("role", "server/client")
@@ -81,10 +81,10 @@ func (c *Client) recvToServerReqCb(clientToServerReq *protos.ClientToServer) (bo
 }
 
 // streamStateChangeCb implements the logic to execute when there is a stream state change
-func (c *Client) streamStateChangeCb(state internalclient.State, uid data.ClientUID) error {
+func (c *Client) streamStateChangeCb(state defs.Status, uid control.ClientUID) error {
 	switch state {
-	case internalclient.Registered:
-		if err := c.clientReg.Register(uid); err != nil {
+	case defs.RegisteredStatus:
+		if err := c.clientRegistry.Register(uid); err != nil {
 			return err
 		}
 
@@ -95,8 +95,8 @@ func (c *Client) streamStateChangeCb(state internalclient.State, uid data.Client
 		c.logger.Debug("Client registered")
 
 		c.registeredOnce = true
-	case internalclient.Unregistered:
-		if err := c.clientReg.Deregister(uid); err != nil {
+	case defs.UnregisteredStatus:
+		if err := c.clientRegistry.Deregister(uid); err != nil {
 			return fmt.Errorf("error deregistering client, uid: %s: %w", uid, err)
 		}
 

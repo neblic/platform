@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,22 +29,22 @@ func TestFromSamplerSamples(t *testing.T) {
 					Samples: []Sample{
 						{
 							Ts:       ts,
-							Type:     RawType,
-							Streams:  []data.SamplerStreamUID{"some_sampling_rule_uid1111"},
+							Type:     control.RawSampleType,
+							Streams:  []control.SamplerStreamUID{"some_sampling_rule_uid1111"},
 							Encoding: JSONEncoding,
 							Data:     []byte(`{\"id\": \"some_id111\"}`),
 						},
 						{
 							Ts:       ts,
-							Type:     RawType,
-							Streams:  []data.SamplerStreamUID{"some_sampling_rule_uid1211"},
+							Type:     control.RawSampleType,
+							Streams:  []control.SamplerStreamUID{"some_sampling_rule_uid1211"},
 							Encoding: JSONEncoding,
 							Data:     []byte(`{\"id\": \"some_id121\"}`),
 						},
 						{
 							Ts:   ts,
-							Type: RawType,
-							Streams: []data.SamplerStreamUID{
+							Type: control.RawSampleType,
+							Streams: []control.SamplerStreamUID{
 								"some_sampling_rule_uid1221",
 								"some_sampling_rule_uid1222",
 							},
@@ -59,8 +59,8 @@ func TestFromSamplerSamples(t *testing.T) {
 					Samples: []Sample{
 						{
 							Ts:       ts,
-							Type:     RawType,
-							Streams:  []data.SamplerStreamUID{"some_sampling_rule_uid2"},
+							Type:     control.RawSampleType,
+							Streams:  []control.SamplerStreamUID{"some_sampling_rule_uid2"},
 							Encoding: JSONEncoding,
 							Data:     []byte(`{"id": "some_id2"}`),
 						},

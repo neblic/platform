@@ -3,7 +3,7 @@ package digest
 import (
 	"testing"
 
-	"github.com/neblic/platform/sampler/internal/sample"
+	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/neblic/platform/sampler/protos"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -527,12 +527,12 @@ func TestBuildDigest(t *testing.T) {
 
 	testCases := []struct {
 		desc       string
-		sample     *sample.Data
+		sample     *data.Data
 		wantDigest *protos.StructureDigest
 	}{
 		{
 			desc:   "add sample from JSON",
-			sample: sample.NewSampleDataFromJSON(`{"key": 1}`),
+			sample: data.NewSampleDataFromJSON(`{"key": 1}`),
 			wantDigest: &protos.StructureDigest{
 				Obj: &protos.ObjType{
 					Count: 1,
@@ -544,7 +544,7 @@ func TestBuildDigest(t *testing.T) {
 		},
 		{
 			desc: "add sample from proto",
-			sample: sample.NewSampleDataFromProto(&protos.TestSample{
+			sample: data.NewSampleDataFromProto(&protos.TestSample{
 				Int32: 1,
 			}),
 			wantDigest: &protos.StructureDigest{
@@ -558,7 +558,7 @@ func TestBuildDigest(t *testing.T) {
 		},
 		{
 			desc:   "add sample from native",
-			sample: sample.NewSampleDataFromNative(sampleStruct{Key: 1}),
+			sample: data.NewSampleDataFromNative(sampleStruct{Key: 1}),
 			wantDigest: &protos.StructureDigest{
 				Obj: &protos.ObjType{
 					Count: 1,

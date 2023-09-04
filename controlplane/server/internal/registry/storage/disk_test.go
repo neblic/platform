@@ -1,13 +1,13 @@
 package storage
 
 import (
-	"io/ioutil"
 	"log"
+	"os"
 	"testing"
 )
 
 func diskStorageProvider() Storage[TestKey, *TestValue] {
-	dir, err := ioutil.TempDir("", "storagetest")
+	dir, err := os.MkdirTemp("", "storagetest")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,6 +23,10 @@ func diskStorageProvider() Storage[TestKey, *TestValue] {
 
 func TestDisk_Get(t *testing.T) {
 	StorageGetSuite(t, diskStorageProvider)
+}
+
+func TestDisk_Range(t *testing.T) {
+	StorageRangeSuite(t, diskStorageProvider)
 }
 
 func TestDisk_Set(t *testing.T) {

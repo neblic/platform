@@ -3,7 +3,7 @@ package sampler
 import (
 	"time"
 
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/logging"
 )
 
@@ -37,9 +37,9 @@ type options struct {
 	controlServerAuth authOption
 	dataServerAuth    authOption
 
-	limiterIn  data.LimiterConfig
-	samplingIn data.SamplingConfig
-	limiterOut data.LimiterConfig
+	limiterIn  control.LimiterConfig
+	samplingIn control.SamplingConfig
+	limiterOut control.LimiterConfig
 
 	updateStatsPeriod time.Duration
 
@@ -52,11 +52,11 @@ func newDefaultOptions() *options {
 		controlServerTLSEnable: false,
 		dataServerTLSEnable:    false,
 
-		limiterIn: data.LimiterConfig{
+		limiterIn: control.LimiterConfig{
 			Limit: 100,
 		},
-		samplingIn: data.SamplingConfig{},
-		limiterOut: data.LimiterConfig{
+		samplingIn: control.SamplingConfig{},
+		limiterOut: control.LimiterConfig{
 			Limit: 10,
 		},
 
@@ -114,9 +114,9 @@ func WithLimiterInLimit(l int32) Option {
 // Sampling is performed after the input limiter has been applied.
 func WithDeterministicSamplingIn(samplingRate int32) Option {
 	return newFuncOption(func(o *options) {
-		o.samplingIn = data.SamplingConfig{
-			SamplingType: data.DeterministicSamplingType,
-			DeterministicSampling: data.DeterministicSamplingConfig{
+		o.samplingIn = control.SamplingConfig{
+			SamplingType: control.DeterministicSamplingType,
+			DeterministicSampling: control.DeterministicSamplingConfig{
 				SampleRate: samplingRate,
 			},
 		}

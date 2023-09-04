@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	data "github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/internal/stream"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/logging"
 )
 
 type Sampler struct {
-	data *data.Sampler
+	data *control.Sampler
 	opts *options
 
 	samplerStream *stream.Stream[*protos.ServerToSampler, *protos.SamplerToServer]
@@ -28,9 +28,9 @@ func New(name, resource string, samplerOptions ...Option) *Sampler {
 		opt.apply(opts)
 	}
 
-	uid := data.SamplerUID(uuid.NewString())
+	uid := control.SamplerUID(uuid.NewString())
 	p := &Sampler{
-		data: data.NewSampler(name, resource, uid),
+		data: control.NewSampler(name, resource, uid),
 		opts: opts,
 	}
 
@@ -87,11 +87,11 @@ func (p *Sampler) Name() string {
 	return p.data.Name
 }
 
-func (p *Sampler) UID() data.SamplerUID {
+func (p *Sampler) UID() control.SamplerUID {
 	return p.data.UID
 }
 
-func (p *Sampler) Config() data.SamplerConfig {
+func (p *Sampler) Config() control.SamplerConfig {
 	return p.data.Config
 }
 
@@ -121,7 +121,7 @@ func (p *Sampler) recvServerReqCb(serverToSamplerReq *protos.ServerToSampler) (b
 // the configuration replaces the previous configuration but he operation is idempotent
 // so it should only apply the differences between the new and previous configuration
 func (p *Sampler) handleConfigurationRequest(req *protos.ServerSamplerConfReq) (*protos.SamplerToServer, error) {
-	samplerConfig := data.NewSamplerConfigFromProto(req.GetSamplerConfig())
+	samplerConfig := control.NewSamplerConfigFromProto(req.GetSamplerConfig())
 
 	p.data.Config = samplerConfig
 	p.sendEvent(ConfigUpdate{
@@ -140,7 +140,7 @@ func (p *Sampler) handleConfigurationRequest(req *protos.ServerSamplerConfReq) (
 	return res, nil
 }
 
-func (p *Sampler) UpdateStats(ctx context.Context, stats data.SamplerSamplingStats) error {
+func (p *Sampler) UpdateStats(ctx context.Context, stats control.SamplerSamplingStats) error {
 	p.data.SamplingStats = stats
 
 	msg := p.samplerStream.ToServerMsg()

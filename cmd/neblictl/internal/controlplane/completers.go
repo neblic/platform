@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/neblic/platform/cmd/neblictl/internal/interpoler"
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 )
 
 type Completers struct {
@@ -21,23 +21,18 @@ func NewCompleters(controlPlaneClient *Client) *Completers {
 // TODO: Generic sampler filter based on supplied parameters
 func (c *Completers) ListResourcesUID(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
 	samplerParameter, _ := parameters.Get("sampler-name")
+	streamUIDValue := "*"
 	streamUIDParameter, streamUIDParameterOk := parameters.Get("stream-uid")
+	if streamUIDParameterOk {
+		streamUIDValue = streamUIDParameter.Value
+	}
 
-	samplers, _ := c.controlPlaneClient.getSamplers(ctx, "*", samplerParameter.Value, true)
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, "*", samplerParameter.Value, streamUIDValue, true)
 
 	// Store resources in a map to remove duplicates
 	resourcesMap := map[string]bool{"*": true}
 	for _, sampler := range samplers {
-		if streamUIDParameterOk {
-			for _, stream := range sampler.Config.Streams {
-				if streamUIDParameterOk &&
-					stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
-					resourcesMap[sampler.Resource] = true
-				}
-			}
-		} else {
-			resourcesMap[sampler.Resource] = true
-		}
+		resourcesMap[sampler.Resource] = true
 	}
 
 	// Construct list of resources
@@ -54,22 +49,18 @@ func (c *Completers) ListResourcesUID(ctx context.Context, parameters interpoler
 // return the samplers that are part of the resource
 func (c *Completers) ListSamplersUID(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
 	resourceParameter, _ := parameters.Get("resource-name")
+	streamUIDValue := "*"
 	streamUIDParameter, streamUIDParameterOk := parameters.Get("stream-uid")
+	if streamUIDParameterOk {
+		streamUIDValue = streamUIDParameter.Value
+	}
 
-	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, "*", true)
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, "*", streamUIDValue, true)
 
 	// Store resources in a map to remove duplicates
 	samplersMap := map[string]bool{"*": true}
 	for _, sampler := range samplers {
-		if streamUIDParameterOk {
-			for _, stream := range sampler.Config.Streams {
-				if stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
-					samplersMap[sampler.Name] = true
-				}
-			}
-		} else {
-			samplersMap[sampler.Name] = true
-		}
+		samplersMap[sampler.Name] = true
 	}
 
 	// Construct list of sampler names
@@ -87,7 +78,7 @@ func (c *Completers) ListStreamsUID(ctx context.Context, parameters interpoler.P
 	samplerParameter, _ := parameters.Get("sampler-name")
 	digestUIDParameter, digestUIDParameterOk := parameters.Get("digest-uid")
 
-	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, true)
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, "*", true)
 	if len(samplers) == 0 {
 		return []string{}
 	}
@@ -97,7 +88,7 @@ func (c *Completers) ListStreamsUID(ctx context.Context, parameters interpoler.P
 		for _, stream := range sampler.Config.Streams {
 			if digestUIDParameterOk {
 				for _, digest := range sampler.Config.Digests {
-					if digest.UID == data.SamplerDigestUID(digestUIDParameter.Value) {
+					if digest.UID == control.SamplerDigestUID(digestUIDParameter.Value) {
 						uidsSet[string(stream.UID)] = struct{}{}
 					}
 				}
@@ -120,27 +111,66 @@ func (c *Completers) ListStreamsUID(ctx context.Context, parameters interpoler.P
 func (c *Completers) ListDigestsUID(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
 	resourceParameter, _ := parameters.Get("resource-name")
 	samplerParameter, _ := parameters.Get("sampler-name")
+	streamUIDValue := "*"
 	streamUIDParameter, streamUIDParameterOk := parameters.Get("stream-uid")
+	if streamUIDParameterOk {
+		streamUIDValue = streamUIDParameter.Value
+	}
 
-	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, true)
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, streamUIDValue, true)
 
 	// Store resources in a map to remove duplicates
 	digestsUIDMap := make(map[string]bool)
 	for _, sampler := range samplers {
 		for _, digest := range sampler.Config.Digests {
-			for _, stream := range sampler.Config.Streams {
-				if streamUIDParameterOk && stream.UID == data.SamplerStreamUID(streamUIDParameter.Value) {
-					digestsUIDMap[string(digest.UID)] = true
-				}
-			}
+			digestsUIDMap[string(digest.UID)] = true
 		}
 	}
 
-	digestsUID := []string{}
-	for resoure := range digestsUIDMap {
-		digestsUID = append(digestsUID, resoure)
+	// Create deduplicated list of digest uids
+	digestUids := []string{}
+	for digestUid := range digestsUIDMap {
+		digestUids = append(digestUids, digestUid)
 	}
-	sort.Strings(digestsUID)
+	sort.Strings(digestUids)
 
-	return digestsUID
+	return digestUids
+}
+
+func (c *Completers) ListSampleType(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
+	sampleTypes := []string{}
+	for _, sampleType := range control.ValidSampleTypes {
+		sampleTypes = append(sampleTypes, sampleType.String())
+	}
+	return sampleTypes
+}
+
+func (c *Completers) ListEventsUID(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
+	resourceParameter, _ := parameters.Get("resource-name")
+	samplerParameter, _ := parameters.Get("sampler-name")
+
+	streamUIDValue := "*"
+	streamUIDParameter, streamUIDParameterOk := parameters.Get("stream-uid")
+	if streamUIDParameterOk {
+		streamUIDValue = streamUIDParameter.Value
+	}
+
+	samplers, _ := c.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, streamUIDValue, true)
+
+	// Store resources in a map to remove duplicates
+	eventsUIDMap := make(map[string]bool)
+	for _, sampler := range samplers {
+		for _, event := range sampler.Config.Events {
+			eventsUIDMap[string(event.UID)] = true
+		}
+	}
+
+	// Create deduplicated list of event uids
+	eventsUID := []string{}
+	for resoure := range eventsUIDMap {
+		eventsUID = append(eventsUID, resoure)
+	}
+	sort.Strings(eventsUID)
+
+	return eventsUID
 }

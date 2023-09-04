@@ -3,8 +3,8 @@ package sampler
 import (
 	"time"
 
-	"github.com/neblic/platform/controlplane/data"
-	"github.com/neblic/platform/sampler/defs"
+	"github.com/neblic/platform/controlplane/control"
+	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/sampler/internal/sample/exporter"
 )
 
@@ -22,16 +22,16 @@ type AuthOptions struct {
 type Settings struct {
 	Name     string
 	Resource string
-	Schema   defs.Schema
+	Schema   rule.Schema
 
 	ControlPlaneAddr string
 	EnableTLS        bool
 	Auth             AuthOptions
 
-	LimiterIn  data.LimiterConfig
-	SamplingIn data.SamplingConfig
+	LimiterIn  control.LimiterConfig
+	SamplingIn control.SamplingConfig
 	Exporter   exporter.Exporter
-	LimiterOut data.LimiterConfig
+	LimiterOut control.LimiterConfig
 
 	UpdateStatsPeriod time.Duration
 

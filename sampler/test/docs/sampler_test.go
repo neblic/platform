@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	// --8<-- [start:SamplerInitImport]
+	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/sampler"
 	"github.com/neblic/platform/sampler/defs"
 	// --8<-- [end:SamplerInitImport]
@@ -16,7 +17,7 @@ var someSampler defs.Sampler
 func initSampler() defs.Sampler {
 	// initialize the schema that the sampled `Data Samples` will
 	// a `DynamicSchema` supports Json strings and Go structs
-	schema := defs.NewDynamicSchema()
+	schema := rule.NewDynamicSchema()
 
 	// equivalent to calling `global.SamplerProvider().Sampler()`
 	someSampler, _ := sampler.Sampler("sampler-name", schema)

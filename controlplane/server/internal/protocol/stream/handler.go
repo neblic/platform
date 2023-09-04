@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	data "github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
-	internalclient "github.com/neblic/platform/controlplane/server/internal/defs/client"
-	internalsampler "github.com/neblic/platform/controlplane/server/internal/defs/sampler"
+	"github.com/neblic/platform/controlplane/server/internal/defs"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -27,22 +26,22 @@ type Handler[T ToS, F FromS] interface {
 }
 
 type ClientRecvFromServerReqFunc func(*protos.ClientToServer) (bool, *protos.ServerToClient, error)
-type ClientStateChangeFunc func(internalclient.State, data.ClientUID) error
+type ClientStatusChangeFunc func(defs.Status, control.ClientUID) error
 
 type ClientHandler struct {
 	rectToServerReqCb ClientRecvFromServerReqFunc
-	stateChangeCb     ClientStateChangeFunc
+	statusChangeCb    ClientStatusChangeFunc
 }
 
 var _ Handler[*protos.ClientToServer, *protos.ServerToClient] = (*ClientHandler)(nil)
 
 func NewClientHandler(
 	rectToServerReqCb ClientRecvFromServerReqFunc,
-	stateChangeCb ClientStateChangeFunc,
+	statusChangeCb ClientStatusChangeFunc,
 ) *ClientHandler {
 	return &ClientHandler{
 		rectToServerReqCb: rectToServerReqCb,
-		stateChangeCb:     stateChangeCb,
+		statusChangeCb:    statusChangeCb,
 	}
 }
 
@@ -76,7 +75,7 @@ func (ch ClientHandler) startRegistration(req *protos.ClientToServer) (string, *
 }
 
 func (ch ClientHandler) finishRegistration(req *protos.ClientToServer) error {
-	if err := ch.stateChangeCb(internalclient.Registered, data.ClientUID(req.GetClientUid())); err != nil {
+	if err := ch.statusChangeCb(defs.RegisteredStatus, control.ClientUID(req.GetClientUid())); err != nil {
 		return err
 	}
 
@@ -84,7 +83,7 @@ func (ch ClientHandler) finishRegistration(req *protos.ClientToServer) error {
 }
 
 func (ch ClientHandler) deregister(uid string) error {
-	return ch.stateChangeCb(internalclient.Unregistered, data.ClientUID(uid))
+	return ch.statusChangeCb(defs.UnregisteredStatus, control.ClientUID(uid))
 }
 
 func (ClientHandler) fromServerMsg(uid string) *protos.ServerToClient {
@@ -95,22 +94,22 @@ func (ClientHandler) fromServerMsg(uid string) *protos.ServerToClient {
 }
 
 type SamplerRecvFromServerReqFunc func(*protos.SamplerToServer) (bool, *protos.ServerToSampler, error)
-type SamplerStateChangeFunc func(internalsampler.State, string, string, data.SamplerUID) error
+type SamplerStatusChangeFunc func(defs.Status, string, string, control.SamplerUID) error
 
 type SamplerHandler struct {
 	rectToServerReqCb SamplerRecvFromServerReqFunc
-	stateChangeCb     SamplerStateChangeFunc
+	statusChangeCb    SamplerStatusChangeFunc
 }
 
 var _ Handler[*protos.SamplerToServer, *protos.ServerToSampler] = (*SamplerHandler)(nil)
 
 func NewSamplerHandler(
 	rectToServerReqCb SamplerRecvFromServerReqFunc,
-	stateChangeCb SamplerStateChangeFunc,
+	statusChangeCb SamplerStatusChangeFunc,
 ) *SamplerHandler {
 	return &SamplerHandler{
 		rectToServerReqCb: rectToServerReqCb,
-		stateChangeCb:     stateChangeCb,
+		statusChangeCb:    statusChangeCb,
 	}
 }
 
@@ -144,7 +143,7 @@ func (ph SamplerHandler) startRegistration(req *protos.SamplerToServer) (string,
 }
 
 func (ph SamplerHandler) finishRegistration(req *protos.SamplerToServer) error {
-	if err := ph.stateChangeCb(internalsampler.Registered, req.GetRegisterReq().GetSamplerName(), req.GetRegisterReq().GetResource(), data.SamplerUID(req.GetSamplerUid())); err != nil {
+	if err := ph.statusChangeCb(defs.RegisteredStatus, req.Name, req.Resouce, control.SamplerUID(req.GetSamplerUid())); err != nil {
 		return err
 	}
 
@@ -152,7 +151,7 @@ func (ph SamplerHandler) finishRegistration(req *protos.SamplerToServer) error {
 }
 
 func (ph SamplerHandler) deregister(uid string) error {
-	return ph.stateChangeCb(internalsampler.Unregistered, "", "", data.SamplerUID(uid))
+	return ph.statusChangeCb(defs.UnregisteredStatus, "", "", control.SamplerUID(uid))
 }
 
 func (SamplerHandler) fromServerMsg(uid string) *protos.ServerToSampler {
