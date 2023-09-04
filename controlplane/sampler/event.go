@@ -3,7 +3,7 @@ package sampler
 import (
 	"fmt"
 
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 )
 
 type Event interface {
@@ -13,7 +13,7 @@ type Event interface {
 }
 
 type ConfigUpdate struct {
-	Config data.SamplerConfig
+	Config control.SamplerConfig
 }
 
 func (p ConfigUpdate) String() string {

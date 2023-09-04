@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	csampler "github.com/neblic/platform/controlplane/sampler"
 	dpsample "github.com/neblic/platform/dataplane/sample"
+	"github.com/neblic/platform/internal/pkg/data"
+	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler/defs"
-	"github.com/neblic/platform/sampler/internal/rule"
-	"github.com/neblic/platform/sampler/internal/sample"
 	"github.com/neblic/platform/sampler/internal/sample/digest"
 	"github.com/neblic/platform/sampler/internal/sample/exporter"
 	"github.com/neblic/platform/sampler/internal/sample/sampling"
@@ -28,9 +28,9 @@ type streamConfig struct {
 type Sampler struct {
 	name          string
 	resourceName  string
-	samplingStats data.SamplerSamplingStats
+	samplingStats control.SamplerSamplingStats
 
-	streams    map[data.SamplerStreamUID]streamConfig
+	streams    map[control.SamplerStreamUID]streamConfig
 	limiterIn  *rate.Limiter
 	samplerIn  sampling.Sampler
 	limiterOut *rate.Limiter
@@ -71,7 +71,7 @@ func New(
 
 	var samplerIn sampling.Sampler
 	switch settings.SamplingIn.SamplingType {
-	case data.DeterministicSamplingType:
+	case control.DeterministicSamplingType:
 		deterministicSampler, err := sampling.NewDeterministicSampler(
 			uint(settings.SamplingIn.DeterministicSampling.SampleRate),
 			settings.SamplingIn.DeterministicSampling.SampleEmptyDeterminant)
@@ -102,7 +102,7 @@ func New(
 		name:         settings.Name,
 		resourceName: settings.Resource,
 
-		streams:    make(map[data.SamplerStreamUID]streamConfig),
+		streams:    make(map[control.SamplerStreamUID]streamConfig),
 		limiterIn:  rate.NewLimiter(rate.Limit(settings.LimiterIn.Limit), int(settings.LimiterIn.Limit)),
 		samplerIn:  samplerIn,
 		limiterOut: rate.NewLimiter(rate.Limit(settings.LimiterOut.Limit), int(settings.LimiterOut.Limit)),
@@ -167,7 +167,7 @@ func (p *Sampler) updateStats(period time.Duration) {
 	}
 }
 
-func (p *Sampler) updateConfig(config data.SamplerConfig) {
+func (p *Sampler) updateConfig(config control.SamplerConfig) {
 	// configure limiter in
 	if config.LimiterIn != nil {
 		limit := rate.Limit(config.LimiterIn.Limit)
@@ -179,7 +179,7 @@ func (p *Sampler) updateConfig(config data.SamplerConfig) {
 
 	// replace all existing streams
 	if config.Streams != nil {
-		newStreams := make(map[data.SamplerStreamUID]streamConfig)
+		newStreams := make(map[control.SamplerStreamUID]streamConfig)
 		for _, stream := range config.Streams {
 			builtRule, err := p.buildSamplingRule(stream.StreamRule)
 			if err != nil {
@@ -210,12 +210,12 @@ func (p *Sampler) updateConfig(config data.SamplerConfig) {
 	}
 }
 
-func (p *Sampler) buildSamplingRule(streamRule data.StreamRule) (*rule.Rule, error) {
+func (p *Sampler) buildSamplingRule(streamRule control.Rule) (*rule.Rule, error) {
 	switch streamRule.Lang {
-	case data.SrlCel:
-		builtRule, err := p.ruleBuilder.Build(streamRule.Rule)
+	case control.SrlCel:
+		builtRule, err := p.ruleBuilder.Build(streamRule.Expression)
 		if err != nil {
-			return nil, fmt.Errorf("couldn't build CEL rule %s: %s", streamRule.Rule, err)
+			return nil, fmt.Errorf("couldn't build CEL rule %s: %s", streamRule.Expression, err)
 		}
 
 		return builtRule, nil
@@ -224,7 +224,7 @@ func (p *Sampler) buildSamplingRule(streamRule data.StreamRule) (*rule.Rule, err
 	}
 }
 
-func (p *Sampler) buildRawSample(streams []data.SamplerStreamUID, sampleData *sample.Data) (dpsample.SamplerSamples, error) {
+func (p *Sampler) buildRawSample(streams []control.SamplerStreamUID, sampleData *data.Data) (dpsample.SamplerSamples, error) {
 	dataJSON, err := sampleData.JSON()
 	if err != nil {
 		return dpsample.SamplerSamples{}, fmt.Errorf("couldn't get sampler body: %w", err)
@@ -235,7 +235,7 @@ func (p *Sampler) buildRawSample(streams []data.SamplerStreamUID, sampleData *sa
 		SamplerName:  p.name,
 		Samples: []dpsample.Sample{{
 			Ts:       time.Now(),
-			Type:     dpsample.RawType,
+			Type:     control.RawSampleType,
 			Streams:  streams,
 			Encoding: dpsample.JSONEncoding,
 			Data:     []byte(dataJSON),
@@ -243,7 +243,7 @@ func (p *Sampler) buildRawSample(streams []data.SamplerStreamUID, sampleData *sa
 	}, nil
 }
 
-func (p *Sampler) exportRawSample(ctx context.Context, streams []data.SamplerStreamUID, sampleData *sample.Data) error {
+func (p *Sampler) exportRawSample(ctx context.Context, streams []control.SamplerStreamUID, sampleData *data.Data) error {
 	resourceSample, err := p.buildRawSample(streams, sampleData)
 	if err != nil {
 		return err
@@ -258,7 +258,7 @@ func (p *Sampler) exportRawSample(ctx context.Context, streams []data.SamplerStr
 	return nil
 }
 
-func (p *Sampler) sample(ctx context.Context, sampleData *sample.Data, determinant string) (bool, error) {
+func (p *Sampler) sample(ctx context.Context, sampleData *data.Data, determinant string) (bool, error) {
 	p.samplingStats.SamplesEvaluated++
 
 	if p.limiterIn != nil && !p.limiterIn.Allow() {
@@ -275,7 +275,7 @@ func (p *Sampler) sample(ctx context.Context, sampleData *sample.Data, determina
 	}
 
 	// assign sample to all matching streams based on their rules
-	var streams []data.SamplerStreamUID
+	var streams []control.SamplerStreamUID
 	var exportRawSample bool
 	for streamUID, stream := range p.streams {
 		if match, err := stream.rule.Eval(ctx, sampleData); err != nil {
@@ -315,15 +315,15 @@ func (p *Sampler) sample(ctx context.Context, sampleData *sample.Data, determina
 
 func (p *Sampler) Sample(ctx context.Context, smpl defs.Sample) bool {
 	var (
-		sampleData *sample.Data
+		sampleData *data.Data
 	)
 	switch smpl.Type {
 	case defs.JSONSampleType:
-		sampleData = sample.NewSampleDataFromJSON(smpl.JSON)
+		sampleData = data.NewSampleDataFromJSON(smpl.JSON)
 	case defs.NativeSampleType:
-		sampleData = sample.NewSampleDataFromNative(smpl.Native)
+		sampleData = data.NewSampleDataFromNative(smpl.Native)
 	case defs.ProtoSampleType:
-		sampleData = sample.NewSampleDataFromProto(smpl.Proto)
+		sampleData = data.NewSampleDataFromProto(smpl.Proto)
 	default:
 		return false
 	}

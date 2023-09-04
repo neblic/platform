@@ -97,8 +97,10 @@ func (ch SamplerHandler) recvServerReq(req *protos.ServerToSampler) (bool, *prot
 	return ch.recvServerReqCb(req)
 }
 
-func (SamplerHandler) toServerMsg(uid string) *protos.SamplerToServer {
+func (ch SamplerHandler) toServerMsg(uid string) *protos.SamplerToServer {
 	return &protos.SamplerToServer{
+		Name:       ch.name,
+		Resouce:    ch.resource,
 		SamplerUid: uid,
 		Timestamp:  timestamppb.New(time.Now()),
 	}
@@ -107,10 +109,7 @@ func (SamplerHandler) toServerMsg(uid string) *protos.SamplerToServer {
 func (ch SamplerHandler) regReqMsg(uid string) *protos.SamplerToServer {
 	toServerMsg := ch.toServerMsg(uid)
 	toServerMsg.Message = &protos.SamplerToServer_RegisterReq{
-		RegisterReq: &protos.SamplerRegisterReq{
-			SamplerName: ch.name,
-			Resource:    ch.resource,
-		},
+		RegisterReq: &protos.SamplerRegisterReq{},
 	}
 
 	return toServerMsg

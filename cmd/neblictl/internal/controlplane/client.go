@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/neblic/platform/controlplane/client"
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 )
 
 type Client struct {
@@ -18,16 +18,16 @@ type Client struct {
 	registeredOnce bool
 	currentState   client.State
 
-	samplers    map[resourceAndSampler]*data.Sampler
-	samplerUIDs map[resourceAndSampler]data.SamplerUID
+	samplers    map[resourceAndSampler]*control.Sampler
+	samplerUIDs map[resourceAndSampler]control.SamplerUID
 }
 
 func NewClient(uuid string, address string, opts ...client.Option) (*Client, error) {
 	client := &Client{
 		mutex:       new(sync.RWMutex),
 		internal:    client.New(uuid, opts...),
-		samplers:    map[resourceAndSampler]*data.Sampler{},
-		samplerUIDs: map[resourceAndSampler]data.SamplerUID{},
+		samplers:    map[resourceAndSampler]*control.Sampler{},
+		samplerUIDs: map[resourceAndSampler]control.SamplerUID{},
 	}
 
 	notifyFailedFirstRegistration := make(chan error)
@@ -86,8 +86,8 @@ func (c *Client) pullSamplerConfigs(ctx context.Context) error {
 		return err
 	}
 
-	c.samplers = map[resourceAndSampler]*data.Sampler{}
-	c.samplerUIDs = map[resourceAndSampler]data.SamplerUID{}
+	c.samplers = map[resourceAndSampler]*control.Sampler{}
+	c.samplerUIDs = map[resourceAndSampler]control.SamplerUID{}
 	for _, sampler := range samplers {
 		key := resourceAndSampler{
 			resource: sampler.Resource,
@@ -100,7 +100,7 @@ func (c *Client) pullSamplerConfigs(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) getAllSamplers(ctx context.Context, cached bool) (map[resourceAndSampler]*data.Sampler, error) {
+func (c *Client) getAllSamplers(ctx context.Context, cached bool) (map[resourceAndSampler]*control.Sampler, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 
@@ -129,13 +129,20 @@ func doesResourceAndSamplerMatch(resourceParameter, samplerParameter string, res
 
 }
 
-func (c *Client) getSamplers(ctx context.Context, resourceParameter string, samplerParameter string, cached bool) (map[resourceAndSampler]*data.Sampler, error) {
+func (c *Client) getSamplers(ctx context.Context, resourceParameter string, samplerParameter string, streamUIDParameter string, cached bool) (map[resourceAndSampler]*control.Sampler, error) {
 	samplers, err := c.getAllSamplers(ctx, cached)
 
 	// Iterate over all samplers and select the ones matching the input
-	resourceAndSamplers := map[resourceAndSampler]*data.Sampler{}
+	resourceAndSamplers := map[resourceAndSampler]*control.Sampler{}
 	for resourceAndSamplerEntry, samplerData := range samplers {
 		if doesResourceAndSamplerMatch(resourceParameter, samplerParameter, resourceAndSamplerEntry) {
+
+			_, ok := samplerData.Config.Streams[control.SamplerStreamUID(streamUIDParameter)]
+			if streamUIDParameter != "" && streamUIDParameter != "*" && !ok {
+				// StreamUID parameter contains a valid uid that the current sampler does not contain. Skip it
+				continue
+			}
+
 			resourceAndSamplers[resourceAndSampler{resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler}] = samplerData
 		}
 	}
@@ -154,9 +161,9 @@ func (c *Client) getSamplers(ctx context.Context, resourceParameter string, samp
 	return resourceAndSamplers, err
 }
 
-func (c *Client) setSamplerConfig(ctx context.Context, name, resource string, update *data.SamplerConfigUpdate) error {
+func (c *Client) setSamplerConfig(ctx context.Context, name, resource string, update *control.SamplerConfigUpdate) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	return c.internal.ConfigureSampler(ctx, name, resource, "", update)
+	return c.internal.ConfigureSampler(ctx, resource, name, update)
 }

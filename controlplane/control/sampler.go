@@ -1,382 +1,10 @@
-package data
+package control
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/neblic/platform/controlplane/protos"
-	"google.golang.org/protobuf/types/known/durationpb"
 )
-
-type StreamRuleLang int
-
-const (
-	SrlCel = iota + 1
-)
-
-func (srl StreamRuleLang) String() string {
-	switch srl {
-	case SrlCel:
-		return "CEL"
-	default:
-		return "Unknown"
-	}
-}
-
-func NewStreamRuleLangFromProto(lang protos.Stream_Rule_Language) StreamRuleLang {
-	var srl StreamRuleLang
-	switch lang {
-	case protos.Stream_Rule_CEL:
-		srl = SrlCel
-	}
-
-	return srl
-}
-
-func (srl StreamRuleLang) ToProto() protos.Stream_Rule_Language {
-	switch srl {
-	case SrlCel:
-		return protos.Stream_Rule_CEL
-	default:
-		return protos.Stream_Rule_UNKNOWN
-	}
-}
-
-type SamplerStreamRuleUID string
-
-type StreamRule struct {
-	Lang StreamRuleLang
-	Rule string
-}
-
-func (sr StreamRule) String() string {
-	// Lang intentionally not shown since it is implicit it is always a CEL type for now
-	return fmt.Sprintf("%s", sr.Rule)
-}
-
-func NewStreamRuleFromProto(sr *protos.Stream_Rule) StreamRule {
-	if sr == nil {
-		return StreamRule{}
-	}
-
-	return StreamRule{
-		Lang: NewStreamRuleLangFromProto(sr.GetLanguage()),
-		Rule: sr.Rule,
-	}
-}
-
-func (sr StreamRule) ToProto() *protos.Stream_Rule {
-	return &protos.Stream_Rule{
-		Language: sr.Lang.ToProto(),
-		Rule:     sr.Rule,
-	}
-}
-
-type LimiterConfig struct {
-	Limit int32
-}
-
-func NewLimiterFromProto(sr *protos.Limiter) LimiterConfig {
-	if sr == nil {
-		return LimiterConfig{}
-	}
-
-	return LimiterConfig{
-		Limit: sr.Limit,
-	}
-}
-
-func (sr LimiterConfig) ToProto() *protos.Limiter {
-	return &protos.Limiter{
-		Limit: sr.Limit,
-	}
-}
-
-type SamplingType int
-
-const (
-	UnknownSamplingType SamplingType = iota
-	DeterministicSamplingType
-)
-
-type DeterministicSamplingConfig struct {
-	SampleRate             int32
-	SampleEmptyDeterminant bool
-}
-
-type SamplingConfig struct {
-	SamplingType          SamplingType
-	DeterministicSampling DeterministicSamplingConfig
-}
-
-func (sc SamplingConfig) CLIInfo() string {
-	switch sc.SamplingType {
-	case DeterministicSamplingType:
-		return fmt.Sprintf("Type: Deterministic, SampleRate: %d, SampleEmptyDeterminant: %t", sc.DeterministicSampling.SampleRate, sc.DeterministicSampling.SampleEmptyDeterminant)
-	default:
-		return "Unknown"
-	}
-}
-
-func NewSamplingConfigFromProto(sr *protos.Sampling) SamplingConfig {
-	if sr == nil {
-		return SamplingConfig{}
-	}
-
-	var samplingType SamplingType
-	switch sr.GetSampling().(type) {
-	case *protos.Sampling_DeterministicSampling:
-		samplingType = DeterministicSamplingType
-		return SamplingConfig{
-			SamplingType: samplingType,
-			DeterministicSampling: DeterministicSamplingConfig{
-				SampleRate: sr.GetDeterministicSampling().GetSampleRate(),
-			},
-		}
-	default:
-		return SamplingConfig{}
-	}
-}
-
-func (sc SamplingConfig) ToProto() *protos.Sampling {
-	switch sc.SamplingType {
-	case DeterministicSamplingType:
-		return &protos.Sampling{
-			Sampling: &protos.Sampling_DeterministicSampling{
-				DeterministicSampling: &protos.DeterministicSampling{
-					SampleRate: sc.DeterministicSampling.SampleRate,
-				},
-			},
-		}
-	case UnknownSamplingType:
-		return &protos.Sampling{}
-	default:
-		return nil
-	}
-}
-
-type SamplerStreamUID string
-
-type Stream struct {
-	UID              SamplerStreamUID
-	StreamRule       StreamRule
-	ExportRawSamples bool
-}
-
-func (s Stream) CLIInfo() string {
-	return fmt.Sprintf("UID: %s, Rule: %s", s.UID, s.StreamRule)
-}
-
-func NewStreamFromProto(s *protos.Stream) Stream {
-	if s == nil {
-		return Stream{}
-	}
-
-	return Stream{
-		UID:              SamplerStreamUID(s.GetUid()),
-		StreamRule:       NewStreamRuleFromProto(s.GetRule()),
-		ExportRawSamples: s.ExportRawSamples,
-	}
-}
-
-func (s Stream) ToProto() *protos.Stream {
-	return &protos.Stream{
-		Uid:              string(s.UID),
-		Rule:             s.StreamRule.ToProto(),
-		ExportRawSamples: s.ExportRawSamples,
-	}
-}
-
-type StreamUpdateOp int
-
-const (
-	StreamUpsert StreamUpdateOp = iota + 1
-	StreamDelete
-)
-
-type StreamUpdate struct {
-	Op     StreamUpdateOp
-	Stream Stream
-}
-
-func NewStreamUpdateFromProto(streamUpdate *protos.ClientStreamUpdate) StreamUpdate {
-	if streamUpdate == nil {
-		return StreamUpdate{}
-	}
-
-	var op StreamUpdateOp
-	switch streamUpdate.GetOp() {
-	case protos.ClientStreamUpdate_UPSERT:
-		op = StreamUpsert
-	case protos.ClientStreamUpdate_DELETE:
-		op = StreamDelete
-	}
-
-	return StreamUpdate{
-		Op:     op,
-		Stream: NewStreamFromProto(streamUpdate.GetStream()),
-	}
-}
-
-func (s *StreamUpdate) ToProto() *protos.ClientStreamUpdate {
-	protoOp := protos.ClientStreamUpdate_UNKNOWN
-	switch s.Op {
-	case StreamUpsert:
-		protoOp = protos.ClientStreamUpdate_UPSERT
-	case StreamDelete:
-		protoOp = protos.ClientStreamUpdate_DELETE
-	}
-
-	return &protos.ClientStreamUpdate{
-		Op:     protoOp,
-		Stream: s.Stream.ToProto(),
-	}
-}
-
-type DigestType uint8
-
-const (
-	DigestTypeUnknown DigestType = iota
-	DigestTypeSt
-)
-
-type SamplerDigestUID string
-
-type DigestSt struct {
-	MaxProcessedFields int
-}
-
-func (ds DigestSt) CLIInfo() string {
-	return fmt.Sprintf("MaxProcessedFields: %d", ds.MaxProcessedFields)
-}
-
-func NewDigestStFromProto(protoDigestSt *protos.Digest_St) DigestSt {
-	if protoDigestSt == nil {
-		return DigestSt{}
-	}
-
-	return DigestSt{
-		MaxProcessedFields: int(protoDigestSt.MaxProcessedFields),
-	}
-}
-
-func (ds *DigestSt) ToProto() *protos.Digest_St {
-	return &protos.Digest_St{
-		MaxProcessedFields: int32(ds.MaxProcessedFields),
-	}
-}
-
-type Digest struct {
-	UID         SamplerDigestUID
-	StreamUID   SamplerStreamUID
-	FlushPeriod time.Duration
-	BufferSize  int
-
-	// digest specific config
-	Type DigestType
-	St   DigestSt
-}
-
-func (d Digest) CLIInfo() string {
-	var t string
-	switch d.Type {
-	case DigestTypeSt:
-		t = fmt.Sprintf("Type: Structure, %s", d.St.CLIInfo())
-	default:
-		t = "Type: Unknown"
-	}
-
-	// flush period intentionally not shown given that for now, it is an internal configuration that will configured
-	// with a default value by the server
-	return fmt.Sprintf("UID: %s, StreamUID: %s, FlushPeriod: %s, %s", d.UID, d.StreamUID, d.FlushPeriod, t)
-}
-
-func NewDigestFromProto(protoDigest *protos.Digest) Digest {
-	if protoDigest == nil {
-		return Digest{}
-	}
-
-	digest := Digest{
-		UID:         SamplerDigestUID(protoDigest.GetUid()),
-		StreamUID:   SamplerStreamUID(protoDigest.GetStreamUid()),
-		FlushPeriod: protoDigest.GetFlushPeriod().AsDuration(),
-		BufferSize:  int(protoDigest.GetBufferSize()),
-	}
-
-	switch t := protoDigest.GetType().(type) {
-	case *protos.Digest_St_:
-		digest.Type = DigestTypeSt
-		digest.St = NewDigestStFromProto(t.St)
-	default:
-		digest.Type = DigestTypeUnknown
-	}
-
-	return digest
-}
-
-func (d *Digest) ToProto() *protos.Digest {
-	protoDigest := &protos.Digest{
-		Uid:         string(d.UID),
-		StreamUid:   string(d.StreamUID),
-		FlushPeriod: durationpb.New(d.FlushPeriod),
-		BufferSize:  int32(d.BufferSize),
-	}
-
-	switch d.Type {
-	case DigestTypeSt:
-		protoDigest.Type = &protos.Digest_St_{
-			St: d.St.ToProto(),
-		}
-	}
-
-	return protoDigest
-}
-
-type DigestUpdateOp int
-
-const (
-	DigestUpsert DigestUpdateOp = iota + 1
-	DigestDelete
-)
-
-type DigestUpdate struct {
-	Op     DigestUpdateOp
-	Digest Digest
-}
-
-func NewDigestUpdateFromProto(digestUpdate *protos.ClientDigestUpdate) DigestUpdate {
-	if digestUpdate == nil {
-		return DigestUpdate{}
-	}
-
-	var op DigestUpdateOp
-	switch digestUpdate.GetOp() {
-	case protos.ClientDigestUpdate_UPSERT:
-		op = DigestUpsert
-	case protos.ClientDigestUpdate_DELETE:
-		op = DigestDelete
-	}
-
-	return DigestUpdate{
-		Op:     op,
-		Digest: NewDigestFromProto(digestUpdate.GetDigest()),
-	}
-}
-
-func (s *DigestUpdate) ToProto() *protos.ClientDigestUpdate {
-	protoOp := protos.ClientDigestUpdate_UNKNOWN
-	switch s.Op {
-	case DigestUpsert:
-		protoOp = protos.ClientDigestUpdate_UPSERT
-	case DigestDelete:
-		protoOp = protos.ClientDigestUpdate_DELETE
-	}
-
-	return &protos.ClientDigestUpdate{
-		Op:     protoOp,
-		Digest: s.Digest.ToProto(),
-	}
-}
 
 type SamplerConfigUpdateReset struct {
 	LimiterIn  bool
@@ -384,6 +12,7 @@ type SamplerConfigUpdateReset struct {
 	Streams    bool
 	LimiterOut bool
 	Digests    bool
+	Events     bool
 }
 
 func NewSamplerConfigUpdateResetFromProto(protoReset *protos.ClientSamplerConfigUpdate_Reset) SamplerConfigUpdateReset {
@@ -397,6 +26,7 @@ func NewSamplerConfigUpdateResetFromProto(protoReset *protos.ClientSamplerConfig
 		SamplingIn: protoReset.GetSamplingIn(),
 		LimiterOut: protoReset.GetLimiterOut(),
 		Digests:    protoReset.GetDigests(),
+		Events:     protoReset.GetEvents(),
 	}
 }
 
@@ -407,6 +37,7 @@ func (scr SamplerConfigUpdateReset) ToProto() *protos.ClientSamplerConfigUpdate_
 		SamplingIn: scr.SamplingIn,
 		LimiterOut: scr.LimiterOut,
 		Digests:    scr.Digests,
+		Events:     scr.Events,
 	}
 }
 
@@ -422,6 +53,7 @@ type SamplerConfigUpdate struct {
 	SamplingIn    *SamplingConfig
 	LimiterOut    *LimiterConfig
 	DigestUpdates []DigestUpdate
+	EventUpdates  []EventUpdate
 }
 
 func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpdate) SamplerConfigUpdate {
@@ -457,6 +89,11 @@ func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpda
 		digestUpdates = append(digestUpdates, NewDigestUpdateFromProto(digestUpdate))
 	}
 
+	var eventUpdates []EventUpdate
+	for _, eventUpdate := range protoUpdate.GetEventUpdates() {
+		eventUpdates = append(eventUpdates, NewEventUpdateFromProto(eventUpdate))
+	}
+
 	return SamplerConfigUpdate{
 		Reset: NewSamplerConfigUpdateResetFromProto(protoUpdate.GetReset_()),
 
@@ -465,6 +102,7 @@ func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpda
 		StreamUpdates: streamUpdates,
 		LimiterOut:    limiterOut,
 		DigestUpdates: digestUpdates,
+		EventUpdates:  eventUpdates,
 	}
 }
 
@@ -494,6 +132,11 @@ func (scu SamplerConfigUpdate) ToProto() *protos.ClientSamplerConfigUpdate {
 		protoUpdateDigests = append(protoUpdateDigests, digestUpdate.ToProto())
 	}
 
+	var protoUpdateEvents []*protos.ClientEventUpdate
+	for _, eventUpdate := range scu.EventUpdates {
+		protoUpdateEvents = append(protoUpdateEvents, eventUpdate.ToProto())
+	}
+
 	return &protos.ClientSamplerConfigUpdate{
 		Reset_: scu.Reset.ToProto(),
 
@@ -502,6 +145,7 @@ func (scu SamplerConfigUpdate) ToProto() *protos.ClientSamplerConfigUpdate {
 		SamplingIn:    protoSamplingIn,
 		LimiterOut:    protoLimiterOut,
 		DigestUpdates: protoUpdateDigests,
+		EventUpdates:  protoUpdateEvents,
 	}
 }
 
@@ -516,12 +160,14 @@ type SamplerConfig struct {
 	SamplingIn *SamplingConfig
 	LimiterOut *LimiterConfig
 	Digests    map[SamplerDigestUID]Digest
+	Events     map[SamplerEventUID]Event
 }
 
 func NewSamplerConfig() *SamplerConfig {
 	return &SamplerConfig{
 		Streams: make(map[SamplerStreamUID]Stream),
 		Digests: make(map[SamplerDigestUID]Digest),
+		Events:  make(map[SamplerEventUID]Event),
 	}
 }
 
@@ -564,12 +210,21 @@ func NewSamplerConfigFromProto(config *protos.SamplerConfig) SamplerConfig {
 		digests[SamplerDigestUID(protoDigest.GetUid())] = NewDigestFromProto(protoDigest)
 	}
 
+	var events map[SamplerEventUID]Event
+	if len(config.GetEvents()) > 0 {
+		events = make(map[SamplerEventUID]Event)
+	}
+	for _, protoEvent := range config.GetEvents() {
+		events[SamplerEventUID(protoEvent.GetUid())] = NewEventFromProto(protoEvent)
+	}
+
 	return SamplerConfig{
 		Streams:    streams,
 		LimiterIn:  limiterIn,
 		SamplingIn: samplingIn,
 		LimiterOut: limiterOut,
 		Digests:    digests,
+		Events:     events,
 	}
 }
 
@@ -578,7 +233,8 @@ func (pc SamplerConfig) IsEmpty() bool {
 		pc.LimiterIn == nil &&
 		pc.SamplingIn == nil &&
 		pc.LimiterOut == nil &&
-		len(pc.Digests) == 0)
+		len(pc.Digests) == 0) &&
+		len(pc.Events) == 0
 }
 
 func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
@@ -607,12 +263,18 @@ func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
 		protoDigests = append(protoDigests, digest.ToProto())
 	}
 
+	var protoEvents []*protos.Event
+	for _, event := range pc.Events {
+		protoEvents = append(protoEvents, event.ToProto())
+	}
+
 	return &protos.SamplerConfig{
 		Streams:    protoStreams,
 		LimiterIn:  protoLimiterIn,
 		SamplingIn: protoSamplingIn,
 		LimiterOut: protoLimiterOut,
 		Digests:    protoDigests,
+		Events:     protoEvents,
 	}
 }
 

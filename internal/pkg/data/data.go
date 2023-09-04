@@ -1,4 +1,4 @@
-package sample
+package data
 
 import (
 	"encoding/json"
@@ -12,22 +12,22 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-type sampleOrigin uint8
+type Origin uint8
 
 const (
-	Unknown sampleOrigin = iota
-	JSONOrig
-	NativeOrig
-	ProtoOrig
+	Unknown Origin = iota
+	JSONOrigin
+	NativeOrigin
+	ProtoOrigin
 )
 
-func (so sampleOrigin) String() string {
+func (so Origin) String() string {
 	switch so {
-	case JSONOrig:
+	case JSONOrigin:
 		return "json"
-	case NativeOrig:
+	case NativeOrigin:
 		return "native"
-	case ProtoOrig:
+	case ProtoOrigin:
 		return "proto"
 	case Unknown:
 		fallthrough
@@ -37,7 +37,7 @@ func (so sampleOrigin) String() string {
 }
 
 type Data struct {
-	Origin sampleOrigin
+	Origin Origin
 
 	jsonEncoded bool
 	json        string
@@ -54,7 +54,7 @@ type Data struct {
 // NewSampleDataFromMap build a sample from a JSON object
 func NewSampleDataFromJSON(jsonSample string) *Data {
 	return &Data{
-		Origin: JSONOrig,
+		Origin: JSONOrigin,
 
 		jsonEncoded: true,
 		json:        jsonSample,
@@ -64,7 +64,7 @@ func NewSampleDataFromJSON(jsonSample string) *Data {
 // NewSampleDataFromNative build a sample from any Go struct. Only exported fields will be part of the sample
 func NewSampleDataFromNative(nativeSample any) *Data {
 	return &Data{
-		Origin: NativeOrig,
+		Origin: NativeOrigin,
 
 		nativeEncoded: true,
 		native:        nativeSample,
@@ -73,7 +73,7 @@ func NewSampleDataFromNative(nativeSample any) *Data {
 
 func NewSampleDataFromProto(protoSample proto.Message) *Data {
 	return &Data{
-		Origin: ProtoOrig,
+		Origin: ProtoOrigin,
 
 		protoEncoded: true,
 		proto:        protoSample,
@@ -86,7 +86,7 @@ func (s *Data) JSON() (string, error) {
 	}
 
 	switch s.Origin {
-	case ProtoOrig:
+	case ProtoOrigin:
 		jsonStr, err := protojson.Marshal(s.proto)
 		if err != nil {
 			return "", fmt.Errorf("couldn't marshal to JSON struct: %w", err)
@@ -96,7 +96,7 @@ func (s *Data) JSON() (string, error) {
 		s.json = string(jsonStr)
 
 		return s.json, nil
-	case NativeOrig:
+	case NativeOrigin:
 		jsonSample, err := json.Marshal(s.native)
 		if err != nil {
 			return "", fmt.Errorf("couldn't marshal to JSON struct: %w", err)
@@ -123,7 +123,7 @@ func (s *Data) Proto() (proto.Message, error) {
 	// since we use their map representation to evaluate CEL expressions insteaf of structpb.Struct
 	// as we did in previous versions
 	switch s.Origin {
-	case NativeOrig:
+	case NativeOrigin:
 		var nativeMap map[string]any
 		err := mapstructure.Decode(s.native, &nativeMap)
 		if err != nil {
@@ -141,7 +141,7 @@ func (s *Data) Proto() (proto.Message, error) {
 		s.proto = spb
 
 		return s.proto, nil
-	case JSONOrig:
+	case JSONOrigin:
 		// TODO: It should be possible to create a new CEL `interpreter.Activation` instead of a structpb.Struct
 		// internally using https://github.com/tidwall/gjson or https://github.com/buger/jsonparser
 		// that can be passed to Eval which would be faster and that may not require mem allocations
@@ -264,20 +264,20 @@ func (s *Data) Map() (map[string]any, error) {
 	}
 
 	switch s.Origin {
-	case NativeOrig:
+	case NativeOrigin:
 		var asMap map[string]any
 		err := mapstructure.Decode(s.native, &asMap)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't decode native sample into a map: %w", err)
 		}
 		s.asMap = asMap
-	case ProtoOrig:
+	case ProtoOrigin:
 		asMap, err := protoObjectToMap(s.proto.ProtoReflect())
 		if err != nil {
 			return nil, fmt.Errorf("couldn't convert proto sample into a map: %w", err)
 		}
 		s.asMap = asMap
-	case JSONOrig:
+	case JSONOrigin:
 		asMap := make(map[string]interface{})
 		if err := json.Unmarshal([]byte(s.json), &asMap); err != nil {
 			return nil, fmt.Errorf("couldn't unmarshal JSON into a map: %w", err)

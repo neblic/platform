@@ -6,6 +6,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/sampler/defs"
 )
 
@@ -52,7 +53,7 @@ func (p *samplerProviderPlaceholder) setDelegate(pp defs.Provider) error {
 	return aggErr
 }
 
-func (p *samplerProviderPlaceholder) Sampler(name string, schema defs.Schema) (defs.Sampler, error) {
+func (p *samplerProviderPlaceholder) Sampler(name string, schema rule.Schema) (defs.Sampler, error) {
 	p.Lock()
 	defer p.Unlock()
 
@@ -78,7 +79,7 @@ var _ defs.Sampler = &samplerPlaceholder{}
 
 type samplerPlaceholder struct {
 	name   string
-	schema defs.Schema
+	schema rule.Schema
 
 	delegate atomic.Value
 }

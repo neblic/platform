@@ -3,11 +3,11 @@ package sampler
 import (
 	"fmt"
 
-	data "github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
 )
 
-func (p *Sampler) Configure(samplerConfig *data.SamplerConfig) error {
+func (p *Sampler) Configure(samplerConfig *control.SamplerConfig) error {
 	var protoSamplerConfig *protos.SamplerConfig
 	if samplerConfig != nil {
 		protoSamplerConfig = samplerConfig.ToProto()

@@ -4,20 +4,23 @@ import (
 	"fmt"
 
 	"github.com/google/cel-go/cel"
-	"github.com/neblic/platform/sampler/defs"
 )
 
 type Builder struct {
-	schema defs.Schema
+	schema Schema
 	env    *cel.Env
 }
 
 const sampleKey = "sample"
 
-func NewBuilder(ruleSchema defs.Schema) (*Builder, error) {
+func NewBuilder(schema Schema) (*Builder, error) {
 	var celEnvOpts []cel.EnvOption
-	switch s := ruleSchema.(type) {
-	case defs.ProtoSchema:
+
+	// Add custom functions to the environemnt
+	celEnvOpts = append(celEnvOpts, CelFunctions...)
+
+	switch s := schema.(type) {
+	case ProtoSchema:
 		typ := string(s.Proto.ProtoReflect().Descriptor().FullName())
 		celEnvOpts = append(celEnvOpts,
 			cel.Types(s.Proto),
@@ -25,12 +28,12 @@ func NewBuilder(ruleSchema defs.Schema) (*Builder, error) {
 				cel.ObjectType(typ),
 			),
 		)
-	case defs.DynamicSchema:
+	case DynamicSchema:
 		celEnvOpts = append(celEnvOpts,
 			cel.Variable(sampleKey, cel.MapType(cel.StringType, cel.DynType)),
 		)
 	default:
-		return nil, fmt.Errorf("unknown schema %T", ruleSchema)
+		return nil, fmt.Errorf("unknown schema %T", schema)
 	}
 
 	// TODO: Investigate limiting CEL environment
@@ -40,7 +43,7 @@ func NewBuilder(ruleSchema defs.Schema) (*Builder, error) {
 	}
 
 	return &Builder{
-		schema: ruleSchema,
+		schema: schema,
 		env:    env,
 	}, nil
 }

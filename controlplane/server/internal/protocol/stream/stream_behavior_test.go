@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
-	internalclient "github.com/neblic/platform/controlplane/server/internal/defs/client"
+	"github.com/neblic/platform/controlplane/server/internal/defs"
 	"github.com/neblic/platform/controlplane/server/internal/protocol/stream"
 	"github.com/neblic/platform/logging"
 	. "github.com/onsi/ginkgo/v2"
@@ -64,7 +64,7 @@ var _ = Describe("ServerStream", func() {
 		serverStream *stream.Stream[*protos.ClientToServer, *protos.ServerToClient]
 
 		recvServerReqCb stream.ClientRecvFromServerReqFunc
-		stateChangeCb   stream.ClientStateChangeFunc
+		stateChangeCb   stream.ClientStatusChangeFunc
 	)
 
 	setupTest := func() func() {
@@ -80,19 +80,19 @@ var _ = Describe("ServerStream", func() {
 			return nil
 		}
 
-		nextState := 0
-		expectedStates := []internalclient.State{
-			internalclient.Registered,
-			internalclient.Unregistered,
+		nextStatus := 0
+		expectedStatus := []defs.Status{
+			defs.RegisteredStatus,
+			defs.UnregisteredStatus,
 		}
 		stateChanged := make(chan struct{}, 2)
-		stateChangeCb = func(state internalclient.State, uid data.ClientUID) error {
+		stateChangeCb = func(state defs.Status, uid control.ClientUID) error {
 			defer func() {
 				stateChanged <- struct{}{}
 			}()
 
-			Expect(state).To(Equal(expectedStates[nextState]))
-			nextState++
+			Expect(state).To(Equal(expectedStatus[nextStatus]))
+			nextStatus++
 
 			return nil
 		}
@@ -133,7 +133,7 @@ var _ = Describe("ServerStream", func() {
 		clientStream = newTestClientStream()
 		handler := stream.NewClientHandler(
 			func(msg *protos.ClientToServer) (bool, *protos.ServerToClient, error) { return recvServerReqCb(msg) },
-			func(state internalclient.State, uid data.ClientUID) error { return stateChangeCb(state, uid) },
+			func(state defs.Status, uid control.ClientUID) error { return stateChangeCb(state, uid) },
 		)
 		logger, err := logging.NewZapDev()
 		Expect(err).To(Not(HaveOccurred()))
@@ -184,9 +184,9 @@ var _ = Describe("ServerStream", func() {
 								Streams: []*protos.Stream{
 									{
 										Uid: "some_stream_uid",
-										Rule: &protos.Stream_Rule{
-											Language: protos.Stream_Rule_CEL,
-											Rule:     "some_CEL_rule",
+										Rule: &protos.Rule{
+											Language:   protos.Rule_CEL,
+											Expression: "some_CEL_rule",
 										},
 									},
 								},

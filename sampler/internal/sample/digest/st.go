@@ -6,7 +6,7 @@ import (
 	"math"
 	"reflect"
 
-	"github.com/neblic/platform/sampler/internal/sample"
+	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/neblic/platform/sampler/protos"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -276,7 +276,7 @@ func (s *St) incrFieldsProcessed() error {
 }
 
 // AddSample is not thread safe
-func (s *St) AddSampleData(sampleData *sample.Data) error {
+func (s *St) AddSampleData(sampleData *data.Data) error {
 	dataMap, err := sampleData.Map()
 	if err != nil {
 		return err

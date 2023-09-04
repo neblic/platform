@@ -3,16 +3,16 @@ package sampler
 import (
 	"fmt"
 
-	"github.com/neblic/platform/controlplane/data"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
-	internalsampler "github.com/neblic/platform/controlplane/server/internal/defs/sampler"
+	"github.com/neblic/platform/controlplane/server/internal/defs"
 	"github.com/neblic/platform/controlplane/server/internal/protocol/stream"
 	"github.com/neblic/platform/controlplane/server/internal/registry"
 	"github.com/neblic/platform/logging"
 )
 
 type Sampler struct {
-	samplerReg *registry.Sampler
+	samplerRegistry *registry.SamplerRegistry
 
 	registeredOnce bool
 	stream         *stream.Stream[*protos.SamplerToServer, *protos.ServerToSampler]
@@ -20,13 +20,13 @@ type Sampler struct {
 	logger logging.Logger
 }
 
-func New(logger logging.Logger, serverUID string, samplerReg *registry.Sampler, opts *stream.Options) *Sampler {
+func New(logger logging.Logger, serverUID string, samplerRegistry *registry.SamplerRegistry, opts *stream.Options) *Sampler {
 	if logger == nil {
 		logger = logging.NewNopLogger()
 	}
 
 	p := &Sampler{
-		samplerReg: samplerReg,
+		samplerRegistry: samplerRegistry,
 	}
 
 	p.logger = logger.With("role", "server/sampler")
@@ -45,9 +45,11 @@ func (p *Sampler) HandleStream(stream protos.ControlPlane_SamplerConnServer) err
 func (p *Sampler) recvToServerReqCb(clientToServerMsg *protos.SamplerToServer) (bool, *protos.ServerToSampler, error) {
 	switch msg := clientToServerMsg.GetMessage().(type) {
 	case *protos.SamplerToServer_SamplerStatsMsg:
-		err := p.samplerReg.UpdateStats(
-			data.SamplerUID(clientToServerMsg.GetSamplerUid()),
-			data.NewSamplerSamplingStatsFromProto(msg.SamplerStatsMsg.GetSamplingStats()),
+		err := p.samplerRegistry.UpdateStats(
+			clientToServerMsg.Resouce,
+			clientToServerMsg.Name,
+			control.SamplerUID(clientToServerMsg.GetSamplerUid()),
+			control.NewSamplerSamplingStatsFromProto(msg.SamplerStatsMsg.GetSamplingStats()),
 		)
 
 		return true, nil, err
@@ -56,10 +58,10 @@ func (p *Sampler) recvToServerReqCb(clientToServerMsg *protos.SamplerToServer) (
 	}
 }
 
-func (p *Sampler) streamStateChangeCb(state internalsampler.State, name, resource string, uid data.SamplerUID) error {
+func (p *Sampler) streamStateChangeCb(state defs.Status, name, resource string, uid control.SamplerUID) error {
 	switch state {
-	case internalsampler.Registered:
-		if err := p.samplerReg.Register(uid, name, resource, p); err != nil {
+	case defs.RegisteredStatus:
+		if err := p.samplerRegistry.Register(resource, name, uid, p); err != nil {
 			return err
 		}
 
@@ -70,8 +72,8 @@ func (p *Sampler) streamStateChangeCb(state internalsampler.State, name, resourc
 		p.logger.Debug("sampler registered")
 
 		p.registeredOnce = true
-	case internalsampler.Unregistered:
-		if err := p.samplerReg.Deregister(uid); err != nil {
+	case defs.UnregisteredStatus:
+		if err := p.samplerRegistry.Deregister(resource, name, uid); err != nil {
 			return fmt.Errorf("error deregistering client, uid: %s: %w", uid, err)
 		}
 

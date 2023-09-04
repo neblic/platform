@@ -253,9 +253,9 @@ var _ = Describe("Stream", func() {
 										Streams: []*protos.Stream{
 											{
 												Uid: "some_stream_uid",
-												Rule: &protos.Stream_Rule{
-													Language: protos.Stream_Rule_CEL,
-													Rule:     "some_CEL_rule",
+												Rule: &protos.Rule{
+													Language:   protos.Rule_CEL,
+													Expression: "some_CEL_rule",
 												},
 											},
 										},

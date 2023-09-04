@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler/defs"
 	"github.com/neblic/platform/sampler/internal/sample/exporter"
@@ -74,7 +75,7 @@ func NewProvider(ctx context.Context, settings Settings, opts ...Option) (defs.P
 }
 
 // Sampler creates a new sampler. See the interface comments for more details.
-func (p *Provider) Sampler(name string, schema defs.Schema) (defs.Sampler, error) {
+func (p *Provider) Sampler(name string, schema rule.Schema) (defs.Sampler, error) {
 	samplerOpts := &sampler.Settings{
 		Name:     name,
 		Resource: p.settings.ResourceName,
