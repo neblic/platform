@@ -4,6 +4,10 @@ dist:
   name: otelcol
   otelcol_version: 0.77.0
   output_path: ./dist/otelcol/build/
+replaces:
+  # we use a replace instead of setting the path so the resulting replace is relative instead of absulte
+  # this allows us to build the resulting sources inside a container as long as the platform is that path
+  - github.com/neblic/platform v0.0.0 => ../../..
 
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/loggingexporter v0.77.0
@@ -13,12 +17,10 @@ processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.77.0
   - import: github.com/neblic/platform/controlplane/server/otelcolext
     gomod: github.com/neblic/platform v0.0.0
-    path: .
 receivers:
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.77.0
 extensions:
   - import: github.com/neblic/platform/controlplane/server/otelcolext/bearerauthextension
     gomod: github.com/neblic/platform v0.0.0
-    path: .
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.77.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.77.0
