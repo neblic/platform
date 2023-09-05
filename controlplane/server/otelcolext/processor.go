@@ -115,7 +115,7 @@ func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 	samplerSamples := sample.OTLPLogsToSamples(ld)
 
 	// List of new samples (containing events) to add
-	newSamplerSamples := []sample.SamplerSamples{}
+	samplerSamplesEvents := []sample.SamplerSamples{}
 
 	// Event rule evaluation.
 	// Generated events are stored in an auxiliary struct to avoid iterating an modifying the samplers at the same time
@@ -128,21 +128,21 @@ func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 		}
 
 		// stores all the generated events for the current sampler
-		newSamplerEvents := []sample.Sample{}
+		matchedSamples := []sample.Sample{}
 
-		for eventUID, eventControl := range sampler.Config.Events {
+		for eventUID, eventConfig := range sampler.Config.Events {
 
 			// Get the event rule
 			rule, ok := sampler.EventRules[eventUID]
 			if !ok {
 				n.logger.Error("Event in the configuration cannot be found in the even rules. That should not happen. Skipping event evaluation",
-					zap.String("resource", samplerSample.ResourceName), zap.String("name", samplerSample.SamplerName), zap.String("expression", eventControl.Rule.Expression))
+					zap.String("resource", samplerSample.ResourceName), zap.String("name", samplerSample.SamplerName), zap.String("expression", eventConfig.Rule.Expression))
 				continue
 			}
 
 			for _, sampleData := range samplerSample.Samples {
 				// Check if the sample matches the event
-				if eventControl.SampleType == sampleData.Type && slices.Contains(sampleData.Streams, eventControl.StreamUID) {
+				if eventConfig.SampleType == sampleData.Type && slices.Contains(sampleData.Streams, eventConfig.StreamUID) {
 
 					// The event matches the sample
 					var record *data.Data
@@ -156,15 +156,15 @@ func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 					}
 
 					// Evaluate rule
-					isCompatible, err := rule.Eval(context.Background(), record)
+					ruleMatches, err := rule.Eval(context.Background(), record)
 					if err != nil {
-						errs = append(errs, fmt.Errorf("eval(%s) -> %w", eventControl.Rule.Expression, err))
+						errs = append(errs, fmt.Errorf("eval(%s) -> %w", eventConfig.Rule.Expression, err))
 					}
-					if isCompatible {
-						newSamplerEvents = append(newSamplerEvents, sample.Sample{
+					if ruleMatches {
+						matchedSamples = append(matchedSamples, sample.Sample{
 							Ts:       time.Now(),
 							Type:     control.EventSampleType,
-							Streams:  []control.SamplerStreamUID{eventControl.StreamUID},
+							Streams:  []control.SamplerStreamUID{eventConfig.StreamUID},
 							Encoding: sampleData.Encoding,
 							Data:     sampleData.Data,
 						})
@@ -174,17 +174,17 @@ func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 		}
 
 		// In case of having at least one event match, create a new entry in the data with the events.
-		if len(newSamplerEvents) > 0 {
-			newSamplerSamples = append(newSamplerSamples, sample.SamplerSamples{
+		if len(matchedSamples) > 0 {
+			samplerSamplesEvents = append(samplerSamplesEvents, sample.SamplerSamples{
 				ResourceName: samplerSample.ResourceName,
 				SamplerName:  samplerSample.SamplerName,
-				Samples:      newSamplerEvents,
+				Samples:      matchedSamples,
 			})
 		}
 	}
 
 	// Append new samplers (containing the generated events) to the data and convert it into OTLP logs
-	samplerSamples = append(samplerSamples, newSamplerSamples...)
+	samplerSamples = append(samplerSamples, samplerSamplesEvents...)
 	ld = sample.SamplesToOTLPLogs(samplerSamples)
 
 	if len(errs) > 0 {
