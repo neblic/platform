@@ -167,6 +167,10 @@ func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 							Streams:  []control.SamplerStreamUID{eventConfig.StreamUID},
 							Encoding: sampleData.Encoding,
 							Data:     sampleData.Data,
+							Metadata: map[sample.MetadataKey]string{
+								sample.EventUID:  string(eventUID),
+								sample.EventRule: eventConfig.Rule.Expression,
+							},
 						})
 					}
 				}
