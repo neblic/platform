@@ -20,11 +20,11 @@ func NewSamplerIdentifier(resource string, name string) SamplerIdentifier {
 
 type SamplerInstance struct {
 	UID     control.SamplerUID
-	Sampler *Sampler                     `json:"-"`
-	Stats   control.SamplerSamplingStats `json:"-"`
-	Conn    SamplerConn                  `json:"-"`
-	Dirty   bool                         `json:"-"`
-	Status  Status                       `json:"-"`
+	Sampler *Sampler
+	Stats   control.SamplerSamplingStats
+	Conn    SamplerConn
+	Dirty   bool
+	Status  Status
 }
 
 func NewSamplerInstance(uid control.SamplerUID, sampler *Sampler) *SamplerInstance {
@@ -42,7 +42,7 @@ type Sampler struct {
 	Resource  string
 	Name      string
 	Config    control.SamplerConfig
-	Instances map[control.SamplerUID]*SamplerInstance
+	Instances map[control.SamplerUID]*SamplerInstance `json:"-"`
 
 	// EventRules is used to evaluate event rules. It is computed from the config events
 	EventRules map[control.SamplerEventUID]*rule.Rule `json:"-"`
