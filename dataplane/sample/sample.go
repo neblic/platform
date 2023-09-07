@@ -11,10 +11,13 @@ import (
 )
 
 const (
-	rlSamplerNameKey       = "sampler_name"
+	// resource attributes
+	rlSamplerNameKey = "sampler_name"
+	// sample attributes
+	lrSampleStreamsUIDsKey = "stream_uids"
+	lrSampleKey            = "sample_key"
 	lrSampleTypeKey        = "sample_type"
 	lrSampleEncodingKey    = "sample_encoding"
-	lrSampleStreamsUIDsKey = "stream_uids"
 )
 
 func OTLPLogsToSamples(logs plog.Logs) []SamplerSamples {
@@ -42,27 +45,36 @@ func OTLPLogsToSamples(logs plog.Logs) []SamplerSamples {
 			logRecord := slogs.LogRecords().At(j)
 
 			sample.Ts = logRecord.Timestamp().AsTime()
-			if sampleType, ok := logRecord.Attributes().Get(lrSampleTypeKey); ok {
-				sample.Type = control.ParseSampleType(sampleType.Str())
-			}
-			if sampleEncoding, ok := logRecord.Attributes().Get(lrSampleEncodingKey); ok {
-				sample.Encoding = ParseSampleEncoding(sampleEncoding.Str())
-			}
+			logRecord.Attributes().Range(func(k string, v pcommon.Value) bool {
+				switch k {
+				case lrSampleStreamsUIDsKey:
+					var streamUIDs []control.SamplerStreamUID
+					for k := 0; k < v.Slice().Len(); k++ {
+						lrStreamUID := v.Slice().At(k)
+						streamUIDs = append(streamUIDs, control.SamplerStreamUID(lrStreamUID.Str()))
+					}
+					sample.Streams = streamUIDs
+				case lrSampleKey:
+					sample.Key = v.Str()
+				case lrSampleTypeKey:
+					sample.Type = control.ParseSampleType(v.Str())
+				case lrSampleEncodingKey:
+					sample.Encoding = ParseSampleEncoding(v.Str())
+				default:
+					// any other attribute is considered metadata
+					if sample.Metadata == nil {
+						sample.Metadata = make(map[MetadataKey]string)
+					}
+					sample.Metadata[MetadataKey(k)] = v.Str()
+				}
+
+				return true
+			})
 
 			if sample.Encoding == JSONEncoding {
 				sample.Data = []byte(logRecord.Body().Str())
 			} else {
 				sample.Data = logRecord.Body().Bytes().AsRaw()
-			}
-
-			lrStreamUIDs, ok := logRecord.Attributes().Get(lrSampleStreamsUIDsKey)
-			if ok {
-				var streamUIDs []control.SamplerStreamUID
-				for k := 0; k < lrStreamUIDs.Slice().Len(); k++ {
-					lrStreamUID := lrStreamUIDs.Slice().At(k)
-					streamUIDs = append(streamUIDs, control.SamplerStreamUID(lrStreamUID.Str()))
-				}
-				sample.Streams = streamUIDs
 			}
 
 			samplerSamples.Samples = append(samplerSamples.Samples, sample)
@@ -105,20 +117,27 @@ func SamplesToOTLPLogs(resourceSmpls []SamplerSamples) plog.Logs {
 			// we consider each sample to be a LogRecord
 			logRecord := logRecords.AppendEmpty()
 			logRecord.SetTimestamp(pcommon.Timestamp(smpl.Ts.UTC().UnixNano()))
+
+			// set known attributes
 			logRecord.Attributes().PutStr(lrSampleTypeKey, smpl.Type.String())
 			logRecord.Attributes().PutStr(lrSampleEncodingKey, smpl.Encoding.String())
+			logRecord.Attributes().PutStr(lrSampleKey, smpl.Key)
+			lrStreamUIDs := logRecord.Attributes().PutEmptySlice(lrSampleStreamsUIDsKey)
+			lrStreamUIDs.EnsureCapacity(len(smpl.Streams))
+			for _, stream := range smpl.Streams {
+				lrStreamUIDs.AppendEmpty().SetStr(string(stream))
+			}
 
+			// set body
 			if smpl.Encoding == JSONEncoding {
 				logRecord.Body().SetStr(string(smpl.Data))
 			} else {
 				logRecord.Body().SetEmptyBytes().FromRaw(smpl.Data)
 			}
 
-			// build attributes values
-			lrStreamUIDs := logRecord.Attributes().PutEmptySlice(lrSampleStreamsUIDsKey)
-			lrStreamUIDs.EnsureCapacity(len(smpl.Streams))
-			for _, stream := range smpl.Streams {
-				lrStreamUIDs.AppendEmpty().SetStr(string(stream))
+			// set metadata as other attributes
+			for k, v := range smpl.Metadata {
+				logRecord.Attributes().PutStr(string(k), v)
 			}
 		}
 	}
@@ -143,6 +162,7 @@ func (s Encoding) String() string {
 		return "unknown"
 	}
 }
+
 func ParseSampleEncoding(enc string) Encoding {
 	switch enc {
 	case "json":
@@ -152,13 +172,22 @@ func ParseSampleEncoding(enc string) Encoding {
 	}
 }
 
+type MetadataKey string
+
+const (
+	EventUID  MetadataKey = "event_uid"
+	EventRule MetadataKey = "event_rule"
+)
+
 // Sample defines a sample to be exported
 type Sample struct {
 	Ts       time.Time
 	Type     control.SampleType
 	Streams  []control.SamplerStreamUID
 	Encoding Encoding
+	Key      string
 	Data     []byte
+	Metadata map[MetadataKey]string
 }
 
 // SamplerSamples contains a group of samples that originate from the same resource e.g. operator, service...
