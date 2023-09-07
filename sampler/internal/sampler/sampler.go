@@ -224,7 +224,7 @@ func (p *Sampler) buildSamplingRule(streamRule control.Rule) (*rule.Rule, error)
 	}
 }
 
-func (p *Sampler) buildRawSample(streams []control.SamplerStreamUID, sampleData *data.Data) (dpsample.SamplerSamples, error) {
+func (p *Sampler) buildRawSample(streams []control.SamplerStreamUID, key string, sampleData *data.Data) (dpsample.SamplerSamples, error) {
 	dataJSON, err := sampleData.JSON()
 	if err != nil {
 		return dpsample.SamplerSamples{}, fmt.Errorf("couldn't get sampler body: %w", err)
@@ -238,13 +238,14 @@ func (p *Sampler) buildRawSample(streams []control.SamplerStreamUID, sampleData 
 			Type:     control.RawSampleType,
 			Streams:  streams,
 			Encoding: dpsample.JSONEncoding,
+			Key:      key,
 			Data:     []byte(dataJSON),
 		}},
 	}, nil
 }
 
-func (p *Sampler) exportRawSample(ctx context.Context, streams []control.SamplerStreamUID, sampleData *data.Data) error {
-	resourceSample, err := p.buildRawSample(streams, sampleData)
+func (p *Sampler) exportRawSample(ctx context.Context, streams []control.SamplerStreamUID, key string, sampleData *data.Data) error {
+	resourceSample, err := p.buildRawSample(streams, key, sampleData)
 	if err != nil {
 		return err
 	}
@@ -258,14 +259,15 @@ func (p *Sampler) exportRawSample(ctx context.Context, streams []control.Sampler
 	return nil
 }
 
-func (p *Sampler) sample(ctx context.Context, sampleData *data.Data, determinant string) (bool, error) {
+func (p *Sampler) sample(ctx context.Context, key string, sampleData *data.Data) (bool, error) {
 	p.samplingStats.SamplesEvaluated++
 
 	if p.limiterIn != nil && !p.limiterIn.Allow() {
 		return false, nil
 	}
 
-	if p.samplerIn != nil && !p.samplerIn.Sample(determinant) {
+	// key acts as the deterministic sampler determinant
+	if p.samplerIn != nil && !p.samplerIn.Sample(key) {
 		return false, nil
 	}
 
@@ -295,13 +297,13 @@ func (p *Sampler) sample(ctx context.Context, sampleData *data.Data, determinant
 		}
 
 		// forward sample to digester
-		if p.digester.ProcessSample(streams, sampleData) == true {
+		if p.digester.ProcessSample(streams, sampleData) {
 			p.samplingStats.SamplesDigested++
 		}
 
 		// export raw sample
 		if exportRawSample {
-			err := p.exportRawSample(ctx, streams, sampleData)
+			err := p.exportRawSample(ctx, streams, key, sampleData)
 			if err != nil {
 				return false, err
 			}
@@ -328,7 +330,7 @@ func (p *Sampler) Sample(ctx context.Context, smpl defs.Sample) bool {
 		return false
 	}
 
-	sampled, err := p.sample(ctx, sampleData, smpl.Determinant)
+	sampled, err := p.sample(ctx, smpl.Key, sampleData)
 	if err != nil {
 		p.forwardError(err)
 		return false

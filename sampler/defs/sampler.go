@@ -16,7 +16,7 @@ const (
 )
 
 type Sample struct {
-	Determinant string
+	Key string
 
 	Type   SampleType
 	JSON   string
@@ -26,9 +26,9 @@ type Sample struct {
 
 // JSONSample creates a data sample encoded as a JSON string.
 // The JSON string must be a valid JSON object.
-func JSONSample(json string, determinant string) Sample {
+func JSONSample(json string, key string) Sample {
 	return Sample{
-		Determinant: determinant,
+		Key: key,
 
 		Type: JSONSampleType,
 		JSON: json,
@@ -37,9 +37,9 @@ func JSONSample(json string, determinant string) Sample {
 
 // NativeSample creates a data sample represented as a Go struct.
 // Only exported fields will be part of the sample.
-func NativeSample(native any, determinant string) Sample {
+func NativeSample(native any, key string) Sample {
 	return Sample{
-		Determinant: determinant,
+		Key: key,
 
 		Type:   NativeSampleType,
 		Native: native,
@@ -48,9 +48,9 @@ func NativeSample(native any, determinant string) Sample {
 
 // ProtoSample creates a data sample encoded as a proto message. The protoSample parameter has to be the same
 // type as the proto message provided as schema when creating the sampler.
-func ProtoSample(proto proto.Message, determinant string) Sample {
+func ProtoSample(proto proto.Message, key string) Sample {
 	return Sample{
-		Determinant: determinant,
+		Key: key,
 
 		Type:  ProtoSampleType,
 		Proto: proto,
