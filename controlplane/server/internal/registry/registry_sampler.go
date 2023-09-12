@@ -45,7 +45,7 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 		}
 	}
 
-	// Intialize the dynamic rule builder
+	// Initialize the dynamic rule builder
 	ruleBuilder, err := rule.NewBuilder(rule.NewDynamicSchema())
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize the dynamic rule builder")
@@ -55,7 +55,7 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 	samplers := map[defs.SamplerIdentifier]*defs.Sampler{}
 	storageInstance.Range(func(key defs.SamplerIdentifier, sampler *defs.Sampler) {
 
-		// Intialize event rules
+		// Initialize event rules
 		eventRules := map[control.SamplerEventUID]*rule.Rule{}
 		for eventUID, event := range sampler.Config.Events {
 			rule, err := ruleBuilder.Build(event.Rule.Expression)
@@ -70,7 +70,7 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 		// Initialize instances (not persisted)
 		sampler.Instances = map[control.SamplerUID]*defs.SamplerInstance{}
 
-		// Intialize sampler
+		// Initialize sampler
 		sampler.EventRules = eventRules
 
 		samplers[key] = sampler
