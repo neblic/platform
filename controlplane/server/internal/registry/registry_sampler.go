@@ -67,10 +67,8 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 			eventRules[eventUID] = rule
 		}
 
-		// Initialize instances
-		for _, instance := range sampler.Instances {
-			instance.Status = defs.UnknownStatus
-		}
+		// Initialize instances (not persisted)
+		sampler.Instances = map[control.SamplerUID]*defs.SamplerInstance{}
 
 		// Intialize sampler
 		sampler.EventRules = eventRules
