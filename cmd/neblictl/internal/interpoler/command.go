@@ -52,6 +52,7 @@ type Parameter struct {
 	Completer   CompleterFunc
 	Optional    bool
 	Default     string
+	Filter      bool
 }
 
 type CommandNodes []*CommandNode
