@@ -1,4 +1,4 @@
-package rule
+package defs
 
 import "google.golang.org/protobuf/proto"
 

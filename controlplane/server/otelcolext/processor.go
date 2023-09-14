@@ -14,6 +14,7 @@ import (
 	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/logging"
+	"github.com/neblic/platform/sampler/defs"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -71,7 +72,7 @@ func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.
 		return nil, component.ErrNilNextConsumer
 	}
 
-	builder, err := rule.NewBuilder(rule.NewDynamicSchema())
+	builder, err := rule.NewBuilder(defs.NewDynamicSchema())
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize the rule builder: %w", err)
 	}

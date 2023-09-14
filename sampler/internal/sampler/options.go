@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/neblic/platform/controlplane/control"
-	"github.com/neblic/platform/internal/pkg/rule"
+	"github.com/neblic/platform/sampler/defs"
 	"github.com/neblic/platform/sampler/internal/sample/exporter"
 )
 
@@ -22,7 +22,7 @@ type AuthOptions struct {
 type Settings struct {
 	Name     string
 	Resource string
-	Schema   rule.Schema
+	Schema   defs.Schema
 
 	ControlPlaneAddr string
 	EnableTLS        bool

@@ -6,6 +6,7 @@ import (
 
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/internal/pkg/data"
+	"github.com/neblic/platform/sampler/defs"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -28,7 +29,7 @@ func TestEvalJSON(t *testing.T) {
 		wantMatch: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(DynamicSchema{})
+			rb, err := NewBuilder(defs.DynamicSchema{})
 			require.NoError(t, err)
 
 			rule, err := rb.Build(tc.filter)
@@ -73,7 +74,7 @@ func TestEvalNative(t *testing.T) {
 		wantMatch: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(NewDynamicSchema())
+			rb, err := NewBuilder(defs.NewDynamicSchema())
 			require.NoError(t, err)
 
 			rule, err := rb.Build(tc.filter)
@@ -114,7 +115,7 @@ func TestEvalProto(t *testing.T) {
 		wantMatch: false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(NewProtoSchema(&protos.SamplerToServer{}))
+			rb, err := NewBuilder(defs.NewProtoSchema(&protos.SamplerToServer{}))
 			require.NoError(t, err)
 
 			rule, err := rb.Build(tc.filter)
