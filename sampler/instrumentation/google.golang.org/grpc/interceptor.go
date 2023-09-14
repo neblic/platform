@@ -4,7 +4,6 @@ import (
 	"context"
 
 	oldProto "github.com/golang/protobuf/proto"
-	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/sampler/defs"
 	"github.com/neblic/platform/sampler/global"
 	"google.golang.org/grpc"
@@ -30,7 +29,7 @@ func getProtoSampler(samplers map[string]defs.Sampler, key string, schema proto.
 	if sampler, ok = samplers[key]; !ok {
 		sampler, _ = global.SamplerProvider().Sampler(
 			key,
-			rule.NewProtoSchema(schema),
+			defs.NewProtoSchema(schema),
 		)
 		samplers[key] = sampler
 	}

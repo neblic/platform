@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/sampler/defs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +12,7 @@ import (
 
 type mockSampler struct {
 	name   string
-	schema rule.Schema
+	schema defs.Schema
 }
 
 func (p *mockSampler) SampleJSON(ctx context.Context, jsonSample string) (bool, error) {
@@ -35,13 +34,13 @@ func (p *mockSampler) Close() error {
 type mockProvider struct {
 }
 
-func (p *mockProvider) Sampler(name string, schema rule.Schema) (defs.Sampler, error) {
+func (p *mockProvider) Sampler(name string, schema defs.Schema) (defs.Sampler, error) {
 	return &mockSampler{name, schema}, nil
 }
 
 func TestSetSamplerProvider(t *testing.T) {
 	// without setting a provider, samplers should be placeholders
-	pp, err := SamplerProvider().Sampler("placeHolderSampler", rule.NewDynamicSchema())
+	pp, err := SamplerProvider().Sampler("placeHolderSampler", defs.NewDynamicSchema())
 	require.NoError(t, err)
 	assert.IsType(t, &samplerPlaceholder{}, pp)
 
@@ -58,7 +57,7 @@ func TestSetSamplerProvider(t *testing.T) {
 	assert.Equal(t, true, match)
 
 	// new samplers should be mocks since it is what the mock provider returns
-	pp2, err := SamplerProvider().Sampler("mockSampler", rule.NewDynamicSchema())
+	pp2, err := SamplerProvider().Sampler("mockSampler", defs.NewDynamicSchema())
 	require.NoError(t, err)
 	assert.IsType(t, &mockSampler{}, pp2)
 }

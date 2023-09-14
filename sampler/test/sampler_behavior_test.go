@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/controlplane/server/mock"
-	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler"
 	"github.com/neblic/platform/sampler/defs"
@@ -103,7 +102,7 @@ var _ = Describe("Sampler", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := provider.Sampler("sampler1", rule.DynamicSchema{})
+				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
@@ -152,7 +151,7 @@ var _ = Describe("Sampler", func() {
 		When("there is a matching rule but exporting raw samples is disabled", func() {
 			It("should not export the sample", func() {
 				// create a sampler
-				p, err := provider.Sampler("sampler1", rule.DynamicSchema{})
+				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				// wait until the server has configured the sampler
@@ -226,7 +225,7 @@ var _ = Describe("Sampler", func() {
 		When("there is a matching rule and", func() {
 			It("is a JSON sample it should export the sample", func() {
 				// create a sampler
-				p, err := provider.Sampler("sampler1", rule.DynamicSchema{})
+				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				// wait until the server has configured the sampler
@@ -255,7 +254,7 @@ var _ = Describe("Sampler", func() {
 
 			It("is a native sample it should export the sample", func() {
 				// create a sampler
-				p, err := provider.Sampler("sampler1", rule.DynamicSchema{})
+				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				// wait until the server has configured the sampler
@@ -285,7 +284,7 @@ var _ = Describe("Sampler", func() {
 
 			It("is a proto sample it should export the sample", func() {
 				// create a sampler
-				p, err := provider.Sampler("sampler1", rule.NewProtoSchema(&protos.SamplerToServer{}))
+				p, err := provider.Sampler("sampler1", defs.NewProtoSchema(&protos.SamplerToServer{}))
 				Expect(err).ToNot(HaveOccurred())
 
 				// wait until the server has configured the sampler
@@ -364,7 +363,7 @@ var _ = Describe("Sampler", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := providerLimitedOut.Sampler("sampler1", rule.DynamicSchema{})
+				p, err := providerLimitedOut.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				// wait until the server has configured the sampler
@@ -437,7 +436,7 @@ var _ = Describe("Sampler", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := providerLimitedOut.Sampler("sampler1", rule.DynamicSchema{})
+				p, err := providerLimitedOut.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				// wait until the server has configured the sampler
@@ -487,7 +486,7 @@ var _ = Describe("Sampler", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := providerLimitedIn.Sampler("sampler1", rule.DynamicSchema{})
+				p, err := providerLimitedIn.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				// wait until the server has configured the sampler
@@ -539,7 +538,7 @@ var _ = Describe("Sampler", func() {
 				)
 				Expect(err).ToNot(HaveOccurred())
 				// create a sampler
-				p, err := providerSampledIn.Sampler("sampler1", rule.DynamicSchema{})
+				p, err := providerSampledIn.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				// wait until the server has configured the sampler
@@ -627,7 +626,7 @@ var _ = Describe("Sampler", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := provider.Sampler("sampler1", rule.DynamicSchema{})
+				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				<-registered
@@ -675,7 +674,7 @@ var _ = Describe("Sampler", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := provider.Sampler("sampler1", rule.DynamicSchema{})
+				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				<-configured

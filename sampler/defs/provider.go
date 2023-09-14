@@ -1,7 +1,5 @@
 package defs
 
-import "github.com/neblic/platform/internal/pkg/rule"
-
 // Provider defines a sampler provider object capable of creating new samplers.
 type Provider interface {
 	// Sampler creates a new sampler with the specified schema. It currently supports Dynamic and Proto schemas.
@@ -11,5 +9,5 @@ type Provider interface {
 	// * A Proto schema requires the caller to provide a proto message (type proto.Message) to define the sampler schema.
 	// All sampled data is expected to be provided as proto messages with the sampler.SampleProto() method, and it should
 	// be the same type as the one provided when defining the sampler schema.
-	Sampler(name string, schema rule.Schema) (Sampler, error)
+	Sampler(name string, schema Schema) (Sampler, error)
 }

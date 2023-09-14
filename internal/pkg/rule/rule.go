@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/cel-go/cel"
 	"github.com/neblic/platform/internal/pkg/data"
+	"github.com/neblic/platform/sampler/defs"
 )
 
 type sampleCompatibility uint8
@@ -17,12 +18,12 @@ const (
 )
 
 type Rule struct {
-	schema     Schema
+	schema     defs.Schema
 	prg        cel.Program
 	sampleComp sampleCompatibility
 }
 
-func New(schema Schema, prg cel.Program) *Rule {
+func New(schema defs.Schema, prg cel.Program) *Rule {
 	r := &Rule{
 		schema: schema,
 		prg:    prg,
@@ -32,11 +33,11 @@ func New(schema Schema, prg cel.Program) *Rule {
 	return r
 }
 
-func (r *Rule) setCompatibility(schema Schema) {
+func (r *Rule) setCompatibility(schema defs.Schema) {
 	switch schema.(type) {
-	case DynamicSchema:
+	case defs.DynamicSchema:
 		r.sampleComp = jsonComp | nativeComp | protoComp
-	case ProtoSchema:
+	case defs.ProtoSchema:
 		r.sampleComp = protoComp
 	}
 }

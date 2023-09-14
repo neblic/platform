@@ -5,7 +5,6 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/hashicorp/go-multierror"
-	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler/defs"
 	"github.com/neblic/platform/sampler/global"
@@ -31,7 +30,7 @@ func (h *SamplerHandler) Setup(sess sarama.ConsumerGroupSession) error {
 	// Initialize one sampler for each topic
 	samplerProvider := global.SamplerProvider()
 	for topic := range sess.Claims() {
-		sampler, err := samplerProvider.Sampler(topic, rule.NewDynamicSchema())
+		sampler, err := samplerProvider.Sampler(topic, defs.NewDynamicSchema())
 		if err != nil {
 			errors = multierror.Append(errors, fmt.Errorf("cannot initialize sampler for topic %s: %w", topic, err))
 		}

@@ -10,6 +10,7 @@ import (
 	"github.com/neblic/platform/controlplane/server/internal/registry/storage"
 	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/logging"
+	samplerDefs "github.com/neblic/platform/sampler/defs"
 )
 
 var (
@@ -46,7 +47,7 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 	}
 
 	// Initialize the dynamic rule builder
-	ruleBuilder, err := rule.NewBuilder(rule.NewDynamicSchema())
+	ruleBuilder, err := rule.NewBuilder(samplerDefs.NewDynamicSchema())
 	if err != nil {
 		return nil, fmt.Errorf("could not initialize the dynamic rule builder")
 	}
