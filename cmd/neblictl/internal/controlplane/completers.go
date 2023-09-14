@@ -23,7 +23,7 @@ func (c *Completers) ListResourcesUID(ctx context.Context, parameters interpoler
 	samplerParameter, _ := parameters.Get("sampler-name")
 	streamUIDValue := "*"
 	streamUIDParameter, streamUIDParameterOk := parameters.Get("stream-uid")
-	if streamUIDParameterOk {
+	if streamUIDParameterOk && streamUIDParameter.Filter {
 		streamUIDValue = streamUIDParameter.Value
 	}
 
@@ -51,7 +51,7 @@ func (c *Completers) ListSamplersUID(ctx context.Context, parameters interpoler.
 	resourceParameter, _ := parameters.Get("resource-name")
 	streamUIDValue := "*"
 	streamUIDParameter, streamUIDParameterOk := parameters.Get("stream-uid")
-	if streamUIDParameterOk {
+	if streamUIDParameterOk && streamUIDParameter.Filter {
 		streamUIDValue = streamUIDParameter.Value
 	}
 
@@ -86,7 +86,7 @@ func (c *Completers) ListStreamsUID(ctx context.Context, parameters interpoler.P
 	uidsSet := map[string]struct{}{}
 	for _, sampler := range samplers {
 		for _, stream := range sampler.Config.Streams {
-			if digestUIDParameterOk {
+			if digestUIDParameterOk && digestUIDParameter.Filter {
 				for _, digest := range sampler.Config.Digests {
 					if digest.UID == control.SamplerDigestUID(digestUIDParameter.Value) {
 						uidsSet[string(stream.UID)] = struct{}{}
