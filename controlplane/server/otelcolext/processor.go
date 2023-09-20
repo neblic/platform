@@ -160,7 +160,7 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 		}
 
 		for registryEvent := range eventsChan {
-			if registryEvent.RegistryType != registry.SamplerRegistryType {
+			if registryEvent.RegistryType != registry.SamplerType {
 				continue
 			}
 

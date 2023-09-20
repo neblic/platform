@@ -2,11 +2,11 @@ package registry
 
 import "github.com/neblic/platform/controlplane/control"
 
-type RegistryType uint
+type Type uint
 
 const (
-	ClientRegistryType = iota
-	SamplerRegistryType
+	ClientType = iota
+	SamplerType
 )
 
 type Operation uint
@@ -24,6 +24,6 @@ type SamplerRegistryEvent struct {
 
 type Event struct {
 	Operation
-	RegistryType         RegistryType
+	RegistryType         Type
 	SamplerRegistryEvent *SamplerRegistryEvent
 }

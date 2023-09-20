@@ -334,7 +334,7 @@ func (sr *SamplerRegistry) UpdateSamplerConfig(resource string, name string, upd
 	if sr.eventsChan != nil {
 		sr.eventsChan <- Event{
 			Operation:    UpsertOperation,
-			RegistryType: SamplerRegistryType,
+			RegistryType: SamplerType,
 			SamplerRegistryEvent: &SamplerRegistryEvent{
 				Resource: resource,
 				Sampler:  name,
@@ -374,7 +374,7 @@ func (sr *SamplerRegistry) DeleteSamplerConfig(resource string, name string) err
 	if sr.eventsChan != nil {
 		sr.eventsChan <- Event{
 			Operation:    DeleteOperation,
-			RegistryType: SamplerRegistryType,
+			RegistryType: SamplerType,
 			SamplerRegistryEvent: &SamplerRegistryEvent{
 				Resource: resource,
 				Sampler:  name,
@@ -401,12 +401,12 @@ func (sr *SamplerRegistry) UpdateStats(resource string, name string, uid control
 	return err
 }
 
-func (p *SamplerRegistry) Events() (chan Event, error) {
-	if p.eventsChan == nil {
-		p.eventsChan = make(chan Event)
+func (sr *SamplerRegistry) Events() (chan Event, error) {
+	if sr.eventsChan == nil {
+		sr.eventsChan = make(chan Event)
 	} else {
 		return nil, errors.New("SamplerRegistry just supports providing an events chan once")
 	}
 
-	return p.eventsChan, nil
+	return sr.eventsChan, nil
 }
