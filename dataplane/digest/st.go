@@ -6,12 +6,11 @@ import (
 	"math"
 	"reflect"
 
+	"github.com/neblic/platform/controlplane/control"
+	"github.com/neblic/platform/dataplane/protos"
 	"github.com/neblic/platform/internal/pkg/data"
-	"github.com/neblic/platform/sampler/protos"
 	"google.golang.org/protobuf/encoding/protojson"
 )
-
-var errMaxFieldsProcessed = fmt.Errorf("max number of fields processed reached")
 
 type St struct {
 	maxProcessedFields int
@@ -120,13 +119,13 @@ func (s *St) updateBoolean(prev *protos.BooleanType, x bool) (*protos.BooleanTyp
 	return prev, nil
 }
 
-func (s *St) updateValue(prevVal *protos.Value, x interface{}) (*protos.Value, error) {
+func (s *St) updateValue(prevVal *protos.ValueType, x interface{}) (*protos.ValueType, error) {
 	if err := s.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
 
 	if prevVal == nil {
-		prevVal = &protos.Value{}
+		prevVal = &protos.ValueType{}
 	}
 
 	v := reflect.ValueOf(x)
@@ -187,7 +186,7 @@ func (s *St) updateArray(prev *protos.ArrayType, x interface{}) (*protos.ArrayTy
 
 	if prev.GetFixedLengthOrderedArray() == nil && prev.GetVariableLengthArray() == nil {
 		prev.FixedLengthOrderedArray = &protos.FixedLengthOrderedArrayType{
-			Fields: make([]*protos.Value, v.Len()),
+			Fields: make([]*protos.ValueType, v.Len()),
 		}
 	}
 
@@ -241,7 +240,7 @@ func (s *St) updateObj(prev *protos.ObjType, x interface{}) (*protos.ObjType, er
 
 	if prev == nil {
 		prev = &protos.ObjType{
-			Fields: make(map[string]*protos.Value),
+			Fields: make(map[string]*protos.ValueType),
 		}
 	}
 	prev.Count++
@@ -308,4 +307,8 @@ func (s *St) Reset() {
 
 func (s *St) String() string {
 	return "StructDigest"
+}
+
+func (s *St) SampleType() control.SampleType {
+	return control.StructDigestSampleType
 }

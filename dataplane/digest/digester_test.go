@@ -73,8 +73,9 @@ func TestBuildWorkers(t *testing.T) {
 		tc := tc
 		t.Run(name, func(t *testing.T) {
 			d := NewDigester(Settings{
-				ResourceName: testResourceName,
-				SamplerName:  testSamplerName,
+				ResourceName:   testResourceName,
+				SamplerName:    testSamplerName,
+				EnabledDigests: []control.DigestType{control.DigestTypeSt},
 
 				NotifyErr: testNotifyErr(t),
 				Exporter:  &mockExporter{},

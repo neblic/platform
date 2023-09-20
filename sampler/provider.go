@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/neblic/platform/internal/pkg/exporter"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler/defs"
-	"github.com/neblic/platform/sampler/internal/sample/exporter"
 	exporterotlp "github.com/neblic/platform/sampler/internal/sample/exporter/otlp"
 	"github.com/neblic/platform/sampler/internal/sampler"
 )

@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/neblic/platform/controlplane/control"
+	"github.com/neblic/platform/internal/pkg/exporter"
 	"github.com/neblic/platform/sampler/defs"
-	"github.com/neblic/platform/sampler/internal/sample/exporter"
 )
 
 const closeTimeout = time.Duration(2) * time.Second

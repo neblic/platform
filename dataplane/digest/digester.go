@@ -9,7 +9,8 @@ import (
 	"github.com/neblic/platform/controlplane/control"
 	dpsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/internal/pkg/data"
-	"github.com/neblic/platform/sampler/internal/sample/exporter"
+	"github.com/neblic/platform/internal/pkg/exporter"
+	"golang.org/x/exp/slices"
 )
 
 // // Move to data package
@@ -21,16 +22,18 @@ const defaultDigestBufferSize = 1000
 /////
 
 type Settings struct {
-	ResourceName string
-	SamplerName  string
+	ResourceName   string
+	SamplerName    string
+	EnabledDigests []control.DigestType
 
 	NotifyErr func(error)
 	Exporter  exporter.Exporter
 }
 
 type Digester struct {
-	resourceName string
-	samplerName  string
+	resourceName   string
+	samplerName    string
+	enabledDigests []control.DigestType
 
 	notifyErr func(error)
 	exporter  exporter.Exporter
@@ -41,8 +44,9 @@ type Digester struct {
 
 func NewDigester(settings Settings) *Digester {
 	return &Digester{
-		resourceName: settings.ResourceName,
-		samplerName:  settings.SamplerName,
+		resourceName:   settings.ResourceName,
+		samplerName:    settings.SamplerName,
+		enabledDigests: settings.EnabledDigests,
 
 		notifyErr: settings.NotifyErr,
 		exporter:  settings.Exporter,
@@ -56,6 +60,10 @@ func (d *Digester) buildWorkerSettings(digestCfg control.Digest) (workerSettings
 	switch digestCfg.Type {
 	case control.DigestTypeSt:
 		digest = NewStDigest(digestCfg.St.MaxProcessedFields, d.notifyErr)
+	case control.DigestTypeValue:
+		digest = NewValue(ValueOptions{
+			MaxProcessedFields: digestCfg.Value.MaxProcessedFields,
+		})
 	default:
 		return workerSettings{}, errors.New("unknown digest type")
 	}
@@ -87,6 +95,12 @@ func (d *Digester) buildWorkerSettings(digestCfg control.Digest) (workerSettings
 
 func (d *Digester) SetDigestsConfig(digestCfgs map[control.SamplerDigestUID]control.Digest) {
 	for _, digestCfg := range digestCfgs {
+
+		// Check if the digest type is enabled. Otherwise skip digest config
+		if !slices.Contains(d.enabledDigests, digestCfg.Type) {
+			continue
+		}
+
 		if existingWorker, ok := d.workers[digestCfg.UID]; ok {
 			existingWorker.stop()
 			delete(d.workers, digestCfg.UID)
@@ -112,6 +126,13 @@ func (d *Digester) SetDigestsConfig(digestCfgs map[control.SamplerDigestUID]cont
 	}
 
 	d.digestsConfig = digestCfgs
+}
+
+func (d *Digester) DeleteDigestsConfig() {
+	for uid, worker := range d.workers {
+		worker.stop()
+		delete(d.workers, uid)
+	}
 }
 
 func (d *Digester) ProcessSample(streams []control.SamplerStreamUID, sampleData *data.Data) bool {
@@ -204,7 +225,7 @@ func (w *worker) buildDigestSample(digestData []byte) dpsample.SamplerSamples {
 		SamplerName:  w.samplerName,
 		Samples: []dpsample.Sample{{
 			Ts:       time.Now(),
-			Type:     control.StructDigestSampleType,
+			Type:     w.digest.SampleType(),
 			Streams:  []control.SamplerStreamUID{w.streamUID},
 			Encoding: dpsample.JSONEncoding,
 			Data:     digestData,
