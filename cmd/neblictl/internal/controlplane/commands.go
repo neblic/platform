@@ -518,6 +518,92 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				Executor: controlPlaneExecutors.DigestsStructureUpdate,
 			},
 			{
+				Name:        "digests:value:create",
+				Description: "Configure generation of value digests",
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "digest-uid",
+						Description: "Digest uid",
+						Optional:    true,
+					},
+					{
+						Name:        "stream-uid",
+						Description: "Stream uid",
+						Completer:   controlPlaneCompleters.ListStreamsUID,
+					},
+					{
+						Name:        "flush-period",
+						Description: "Digests generation period (in seconds)",
+						Optional:    true,
+						Default:     "60",
+					},
+					{
+						Name:        "max-processed-fields",
+						Description: "Maximum number of fields to process when processing a sample",
+						Optional:    true,
+						Default:     "100",
+					},
+					{
+						Name:        "resource-name",
+						Description: "Filter by resource",
+						Completer:   controlPlaneCompleters.ListResourcesUID,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler-name",
+						Description: "Filter by sampler",
+						Completer:   controlPlaneCompleters.ListSamplersUID,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+				Executor: controlPlaneExecutors.DigestsValueCreate,
+			},
+			{
+				Name:        "digests:value:update",
+				Description: "Update value digests",
+				Parameters: []interpoler.Parameter{
+					{
+						Name:        "digest-uid",
+						Description: "Digest uid",
+						Completer:   controlPlaneCompleters.ListDigestsUID,
+					},
+					{
+						Name:        "stream-uid",
+						Description: "Stream uid",
+						Completer:   controlPlaneCompleters.ListStreamsUID,
+					},
+					{
+						Name:        "flush-period",
+						Description: "Digests generation period (in seconds)",
+						Optional:    true,
+						Default:     "60",
+					},
+					{
+						Name:        "max-processed-fields",
+						Description: "Maximum number of fields to process when processing a sample",
+						Optional:    true,
+						Default:     "100",
+					},
+					{
+						Name:        "resource-name",
+						Description: "Filter by resource",
+						Completer:   controlPlaneCompleters.ListResourcesUID,
+						Optional:    true,
+						Default:     "*",
+					},
+					{
+						Name:        "sampler-name",
+						Description: "Filter by sampler",
+						Completer:   controlPlaneCompleters.ListSamplersUID,
+						Optional:    true,
+						Default:     "*",
+					},
+				},
+				Executor: controlPlaneExecutors.DigestsValueUpdate,
+			},
+			{
 				Name:        "digests:delete",
 				Description: "Delete digest",
 				Parameters: []interpoler.Parameter{

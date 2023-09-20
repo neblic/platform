@@ -610,6 +610,83 @@ func (e *Executors) DigestsStructureUpdate(ctx context.Context, parameters inter
 	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
 }
 
+func (e *Executors) DigestsValueCreate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	digestUID := uuid.NewString()
+	digestUIDParameter, digestUIDParameterOk := parameters.Get("digest-uid")
+	if digestUIDParameterOk {
+		digestUID = digestUIDParameter.Value
+	}
+
+	streamUIDParameter, _ := parameters.Get("stream-uid")
+
+	flushPeriodParameter, _ := parameters.Get("flush-period")
+	flushPeriodInt32, err := flushPeriodParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("flush-period must be an integer")
+	}
+
+	maxProcessedFieldsParameter, _ := parameters.Get("max-processed-fields")
+	maxProcessedFieldsInt32, err := maxProcessedFieldsParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("flush-period must be an integer")
+	}
+
+	update := &control.SamplerConfigUpdate{
+		DigestUpdates: []control.DigestUpdate{
+			{
+				Op: control.DigestUpsert,
+				Digest: control.Digest{
+					UID:         control.SamplerDigestUID(digestUID),
+					StreamUID:   control.SamplerStreamUID(streamUIDParameter.Value),
+					FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
+					Type:        control.DigestTypeValue,
+					Value: control.DigestValue{
+						MaxProcessedFields: int(maxProcessedFieldsInt32),
+					},
+				},
+			},
+		},
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+}
+
+func (e *Executors) DigestsValueUpdate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
+	digestUIDParameter, _ := parameters.Get("digest-uid")
+	streamUIDParameter, _ := parameters.Get("stream-uid")
+
+	flushPeriodParameter, _ := parameters.Get("flush-period")
+	flushPeriodInt32, err := flushPeriodParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("flush-period must be an integer")
+	}
+
+	maxProcessedFieldsParameter, _ := parameters.Get("max-processed-fields")
+	maxProcessedFieldsInt32, err := maxProcessedFieldsParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("flush-period must be an integer")
+	}
+
+	update := &control.SamplerConfigUpdate{
+		DigestUpdates: []control.DigestUpdate{
+			{
+				Op: control.DigestUpsert,
+				Digest: control.Digest{
+					UID:         control.SamplerDigestUID(digestUIDParameter.Value),
+					StreamUID:   control.SamplerStreamUID(streamUIDParameter.Value),
+					FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
+					Type:        control.DigestTypeValue,
+					Value: control.DigestValue{
+						MaxProcessedFields: int(maxProcessedFieldsInt32),
+					},
+				},
+			},
+		},
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+}
+
 func (e *Executors) DigestsDelete(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	digestUIDParameter, _ := parameters.Get("uid")
 

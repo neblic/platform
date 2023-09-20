@@ -54,6 +54,11 @@ message Digest {
     int32 max_processed_fields = 1;
   }
 
+  message Value {
+    // Maximum number of fields to process when processing a sample
+    int32 max_processed_fields = 1;
+  }
+
   string uid = 1;
   string stream_uid = 2;
   google.protobuf.Duration flush_period = 3;
@@ -61,6 +66,7 @@ message Digest {
 
   oneof Type {
     St st = 5;
+    Value value = 6;
   }
 }
 
