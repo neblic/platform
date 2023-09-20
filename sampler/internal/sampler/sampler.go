@@ -91,10 +91,11 @@ func New(
 	}
 
 	digesterSettings := digest.Settings{
-		ResourceName: settings.Resource,
-		SamplerName:  settings.Name,
-		NotifyErr:    forwardError,
-		Exporter:     settings.Exporter,
+		ResourceName:   settings.Resource,
+		SamplerName:    settings.Name,
+		EnabledDigests: []control.DigestType{control.DigestTypeSt},
+		NotifyErr:      forwardError,
+		Exporter:       settings.Exporter,
 	}
 	digester := digest.NewDigester(digesterSettings)
 

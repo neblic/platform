@@ -1,6 +1,11 @@
 syntax = "proto3";
 option go_package = "github.com/neblic/platform/dataplane/protos";
 
+
+/*
+Structure digest
+*/
+
 message IntNumType { int64 count = 1; }
 message UIntNumType { int64 count = 1; }
 message FloatNumType { int64 count = 1; }
@@ -14,7 +19,7 @@ message NumberType {
 message StringType { int64 count = 1; }
 message BooleanType { int64 count = 1; }
 
-message Value {
+message ValueType {
   // if more than one is set, multiple types detected
   NumberType number = 1;
   StringType string = 2;
@@ -24,13 +29,13 @@ message Value {
 }
 message ObjType {
   int64 count = 1;
-  map<string, Value> fields = 2;
+  map<string, ValueType> fields = 2;
 
   // TODO: Add special field for stats about the rest of the fields
   // when there are more than the configured maximum
 }
 
-message FixedLengthOrderedArrayType { repeated Value fields = 1; }
+message FixedLengthOrderedArrayType { repeated ValueType fields = 1; }
 message VariableLengthArrayType {
   int64 min_length = 1;
   int64 max_length = 2;
@@ -48,6 +53,86 @@ message ArrayType {
 }
 
 message StructureDigest { ObjType obj = 1; }
+
+
+/*
+Value digest
+*/
+
+message MinStat {
+  double value = 1;
+}
+
+message AvgStat {
+  double sum = 1;
+  uint64 count = 2;
+}
+
+message MaxStat {
+  double value = 1;
+}
+
+message NumberStat {
+  MinStat min = 1;
+  AvgStat avg = 2;
+  MaxStat max = 3;
+}
+
+message NumberValue {
+  uint64 total_count = 1;
+  uint64 default_count = 2;
+  uint64 null_count = 3;
+
+  MinStat min = 4;
+  AvgStat avg = 5;
+  MaxStat max = 6;
+}
+
+message StringValue {
+  uint64 total_count = 1;
+  uint64 default_count = 2;
+  uint64 null_count = 3;
+
+  NumberStat length = 6;
+}
+
+message BooleanValue {
+  uint64 total_count = 1;
+  uint64 default_count = 2;
+  uint64 null_count = 3;
+
+  uint64 total_false = 4;
+  uint64 total_true = 5;
+}
+
+message ArrayValue {
+  uint64 total_count = 1;
+  uint64 default_count = 2;
+  uint64 null_count = 3;
+
+  ValueValue values = 4;
+}
+
+message ObjValue {
+  uint64 total_count = 1;
+  uint64 default_count = 2;
+  uint64 null_count = 3;
+
+  map<string, ValueValue> fields = 4;
+}
+
+message ValueValue {
+  uint64 total_count = 1;
+  uint64 null_count = 2;
+
+  // if more than one is set, multiple types detected
+  NumberValue number = 3;
+  StringValue string = 4;
+  BooleanValue boolean = 5;
+  ArrayValue array = 6;
+  ObjValue obj = 7;
+}
+
 
 // used for testing
 message TestSample {

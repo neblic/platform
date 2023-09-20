@@ -10,6 +10,7 @@ import (
 	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/server"
 	"github.com/neblic/platform/controlplane/server/internal/registry"
+	"github.com/neblic/platform/dataplane/digest"
 	"github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/neblic/platform/internal/pkg/rule"
@@ -22,15 +23,26 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type neblic struct {
-	cfg          *Config
-	nextConsumer consumer.Logs
+type samplerIdentifier struct {
+	resource string
+	name     string
+}
 
-	logger          *zap.Logger
-	s               *server.Server
-	samplerRegistry *registry.SamplerRegistry
-	serverOpts      []server.Option
-	ruleBuilder     *rule.Builder
+type runtime struct {
+	eventRules map[control.SamplerEventUID]*rule.Rule
+	digester   *digest.Digester
+}
+
+type neblic struct {
+	cfg      *Config
+	exporter *Exporter
+
+	logger      *zap.Logger
+	notifyErr   func(err error)
+	s           *server.Server
+	serverOpts  []server.Option
+	ruleBuilder *rule.Builder
+	runtimes    map[samplerIdentifier]*runtime
 }
 
 func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.Logs) (*neblic, error) {
@@ -78,12 +90,24 @@ func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.
 	}
 
 	return &neblic{
-		cfg:          cfg,
-		logger:       zapLogger,
-		nextConsumer: nextConsumer,
-		serverOpts:   serverOpts,
-		ruleBuilder:  builder,
+		cfg:         cfg,
+		logger:      zapLogger,
+		notifyErr:   func(err error) { zapLogger.Error("error digesting sample", zap.Error(err)) },
+		exporter:    NewExporter(nextConsumer),
+		serverOpts:  serverOpts,
+		ruleBuilder: builder,
+		runtimes:    map[samplerIdentifier]*runtime{},
 	}, nil
+}
+
+func (n *neblic) newDigester(resource string, sampler string) *digest.Digester {
+	return digest.NewDigester(digest.Settings{
+		ResourceName:   resource,
+		SamplerName:    sampler,
+		EnabledDigests: []control.DigestType{control.DigestTypeValue},
+		NotifyErr:      n.notifyErr,
+		Exporter:       n.exporter,
+	})
 }
 
 func (n *neblic) Start(ctx context.Context, host component.Host) error {
@@ -92,9 +116,124 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 	if err != nil {
 		return err
 	}
-	n.samplerRegistry = n.s.SamplerRegistry()
 
-	return n.s.Start(n.cfg.Endpoint)
+	err = n.s.Start(n.cfg.Endpoint)
+	if err != nil {
+		return err
+	}
+
+	// Populate existing config from the controlplane
+	n.runtimes = map[samplerIdentifier]*runtime{}
+	n.s.RangeSamplersConfig(func(resource, sampler string, config control.SamplerConfig) (carryon bool) {
+		// Initialize event rules
+		eventRules := map[control.SamplerEventUID]*rule.Rule{}
+		for eventUID, event := range config.Events {
+			rule, err := n.ruleBuilder.Build(event.Rule.Expression)
+			if err != nil {
+				n.logger.Error("rule cannot be built. Skipping it", zap.String("resource", resource), zap.String("sampler", sampler), zap.Error(err))
+				continue
+			}
+
+			eventRules[eventUID] = rule
+		}
+
+		// Initialize digest if exists config for it
+		var digester *digest.Digester
+		if len(config.Digests) > 0 {
+			digester = n.newDigester(resource, sampler)
+			digester.SetDigestsConfig(config.Digests)
+		}
+
+		n.runtimes[samplerIdentifier{resource: resource, name: sampler}] = &runtime{
+			eventRules: eventRules,
+			digester:   digester,
+		}
+
+		return true
+	})
+
+	// Run config update goroutine
+	go func() {
+		eventsChan, err := n.s.GetRegistryEvents()
+		if err != nil {
+			n.logger.Fatal(err.Error())
+		}
+
+		for registryEvent := range eventsChan {
+			if registryEvent.RegistryType != registry.SamplerRegistryType {
+				continue
+			}
+
+			// Get runtime
+			resource := registryEvent.SamplerRegistryEvent.Resource
+			sampler := registryEvent.SamplerRegistryEvent.Sampler
+			config := registryEvent.SamplerRegistryEvent.Config
+			samplerIdentifier := samplerIdentifier{
+				resource: resource,
+				name:     sampler,
+			}
+			runtimeInstance, ok := n.runtimes[samplerIdentifier]
+			if !ok {
+				runtimeInstance = new(runtime)
+			}
+
+			// Update event rules
+			var eventRulesOperation registry.Operation
+			if registryEvent.Operation == registry.UpsertOperation && len(config.Events) > 0 {
+				eventRulesOperation = registry.UpsertOperation
+			} else {
+				eventRulesOperation = registry.DeleteOperation
+			}
+			switch eventRulesOperation {
+			case registry.UpsertOperation:
+				if runtimeInstance.eventRules == nil {
+					runtimeInstance.eventRules = map[control.SamplerEventUID]*rule.Rule{}
+				}
+				for eventUID, event := range config.Events {
+					rule, err := n.ruleBuilder.Build(event.Rule.Expression)
+					if err != nil {
+						n.logger.Error("rule cannot be built. Skipping it", zap.String("resource", resource), zap.String("sampler", sampler), zap.Error(err))
+						continue
+					}
+
+					runtimeInstance.eventRules[eventUID] = rule
+				}
+			case registry.DeleteOperation:
+				runtimeInstance.eventRules = nil
+			}
+
+			// Update digester
+			var digesterOperation registry.Operation
+			if registryEvent.Operation == registry.UpsertOperation && len(config.Digests) > 0 {
+				digesterOperation = registry.UpsertOperation
+			} else {
+				digesterOperation = registry.DeleteOperation
+			}
+			switch digesterOperation {
+			case registry.UpsertOperation:
+				if runtimeInstance.digester == nil {
+					runtimeInstance.digester = n.newDigester(resource, sampler)
+				}
+				runtimeInstance.digester.SetDigestsConfig(config.Digests)
+			case registry.DeleteOperation:
+				if runtimeInstance.digester != nil {
+					runtimeInstance.digester.DeleteDigestsConfig()
+					runtimeInstance.digester.Close()
+				}
+				runtimeInstance.digester = nil
+			}
+
+			// Update runtime
+			if runtimeInstance.digester != nil || runtimeInstance.eventRules != nil {
+				n.runtimes[samplerIdentifier] = runtimeInstance
+			} else {
+				delete(n.runtimes, samplerIdentifier)
+			}
+		}
+
+	}()
+
+	return nil
 }
 
 func (n *neblic) Shutdown(ctx context.Context) error {
@@ -111,18 +250,60 @@ func (n *neblic) Capabilities() consumer.Capabilities {
 	}
 }
 
-func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-	// Convert complex OTLP logs structure to a simpler representation
-	samplerSamples := sample.OTLPLogsToSamples(ld)
+func (n *neblic) getRuntime(resource string, sampler string) (*runtime, bool) {
+	samplerIdentifier := samplerIdentifier{
+		resource: resource,
+		name:     sampler,
+	}
+	runtime, ok := n.runtimes[samplerIdentifier]
 
-	// List of new samples (containing events) to add
+	return runtime, ok
+}
+
+// computeDigests asynchronous computes the digests for the input samples, generated digests are exported
+// in the background
+func (n *neblic) computeDigests(samplerSamples []sample.SamplerSamples) {
+
+	// Generated digests are stored in an auxiliary struct to avoid iterating an modifying the samplers at the same time
+	for _, samplerSample := range samplerSamples {
+		runtime, ok := n.getRuntime(samplerSample.ResourceName, samplerSample.SamplerName)
+		if !ok || runtime.digester == nil {
+			continue
+		}
+
+		for _, sampleData := range samplerSample.Samples {
+
+			// Check the data encoding is supported
+			var record *data.Data
+			switch sampleData.Encoding {
+			case sample.JSONEncoding:
+				record = data.NewSampleDataFromJSON(string(sampleData.Data))
+			}
+			if record == nil {
+				n.logger.Error("Digest could not be performed because data encoding is not supported", zap.String("encoding", sampleData.Encoding.String()))
+				continue
+			}
+
+			// Digests can only be performed to raw samples
+			if sampleData.Type != control.RawSampleType {
+				continue
+			}
+
+			runtime.digester.ProcessSample(sampleData.Streams, record)
+		}
+	}
+}
+
+// computeEvents returns a list of generated events based on the provided samples (including digests)
+func (n *neblic) computeEvents(samplerSamples []sample.SamplerSamples) ([]sample.SamplerSamples, error) {
+	// List of computed events
 	samplerSamplesEvents := []sample.SamplerSamples{}
 
 	// Event rule evaluation.
 	// Generated events are stored in an auxiliary struct to avoid iterating an modifying the samplers at the same time
 	var errs []error
 	for _, samplerSample := range samplerSamples {
-		sampler, err := n.samplerRegistry.GetSampler(samplerSample.ResourceName, samplerSample.SamplerName)
+		samplerConfig, err := n.s.GetSamplerConfig(samplerSample.ResourceName, samplerSample.SamplerName)
 		if err != nil {
 			n.logger.Error("could not get sampler config", zap.Error(err))
 			continue
@@ -131,13 +312,32 @@ func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 		// stores all the generated events for the current sampler
 		matchedSamples := []sample.Sample{}
 
-		for eventUID, eventConfig := range sampler.Config.Events {
+		for eventUID, eventConfig := range samplerConfig.Events {
 
 			// Get the event rule
-			rule, ok := sampler.EventRules[eventUID]
+			runtime, ok := n.getRuntime(samplerSample.ResourceName, samplerSample.SamplerName)
 			if !ok {
-				n.logger.Error("Event in the configuration cannot be found in the even rules. That should not happen. Skipping event evaluation",
-					zap.String("resource", samplerSample.ResourceName), zap.String("name", samplerSample.SamplerName), zap.String("expression", eventConfig.Rule.Expression))
+				n.logger.Error("runtime not found. That should not happen. Skipping event evaluation",
+					zap.String("resource", samplerSample.ResourceName),
+					zap.String("name", samplerSample.SamplerName),
+				)
+				continue
+			}
+			if runtime.eventRules == nil {
+				n.logger.Error("runtime found, but event rules has not been initialized. That should not happen. Skipping event evaluation",
+					zap.String("resource", samplerSample.ResourceName),
+					zap.String("name", samplerSample.SamplerName),
+				)
+				continue
+			}
+
+			rule, ok := runtime.eventRules[eventUID]
+			if !ok {
+				n.logger.Error("Event in the configuration cannot be found in the event rules. That should not happen. Skipping event evaluation",
+					zap.String("resource", samplerSample.ResourceName),
+					zap.String("name", samplerSample.SamplerName),
+					zap.String("expression", eventConfig.Rule.Expression),
+				)
 				continue
 			}
 
@@ -188,13 +388,24 @@ func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 		}
 	}
 
-	// Append new samplers (containing the generated events) to the data and convert it into OTLP logs
-	samplerSamples = append(samplerSamples, samplerSamplesEvents...)
-	ld = sample.SamplesToOTLPLogs(samplerSamples)
+	return samplerSamplesEvents, errors.Join(errs...)
+}
 
-	if len(errs) > 0 {
-		n.logger.Error("Event evaluation finished with errors", zap.Error(errors.Join(errs...)))
+func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
+	// Convert complex OTLP logs structure to a simpler representation
+	samplerSamples := sample.OTLPLogsToSamples(ld)
+
+	// Compute digests and append them to the sampler samples
+	n.computeDigests(samplerSamples)
+
+	// Compute events and append them to the sampler samples
+	samplerSamplesEvents, err := n.computeEvents(samplerSamples)
+	if err != nil {
+		n.logger.Error("Event evaluation finished with errors", zap.Error(err))
 	}
 
-	return n.nextConsumer.ConsumeLogs(ctx, ld)
+	// Append new samplers (containing the generated events) to the data and convert it into OTLP logs
+	samplerSamples = append(samplerSamples, samplerSamplesEvents...)
+
+	return n.exporter.Export(ctx, samplerSamples)
 }

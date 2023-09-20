@@ -14,6 +14,7 @@ const (
 	UnknownSampleType SampleType = iota
 	RawSampleType
 	StructDigestSampleType
+	ValueDigestSampleType
 	EventSampleType
 )
 
@@ -31,6 +32,8 @@ func (s SampleType) String() string {
 		return "raw"
 	case StructDigestSampleType:
 		return "struct-digest"
+	case ValueDigestSampleType:
+		return "value-digest"
 	case EventSampleType:
 		return "event"
 	default:
@@ -48,6 +51,8 @@ func ParseSampleType(t string) SampleType {
 		return RawSampleType
 	case "struct-digest":
 		return StructDigestSampleType
+	case "value-digest":
+		return ValueDigestSampleType
 	case "event":
 		return EventSampleType
 	default:

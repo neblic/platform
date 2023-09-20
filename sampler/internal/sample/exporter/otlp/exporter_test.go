@@ -44,7 +44,7 @@ func TestExportLogs(t *testing.T) {
 		lr.Body().SetStr(fmt.Sprintf("log %d", i))
 	}
 
-	err = exporter.exportLogs(context.Background(), logs)
+	err = exporter.Export(context.Background(), logs)
 	require.NoError(t, err)
 
 	// Wait until it is received.

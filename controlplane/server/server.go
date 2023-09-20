@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/controlplane/server/internal/auth"
 	protocolclient "github.com/neblic/platform/controlplane/server/internal/protocol/client"
@@ -136,8 +137,21 @@ func (s *Server) Addr() net.Addr {
 	return s.lis.Addr()
 }
 
-func (s *Server) SamplerRegistry() *registry.SamplerRegistry {
-	return s.samplerRegistry
+func (s *Server) RangeSamplersConfig(fn func(resource string, sampler string, config control.SamplerConfig) (carryon bool)) {
+	s.samplerRegistry.RangeSamplersConfig(fn)
+}
+
+func (s *Server) GetSamplerConfig(resourceName string, samplerName string) (control.SamplerConfig, error) {
+	sampler, err := s.samplerRegistry.GetSampler(resourceName, samplerName)
+	if err != nil {
+		return control.SamplerConfig{}, err
+	}
+
+	return sampler.Config, nil
+}
+
+func (s *Server) GetRegistryEvents() (chan registry.Event, error) {
+	return s.samplerRegistry.Events()
 }
 
 func (s *Server) SamplerConn(stream protos.ControlPlane_SamplerConnServer) error {

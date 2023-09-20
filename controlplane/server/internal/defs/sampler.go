@@ -2,7 +2,6 @@ package defs
 
 import (
 	"github.com/neblic/platform/controlplane/control"
-	"github.com/neblic/platform/internal/pkg/rule"
 )
 
 type SamplerConn interface {
@@ -43,9 +42,6 @@ type Sampler struct {
 	Name      string
 	Config    control.SamplerConfig
 	Instances map[control.SamplerUID]*SamplerInstance `json:"-"`
-
-	// EventRules is used to evaluate event rules. It is computed from the config events
-	EventRules map[control.SamplerEventUID]*rule.Rule `json:"-"`
 }
 
 func NewSampler(resource string, name string) *Sampler {
@@ -54,8 +50,6 @@ func NewSampler(resource string, name string) *Sampler {
 		Name:      name,
 		Config:    *control.NewSamplerConfig(),
 		Instances: map[control.SamplerUID]*SamplerInstance{},
-
-		EventRules: map[control.SamplerEventUID]*rule.Rule{},
 	}
 }
 
