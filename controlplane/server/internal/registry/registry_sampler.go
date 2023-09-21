@@ -395,11 +395,9 @@ func (sr *SamplerRegistry) UpdateStats(resource string, name string, uid control
 // Events returns a new channel that will be populated with the sampler configs. Events will contain the initial state
 // and posterior updates
 // CAUTION: Not reading from the returned channel until it gets closed will block the registry
-func (sr *SamplerRegistry) Events() (chan Event, error) {
+func (sr *SamplerRegistry) Events() chan Event {
 	if sr.eventsChan == nil {
 		sr.eventsChan = make(chan Event)
-	} else {
-		return nil, errors.New("SamplerRegistry just supports providing an events chan once")
 	}
 
 	// Send config state to the created channel. That blocks the full registry until the goroutine finishes
@@ -415,5 +413,5 @@ func (sr *SamplerRegistry) Events() (chan Event, error) {
 		})
 	}()
 
-	return sr.eventsChan, nil
+	return sr.eventsChan
 }

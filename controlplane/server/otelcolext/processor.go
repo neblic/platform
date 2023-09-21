@@ -124,11 +124,7 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 
 	// Run config update goroutine
 	go func() {
-		eventsChan, err := n.s.GetRegistryEvents()
-		if err != nil {
-			n.logger.Fatal(err.Error())
-			return
-		}
+		eventsChan := n.s.GetRegistryEvents()
 
 		for registryEvent := range eventsChan {
 
@@ -300,7 +296,7 @@ func (n *neblic) computeEvents(samplerSamples []sample.SamplerSamples) ([]sample
 
 			rule, ok := transformer.eventRules[eventUID]
 			if !ok {
-				n.logger.Error("Event in the configuration cannot be found in the event rules. That should not happen. Skipping event evaluation",
+				n.logger.Error("Compiled rule cannot be found. That should not happen. Skipping event evaluation",
 					zap.String("resource", samplerSample.ResourceName),
 					zap.String("name", samplerSample.SamplerName),
 					zap.String("expression", eventConfig.Rule.Expression),
