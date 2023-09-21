@@ -61,9 +61,7 @@ func (d *Digester) buildWorkerSettings(digestCfg control.Digest) (workerSettings
 	case control.DigestTypeSt:
 		digest = NewStDigest(digestCfg.St.MaxProcessedFields, d.notifyErr)
 	case control.DigestTypeValue:
-		digest = NewValue(ValueOptions{
-			MaxProcessedFields: digestCfg.Value.MaxProcessedFields,
-		})
+		digest = NewValue(digestCfg.Value.MaxProcessedFields)
 	default:
 		return workerSettings{}, errors.New("unknown digest type")
 	}

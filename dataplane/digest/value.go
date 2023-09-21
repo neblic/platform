@@ -24,7 +24,7 @@ const (
 )
 
 type Value struct {
-	opts ValueOptions
+	maxProcessedFields int
 
 	fieldsProcessed int
 	digest          *protos.ObjValue
@@ -32,9 +32,9 @@ type Value struct {
 
 func (v *Value) isDigest() {}
 
-func NewValue(opts ValueOptions) *Value {
+func NewValue(maxProcessedFields int) *Value {
 	return &Value{
-		opts: opts,
+		maxProcessedFields: maxProcessedFields,
 
 		digest: protos.NewObjValue(),
 	}
@@ -324,8 +324,8 @@ func (v *Value) updateValue(state *protos.ValueValue, jsonInterface interface{})
 func (v *Value) incrFieldsProcessed() error {
 	v.fieldsProcessed++
 
-	if v.fieldsProcessed > v.opts.MaxProcessedFields {
-		return fmt.Errorf("%w %d", errMaxFieldsProcessed, v.opts.MaxProcessedFields)
+	if v.fieldsProcessed > v.maxProcessedFields {
+		return fmt.Errorf("%w %d", errMaxFieldsProcessed, v.maxProcessedFields)
 	}
 
 	return nil

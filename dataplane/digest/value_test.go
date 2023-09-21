@@ -14,8 +14,8 @@ var falseBoolean = false
 
 func TestValue_updateBoolean(t *testing.T) {
 	type fields struct {
-		opts            ValueOptions
-		fieldsProcessed int
+		maxProcessedFields int
+		fieldsProcessed    int
 	}
 	type args struct {
 		state   *protos.BooleanValue
@@ -31,8 +31,8 @@ func TestValue_updateBoolean(t *testing.T) {
 		{
 			name: "update nil boolean without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state:   protos.NewBooleanValue(),
@@ -49,8 +49,8 @@ func TestValue_updateBoolean(t *testing.T) {
 		{
 			name: "update default boolean without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state:   protos.NewBooleanValue(),
@@ -67,8 +67,8 @@ func TestValue_updateBoolean(t *testing.T) {
 		{
 			name: "update non-default boolean without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state:   protos.NewBooleanValue(),
@@ -85,8 +85,8 @@ func TestValue_updateBoolean(t *testing.T) {
 		{
 			name: "update default boolean with state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: &protos.BooleanValue{
@@ -110,8 +110,8 @@ func TestValue_updateBoolean(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			v := &Value{
-				opts:            tt.fields.opts,
-				fieldsProcessed: tt.fields.fieldsProcessed,
+				maxProcessedFields: tt.fields.maxProcessedFields,
+				fieldsProcessed:    tt.fields.fieldsProcessed,
 			}
 			got, err := v.updateBoolean(tt.args.state, tt.args.boolean)
 			if (err != nil) != tt.wantErr {
@@ -130,8 +130,8 @@ var oneNumber = float64(1.0)
 
 func TestValue_updateNum(t *testing.T) {
 	type fields struct {
-		opts            ValueOptions
-		fieldsProcessed int
+		maxProcessedFields int
+		fieldsProcessed    int
 	}
 	type args struct {
 		state  *protos.NumberValue
@@ -147,8 +147,8 @@ func TestValue_updateNum(t *testing.T) {
 		{
 			name: "update nil number without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state:  protos.NewNumberValue(),
@@ -173,8 +173,8 @@ func TestValue_updateNum(t *testing.T) {
 		{
 			name: "update default number without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state:  protos.NewNumberValue(),
@@ -199,8 +199,8 @@ func TestValue_updateNum(t *testing.T) {
 		{
 			name: "update non-default number without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state:  protos.NewNumberValue(),
@@ -225,8 +225,8 @@ func TestValue_updateNum(t *testing.T) {
 		{
 			name: "update nil number with state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: &protos.NumberValue{
@@ -266,8 +266,8 @@ func TestValue_updateNum(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			v := &Value{
-				opts:            tt.fields.opts,
-				fieldsProcessed: tt.fields.fieldsProcessed,
+				maxProcessedFields: tt.fields.maxProcessedFields,
+				fieldsProcessed:    tt.fields.fieldsProcessed,
 			}
 			got, err := v.updateNum(tt.args.state, tt.args.number)
 			if (err != nil) != tt.wantErr {
@@ -286,8 +286,8 @@ var somethingString = "something"
 
 func TestValue_updateString(t *testing.T) {
 	type fields struct {
-		opts            ValueOptions
-		fieldsProcessed int
+		maxProcessedFields int
+		fieldsProcessed    int
 	}
 	type args struct {
 		state *protos.StringValue
@@ -303,8 +303,8 @@ func TestValue_updateString(t *testing.T) {
 		{
 			name: "update nil string without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: protos.NewStringValue(),
@@ -331,8 +331,8 @@ func TestValue_updateString(t *testing.T) {
 		{
 			name: "update default string without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: protos.NewStringValue(),
@@ -359,8 +359,8 @@ func TestValue_updateString(t *testing.T) {
 		{
 			name: "update non-default string without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: protos.NewStringValue(),
@@ -387,8 +387,8 @@ func TestValue_updateString(t *testing.T) {
 		{
 			name: "update nil string with state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: &protos.StringValue{
@@ -432,8 +432,8 @@ func TestValue_updateString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			v := &Value{
-				opts:            tt.fields.opts,
-				fieldsProcessed: tt.fields.fieldsProcessed,
+				maxProcessedFields: tt.fields.maxProcessedFields,
+				fieldsProcessed:    tt.fields.fieldsProcessed,
 			}
 			got, err := v.updateString(tt.args.state, tt.args.str)
 			if (err != nil) != tt.wantErr {
@@ -449,8 +449,8 @@ func TestValue_updateString(t *testing.T) {
 
 func TestValue_updateArray(t *testing.T) {
 	type fields struct {
-		opts            ValueOptions
-		fieldsProcessed int
+		maxProcessedFields int
+		fieldsProcessed    int
 	}
 	type args struct {
 		state *protos.ArrayValue
@@ -466,8 +466,8 @@ func TestValue_updateArray(t *testing.T) {
 		{
 			name: "update nil array without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: protos.NewArrayValue(),
@@ -483,8 +483,8 @@ func TestValue_updateArray(t *testing.T) {
 		{
 			name: "update default array without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: protos.NewArrayValue(),
@@ -500,8 +500,8 @@ func TestValue_updateArray(t *testing.T) {
 		{
 			name: "update boolean array without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: protos.NewArrayValue(),
@@ -531,8 +531,8 @@ func TestValue_updateArray(t *testing.T) {
 		{
 			name: "update boolean array with state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: &protos.ArrayValue{
@@ -582,8 +582,8 @@ func TestValue_updateArray(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			v := &Value{
-				opts:            tt.fields.opts,
-				fieldsProcessed: tt.fields.fieldsProcessed,
+				maxProcessedFields: tt.fields.maxProcessedFields,
+				fieldsProcessed:    tt.fields.fieldsProcessed,
 			}
 			got, err := v.updateArray(tt.args.state, tt.args.array)
 			if (err != nil) != tt.wantErr {
@@ -599,8 +599,8 @@ func TestValue_updateArray(t *testing.T) {
 
 func TestValue_updateObj(t *testing.T) {
 	type fields struct {
-		opts            ValueOptions
-		fieldsProcessed int
+		maxProcessedFields int
+		fieldsProcessed    int
 	}
 	type args struct {
 		state *protos.ObjValue
@@ -616,8 +616,8 @@ func TestValue_updateObj(t *testing.T) {
 		{
 			name: "update nil object without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: protos.NewObjValue(),
@@ -633,8 +633,8 @@ func TestValue_updateObj(t *testing.T) {
 		{
 			name: "update default object without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: protos.NewObjValue(),
@@ -650,8 +650,8 @@ func TestValue_updateObj(t *testing.T) {
 		{
 			name: "update non-default object without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: protos.NewObjValue(),
@@ -681,8 +681,8 @@ func TestValue_updateObj(t *testing.T) {
 		{
 			name: "update non-default object with state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: &protos.ObjValue{
@@ -749,8 +749,8 @@ func TestValue_updateObj(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			v := &Value{
-				opts:            tt.fields.opts,
-				fieldsProcessed: tt.fields.fieldsProcessed,
+				maxProcessedFields: tt.fields.maxProcessedFields,
+				fieldsProcessed:    tt.fields.fieldsProcessed,
 			}
 			got, err := v.updateObj(tt.args.state, tt.args.m)
 			if (err != nil) != tt.wantErr {
@@ -766,8 +766,8 @@ func TestValue_updateObj(t *testing.T) {
 
 func TestValue_updateValue(t *testing.T) {
 	type fields struct {
-		opts            ValueOptions
-		fieldsProcessed int
+		maxProcessedFields int
+		fieldsProcessed    int
 	}
 	type args struct {
 		state         *protos.ValueValue
@@ -783,8 +783,8 @@ func TestValue_updateValue(t *testing.T) {
 		{
 			name: "update nil value without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state:         protos.NewValueValue(),
@@ -803,8 +803,8 @@ func TestValue_updateValue(t *testing.T) {
 		{
 			name: "update boolean value without state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state:         protos.NewValueValue(),
@@ -829,8 +829,8 @@ func TestValue_updateValue(t *testing.T) {
 		{
 			name: "update boolean value with boolean state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: &protos.ValueValue{
@@ -869,8 +869,8 @@ func TestValue_updateValue(t *testing.T) {
 		{
 			name: "update number value with boolean state",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
 			},
 			args: args{
 				state: &protos.ValueValue{
@@ -924,8 +924,8 @@ func TestValue_updateValue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			v := &Value{
-				opts:            tt.fields.opts,
-				fieldsProcessed: tt.fields.fieldsProcessed,
+				maxProcessedFields: tt.fields.maxProcessedFields,
+				fieldsProcessed:    tt.fields.fieldsProcessed,
 			}
 			got, err := v.updateValue(tt.args.state, tt.args.jsonInterface)
 			if (err != nil) != tt.wantErr {
@@ -941,9 +941,9 @@ func TestValue_updateValue(t *testing.T) {
 
 func TestValue_AddSampleData(t *testing.T) {
 	type fields struct {
-		opts            ValueOptions
-		fieldsProcessed int
-		digest          *protos.ObjValue
+		maxProcessedFields int
+		fieldsProcessed    int
+		digest             *protos.ObjValue
 	}
 	type args struct {
 		sampleData *data.Data
@@ -958,9 +958,9 @@ func TestValue_AddSampleData(t *testing.T) {
 		{
 			name: "add boolean field to empty digest",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
-				digest:          protos.NewObjValue(),
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
+				digest:             protos.NewObjValue(),
 			},
 			args: args{
 				sampleData: data.NewSampleDataFromJSON(`{"booleanField": true}`),
@@ -987,9 +987,9 @@ func TestValue_AddSampleData(t *testing.T) {
 		{
 			name: "add number array field to empty digest",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
-				digest:          protos.NewObjValue(),
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
+				digest:             protos.NewObjValue(),
 			},
 			args: args{
 				sampleData: data.NewSampleDataFromJSON(`{"arrayField": [0.0, 1.0, 2.0, 3.0, null]}`),
@@ -1033,9 +1033,9 @@ func TestValue_AddSampleData(t *testing.T) {
 		{
 			name: "add object array field to empty digest",
 			fields: fields{
-				opts:            DefaultValueOptions(),
-				fieldsProcessed: 0,
-				digest:          protos.NewObjValue(),
+				maxProcessedFields: 100,
+				fieldsProcessed:    0,
+				digest:             protos.NewObjValue(),
 			},
 			args: args{
 				sampleData: data.NewSampleDataFromJSON(`{"arrayField": [{"numberField": 5}, {"numberField": 10, "booleanField": false}, {}, null]}`),
@@ -1102,9 +1102,9 @@ func TestValue_AddSampleData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Value{
-				opts:            tt.fields.opts,
-				fieldsProcessed: tt.fields.fieldsProcessed,
-				digest:          tt.fields.digest,
+				maxProcessedFields: tt.fields.maxProcessedFields,
+				fieldsProcessed:    tt.fields.fieldsProcessed,
+				digest:             tt.fields.digest,
 			}
 			if err := s.AddSampleData(tt.args.sampleData); (err != nil) != tt.wantErr {
 				t.Errorf("Value.AddSampleData() error = %v, wantErr %v", err, tt.wantErr)
