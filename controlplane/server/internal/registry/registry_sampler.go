@@ -124,14 +124,14 @@ func (sr *SamplerRegistry) sendDirtyNotification() {
 	}
 }
 
-// RangeSamplersConfig locks the registry until all the configs have been processed
+// RangeSamplers locks the registry until all the configs have been processed
 // CAUTION: do not perform any action that may require registry access or it may cause a deadlock
-func (sr *SamplerRegistry) RangeSamplersConfig(fn func(resource string, sampler string, config control.SamplerConfig) (carryon bool)) {
+func (sr *SamplerRegistry) RangeSamplers(fn func(sampler *defs.Sampler) (carryon bool)) {
 	sr.m.Lock()
 	defer sr.m.Unlock()
 
 	for _, sampler := range sr.samplers {
-		carryon := fn(sampler.Resource, sampler.Name, sampler.Config)
+		carryon := fn(sampler)
 		if !carryon {
 			return
 		}
@@ -392,12 +392,28 @@ func (sr *SamplerRegistry) UpdateStats(resource string, name string, uid control
 	return err
 }
 
+// Events returns a new channel that will be populated with the sampler configs. Events will contain the initial state
+// and posterior updates
+// CAUTION: Not reading from the returned channel until it gets closed will block the registry
 func (sr *SamplerRegistry) Events() (chan Event, error) {
 	if sr.eventsChan == nil {
 		sr.eventsChan = make(chan Event)
 	} else {
 		return nil, errors.New("SamplerRegistry just supports providing an events chan once")
 	}
+
+	// Send config state to the created channel. That blocks the full registry until the goroutine finishes
+	go func() {
+		sr.RangeSamplers(func(sampler *defs.Sampler) (carryon bool) {
+			sr.eventsChan <- ConfigUpdate{
+				Resource: sampler.Resource,
+				Sampler:  sampler.Name,
+				Config:   sampler.Config,
+			}
+
+			return true
+		})
+	}()
 
 	return sr.eventsChan, nil
 }

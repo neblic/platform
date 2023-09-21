@@ -122,41 +122,12 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 		return err
 	}
 
-	// Populate existing config from the controlplane
-	n.runtimes = map[samplerIdentifier]*runtime{}
-	n.s.RangeSamplersConfig(func(resource, sampler string, config control.SamplerConfig) (carryon bool) {
-		// Initialize event rules
-		eventRules := map[control.SamplerEventUID]*rule.Rule{}
-		for eventUID, event := range config.Events {
-			rule, err := n.ruleBuilder.Build(event.Rule.Expression)
-			if err != nil {
-				n.logger.Error("rule cannot be built. Skipping it", zap.String("resource", resource), zap.String("sampler", sampler), zap.Error(err))
-				continue
-			}
-
-			eventRules[eventUID] = rule
-		}
-
-		// Initialize digest if exists config for it
-		var digester *digest.Digester
-		if len(config.Digests) > 0 {
-			digester = n.newDigester(resource, sampler)
-			digester.SetDigestsConfig(config.Digests)
-		}
-
-		n.runtimes[samplerIdentifier{resource: resource, name: sampler}] = &runtime{
-			eventRules: eventRules,
-			digester:   digester,
-		}
-
-		return true
-	})
-
 	// Run config update goroutine
 	go func() {
 		eventsChan, err := n.s.GetRegistryEvents()
 		if err != nil {
 			n.logger.Fatal(err.Error())
+			return
 		}
 
 		for registryEvent := range eventsChan {

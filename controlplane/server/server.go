@@ -137,10 +137,6 @@ func (s *Server) Addr() net.Addr {
 	return s.lis.Addr()
 }
 
-func (s *Server) RangeSamplersConfig(fn func(resource string, sampler string, config control.SamplerConfig) (carryon bool)) {
-	s.samplerRegistry.RangeSamplersConfig(fn)
-}
-
 func (s *Server) GetSamplerConfig(resourceName string, samplerName string) (control.SamplerConfig, error) {
 	sampler, err := s.samplerRegistry.GetSampler(resourceName, samplerName)
 	if err != nil {
