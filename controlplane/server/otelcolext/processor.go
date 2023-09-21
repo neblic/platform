@@ -10,6 +10,7 @@ import (
 	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/server"
 	"github.com/neblic/platform/controlplane/server/internal/registry"
+	"github.com/neblic/platform/dataplane/digest"
 	"github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/neblic/platform/internal/pkg/rule"
@@ -22,15 +23,26 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type neblic struct {
-	cfg          *Config
-	nextConsumer consumer.Logs
+type samplerIdentifier struct {
+	resource string
+	name     string
+}
 
-	logger          *zap.Logger
-	s               *server.Server
-	samplerRegistry *registry.SamplerRegistry
-	serverOpts      []server.Option
-	ruleBuilder     *rule.Builder
+type transformer struct {
+	eventRules map[control.SamplerEventUID]*rule.Rule
+	digester   *digest.Digester
+}
+
+type neblic struct {
+	cfg      *Config
+	exporter *Exporter
+
+	logger       *zap.Logger
+	notifyErr    func(err error)
+	s            *server.Server
+	serverOpts   []server.Option
+	ruleBuilder  *rule.Builder
+	transformers map[samplerIdentifier]*transformer
 }
 
 func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.Logs) (*neblic, error) {
@@ -56,13 +68,13 @@ func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.
 		switch cfg.AuthConfig.Type {
 		case "bearer":
 			if cfg.AuthConfig.BearerConfig == nil {
-				return nil, fmt.Errorf("Bearer authentication enabled but token not configured")
+				return nil, fmt.Errorf("bearer authentication enabled but token not configured")
 			}
 			serverOpts = append(serverOpts, server.WithAuthBearer(cfg.AuthConfig.BearerConfig.Token))
 		case "":
 			// nothing to do
 		default:
-			return nil, fmt.Errorf("Invalid authentication type %s", cfg.AuthConfig.Type)
+			return nil, fmt.Errorf("invalid authentication type %s", cfg.AuthConfig.Type)
 		}
 	}
 
@@ -80,10 +92,92 @@ func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.
 	return &neblic{
 		cfg:          cfg,
 		logger:       zapLogger,
-		nextConsumer: nextConsumer,
+		notifyErr:    func(err error) { zapLogger.Error("error digesting sample", zap.Error(err)) },
+		exporter:     NewExporter(nextConsumer),
 		serverOpts:   serverOpts,
 		ruleBuilder:  builder,
+		transformers: map[samplerIdentifier]*transformer{},
 	}, nil
+}
+
+func (n *neblic) newDigester(resource string, sampler string) *digest.Digester {
+	return digest.NewDigester(digest.Settings{
+		ResourceName:   resource,
+		SamplerName:    sampler,
+		EnabledDigests: []control.DigestType{control.DigestTypeValue},
+		NotifyErr:      n.notifyErr,
+		Exporter:       n.exporter,
+	})
+}
+
+func (n *neblic) configUpdater() {
+	for serverEvent := range n.s.GetEvents() {
+
+		// Get config from event
+		var resource string
+		var sampler string
+		var config *control.SamplerConfig
+		switch v := serverEvent.(type) {
+		case registry.ConfigUpdate:
+			resource = v.Resource
+			sampler = v.Sampler
+			config = &v.Config
+		case registry.ConfigDelete:
+			resource = v.Resource
+			sampler = v.Sampler
+		default:
+			continue
+		}
+
+		// Get transformer
+		samplerIdentifier := samplerIdentifier{
+			resource: resource,
+			name:     sampler,
+		}
+		transformerInstance, ok := n.transformers[samplerIdentifier]
+		if !ok {
+			transformerInstance = new(transformer)
+		}
+
+		// Update event rules
+		if config != nil && len(config.Events) > 0 {
+			if transformerInstance.eventRules == nil {
+				transformerInstance.eventRules = map[control.SamplerEventUID]*rule.Rule{}
+			}
+			for eventUID, event := range config.Events {
+				rule, err := n.ruleBuilder.Build(event.Rule.Expression)
+				if err != nil {
+					n.logger.Error("Rule cannot be built. Skipping it", zap.String("resource", resource), zap.String("sampler", sampler), zap.Error(err))
+					continue
+				}
+
+				transformerInstance.eventRules[eventUID] = rule
+			}
+		} else {
+			transformerInstance.eventRules = nil
+		}
+
+		// Update digester
+		if config != nil && len(config.Digests) > 0 {
+			if transformerInstance.digester == nil {
+				transformerInstance.digester = n.newDigester(resource, sampler)
+			}
+			transformerInstance.digester.SetDigestsConfig(config.Digests)
+		} else {
+			if transformerInstance.digester != nil {
+				transformerInstance.digester.DeleteDigestsConfig()
+				transformerInstance.digester.Close()
+			}
+			transformerInstance.digester = nil
+		}
+
+		// Update transformers
+		if transformerInstance.digester != nil || transformerInstance.eventRules != nil {
+			n.transformers[samplerIdentifier] = transformerInstance
+		} else {
+			delete(n.transformers, samplerIdentifier)
+		}
+	}
 }
 
 func (n *neblic) Start(ctx context.Context, host component.Host) error {
@@ -92,9 +186,16 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 	if err != nil {
 		return err
 	}
-	n.samplerRegistry = n.s.SamplerRegistry()
 
-	return n.s.Start(n.cfg.Endpoint)
+	err = n.s.Start(n.cfg.Endpoint)
+	if err != nil {
+		return err
+	}
+
+	// Run configuration updater goroutine
+	go n.configUpdater()
+
+	return nil
 }
 
 func (n *neblic) Shutdown(ctx context.Context) error {
@@ -111,33 +212,94 @@ func (n *neblic) Capabilities() consumer.Capabilities {
 	}
 }
 
-func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
-	// Convert complex OTLP logs structure to a simpler representation
-	samplerSamples := sample.OTLPLogsToSamples(ld)
+func (n *neblic) getRuntime(resource string, sampler string) (*transformer, bool) {
+	samplerIdentifier := samplerIdentifier{
+		resource: resource,
+		name:     sampler,
+	}
+	transformer, ok := n.transformers[samplerIdentifier]
 
-	// List of new samples (containing events) to add
+	return transformer, ok
+}
+
+// computeDigests asynchronous computes the digests for the input samples, generated digests are exported
+// in the background
+func (n *neblic) computeDigests(samplerSamples []sample.SamplerSamples) {
+
+	// Generated digests are stored in an auxiliary struct to avoid iterating an modifying the samplers at the same time
+	for _, samplerSample := range samplerSamples {
+		transformer, ok := n.getRuntime(samplerSample.ResourceName, samplerSample.SamplerName)
+		if !ok || transformer.digester == nil {
+			continue
+		}
+
+		for _, sampleData := range samplerSample.Samples {
+
+			// Check the data encoding is supported
+			var record *data.Data
+			switch sampleData.Encoding {
+			case sample.JSONEncoding:
+				record = data.NewSampleDataFromJSON(string(sampleData.Data))
+			}
+			if record == nil {
+				n.logger.Error("Digest could not be performed because data encoding is not supported", zap.String("encoding", sampleData.Encoding.String()))
+				continue
+			}
+
+			// Digests can only be performed to raw samples
+			if sampleData.Type != control.RawSampleType {
+				continue
+			}
+
+			transformer.digester.ProcessSample(sampleData.Streams, record)
+		}
+	}
+}
+
+// computeEvents returns a list of generated events based on the provided samples (including digests)
+func (n *neblic) computeEvents(samplerSamples []sample.SamplerSamples) ([]sample.SamplerSamples, error) {
+	// List of computed events
 	samplerSamplesEvents := []sample.SamplerSamples{}
 
 	// Event rule evaluation.
 	// Generated events are stored in an auxiliary struct to avoid iterating an modifying the samplers at the same time
 	var errs []error
 	for _, samplerSample := range samplerSamples {
-		sampler, err := n.samplerRegistry.GetSampler(samplerSample.ResourceName, samplerSample.SamplerName)
+		samplerConfig, err := n.s.GetSamplerConfig(samplerSample.ResourceName, samplerSample.SamplerName)
 		if err != nil {
-			n.logger.Error("could not get sampler config", zap.Error(err))
+			n.logger.Error("Could not get sampler config", zap.Error(err))
 			continue
 		}
 
 		// stores all the generated events for the current sampler
 		matchedSamples := []sample.Sample{}
 
-		for eventUID, eventConfig := range sampler.Config.Events {
+		for eventUID, eventConfig := range samplerConfig.Events {
 
 			// Get the event rule
-			rule, ok := sampler.EventRules[eventUID]
+			transformer, ok := n.getRuntime(samplerSample.ResourceName, samplerSample.SamplerName)
 			if !ok {
-				n.logger.Error("Event in the configuration cannot be found in the even rules. That should not happen. Skipping event evaluation",
-					zap.String("resource", samplerSample.ResourceName), zap.String("name", samplerSample.SamplerName), zap.String("expression", eventConfig.Rule.Expression))
+				n.logger.Error("Transformer not found. That should not happen. Skipping event evaluation",
+					zap.String("resource", samplerSample.ResourceName),
+					zap.String("name", samplerSample.SamplerName),
+				)
+				continue
+			}
+			if transformer.eventRules == nil {
+				n.logger.Error("Transformer found, but event rules has not been initialized. That should not happen. Skipping event evaluation",
+					zap.String("resource", samplerSample.ResourceName),
+					zap.String("name", samplerSample.SamplerName),
+				)
+				continue
+			}
+
+			rule, ok := transformer.eventRules[eventUID]
+			if !ok {
+				n.logger.Error("Compiled rule cannot be found. That should not happen. Skipping event evaluation",
+					zap.String("resource", samplerSample.ResourceName),
+					zap.String("name", samplerSample.SamplerName),
+					zap.String("expression", eventConfig.Rule.Expression),
+				)
 				continue
 			}
 
@@ -188,13 +350,24 @@ func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
 		}
 	}
 
-	// Append new samplers (containing the generated events) to the data and convert it into OTLP logs
-	samplerSamples = append(samplerSamples, samplerSamplesEvents...)
-	ld = sample.SamplesToOTLPLogs(samplerSamples)
+	return samplerSamplesEvents, errors.Join(errs...)
+}
 
-	if len(errs) > 0 {
-		n.logger.Error("Event evaluation finished with errors", zap.Error(errors.Join(errs...)))
+func (n *neblic) ConsumeLogs(ctx context.Context, ld plog.Logs) error {
+	// Convert complex OTLP logs structure to a simpler representation
+	samplerSamples := sample.OTLPLogsToSamples(ld)
+
+	// Compute digests and append them to the sampler samples
+	n.computeDigests(samplerSamples)
+
+	// Compute events and append them to the sampler samples
+	samplerSamplesEvents, err := n.computeEvents(samplerSamples)
+	if err != nil {
+		n.logger.Error("Event evaluation finished with errors", zap.Error(err))
 	}
 
-	return n.nextConsumer.ConsumeLogs(ctx, ld)
+	// Append new samplers (containing the generated events) to the data and convert it into OTLP logs
+	samplerSamples = append(samplerSamples, samplerSamplesEvents...)
+
+	return n.exporter.Export(ctx, samplerSamples)
 }

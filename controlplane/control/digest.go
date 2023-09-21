@@ -13,6 +13,7 @@ type DigestType uint8
 const (
 	DigestTypeUnknown DigestType = iota
 	DigestTypeSt
+	DigestTypeValue
 )
 
 type SamplerDigestUID string
@@ -41,6 +42,30 @@ func (ds *DigestSt) ToProto() *protos.Digest_St {
 	}
 }
 
+type DigestValue struct {
+	MaxProcessedFields int
+}
+
+func (dv DigestValue) CLIInfo() string {
+	return fmt.Sprintf("MaxProcessedFields: %d", dv.MaxProcessedFields)
+}
+
+func NewDigestValueFromProto(protoDigestValue *protos.Digest_Value) DigestValue {
+	if protoDigestValue == nil {
+		return DigestValue{}
+	}
+
+	return DigestValue{
+		MaxProcessedFields: int(protoDigestValue.MaxProcessedFields),
+	}
+}
+
+func (dv *DigestValue) ToProto() *protos.Digest_Value {
+	return &protos.Digest_Value{
+		MaxProcessedFields: int32(dv.MaxProcessedFields),
+	}
+}
+
 type Digest struct {
 	UID         SamplerDigestUID
 	StreamUID   SamplerStreamUID
@@ -48,8 +73,9 @@ type Digest struct {
 	BufferSize  int
 
 	// digest specific config
-	Type DigestType
-	St   DigestSt
+	Type  DigestType
+	St    DigestSt
+	Value DigestValue
 }
 
 func (d Digest) CLIInfo() string {
@@ -57,6 +83,8 @@ func (d Digest) CLIInfo() string {
 	switch d.Type {
 	case DigestTypeSt:
 		t = fmt.Sprintf("Type: Structure, %s", d.St.CLIInfo())
+	case DigestTypeValue:
+		t = fmt.Sprintf("Type: Value, %s", d.St.CLIInfo())
 	default:
 		t = "Type: Unknown"
 	}
@@ -82,6 +110,9 @@ func NewDigestFromProto(protoDigest *protos.Digest) Digest {
 	case *protos.Digest_St_:
 		digest.Type = DigestTypeSt
 		digest.St = NewDigestStFromProto(t.St)
+	case *protos.Digest_Value_:
+		digest.Type = DigestTypeValue
+		digest.Value = NewDigestValueFromProto(t.Value)
 	default:
 		digest.Type = DigestTypeUnknown
 	}
@@ -101,6 +132,10 @@ func (d *Digest) ToProto() *protos.Digest {
 	case DigestTypeSt:
 		protoDigest.Type = &protos.Digest_St_{
 			St: d.St.ToProto(),
+		}
+	case DigestTypeValue:
+		protoDigest.Type = &protos.Digest_Value_{
+			Value: d.Value.ToProto(),
 		}
 	}
 

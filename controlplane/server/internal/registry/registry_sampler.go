@@ -8,9 +8,7 @@ import (
 	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/server/internal/defs"
 	"github.com/neblic/platform/controlplane/server/internal/registry/storage"
-	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/logging"
-	samplerDefs "github.com/neblic/platform/sampler/defs"
 )
 
 var (
@@ -19,9 +17,10 @@ var (
 )
 
 type SamplerRegistry struct {
-	samplers    map[defs.SamplerIdentifier]*defs.Sampler
-	storage     storage.Storage[defs.SamplerIdentifier, *defs.Sampler]
-	ruleBuilder *rule.Builder
+	samplers map[defs.SamplerIdentifier]*defs.Sampler
+	storage  storage.Storage[defs.SamplerIdentifier, *defs.Sampler]
+
+	eventsChan  chan Event
 	notifyDirty chan struct{}
 
 	logger logging.Logger
@@ -33,7 +32,7 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 		logger = logging.NewNopLogger()
 	}
 
-	// Initalize storage
+	// Initialize storage
 	var storageInstance storage.Storage[defs.SamplerIdentifier, *defs.Sampler]
 	switch storageOpts.Type {
 	case storage.NopType:
@@ -46,41 +45,19 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 		}
 	}
 
-	// Initialize the dynamic rule builder
-	ruleBuilder, err := rule.NewBuilder(samplerDefs.NewDynamicSchema())
-	if err != nil {
-		return nil, fmt.Errorf("could not initialize the dynamic rule builder")
-	}
-
 	// Populate registry data using storage data
 	samplers := map[defs.SamplerIdentifier]*defs.Sampler{}
 	storageInstance.Range(func(key defs.SamplerIdentifier, sampler *defs.Sampler) {
 
-		// Initialize event rules
-		eventRules := map[control.SamplerEventUID]*rule.Rule{}
-		for eventUID, event := range sampler.Config.Events {
-			rule, err := ruleBuilder.Build(event.Rule.Expression)
-			if err != nil {
-				logger.Error("rule cannot be built. Skipping it", "resouce", key.Resource, "name", key.Name, "error", err)
-				continue
-			}
-
-			eventRules[eventUID] = rule
-		}
-
 		// Initialize instances (not persisted)
 		sampler.Instances = map[control.SamplerUID]*defs.SamplerInstance{}
-
-		// Initialize sampler
-		sampler.EventRules = eventRules
-
 		samplers[key] = sampler
 	})
 
 	return &SamplerRegistry{
 		samplers:    samplers,
 		storage:     storageInstance,
-		ruleBuilder: ruleBuilder,
+		eventsChan:  nil,
 		notifyDirty: notifyDirty,
 		logger:      logger,
 		m:           sync.RWMutex{},
@@ -147,9 +124,22 @@ func (sr *SamplerRegistry) sendDirtyNotification() {
 	}
 }
 
+// RangeSamplers locks the registry until all the configs have been processed
+// CAUTION: do not perform any action that may require registry access or it may cause a deadlock
+func (sr *SamplerRegistry) RangeSamplers(fn func(sampler *defs.Sampler) (carryon bool)) {
+	sr.m.Lock()
+	defer sr.m.Unlock()
+
+	for _, sampler := range sr.samplers {
+		carryon := fn(sampler)
+		if !carryon {
+			return
+		}
+	}
+}
+
 // RangeRegisteredInstances locks the registry until all the instances have been processed
 // CAUTION: do not perform any action that may require registry access or it may cause a deadlock
-
 func (sr *SamplerRegistry) RangeRegisteredInstances(fn func(sampler *defs.Sampler, instance *defs.SamplerInstance) (carryon bool)) {
 	sr.m.Lock()
 	defer sr.m.Unlock()
@@ -319,19 +309,10 @@ func (sr *SamplerRegistry) UpdateSamplerConfig(resource string, name string, upd
 			// Update config
 			sampler.Config.Events[update.Event.UID] = update.Event
 
-			// Update event rules
-			rule, err := sr.ruleBuilder.Build(update.Event.Rule.Expression)
-			if err != nil {
-				return fmt.Errorf("invalid event rule '%s': %w", update.Event.Rule.Expression, err)
-			}
-			sampler.EventRules[update.Event.UID] = rule
-
 		case control.EventDelete:
 			// Delete from config
 			delete(sampler.Config.Events, update.Event.UID)
 
-			// Delete from event rules
-			delete(sampler.EventRules, update.Event.UID)
 		default:
 			sr.logger.Error(fmt.Sprintf("received unkown event update operation: %d", update.Op))
 		}
@@ -347,6 +328,15 @@ func (sr *SamplerRegistry) UpdateSamplerConfig(resource string, name string, upd
 	err = sr.setSampler(resource, name, sampler)
 	if err != nil {
 		sr.logger.Error("could not store the sampler configuration updates", "error", err)
+	}
+
+	// Send upsert event if necessary
+	if sr.eventsChan != nil {
+		sr.eventsChan <- ConfigUpdate{
+			Resource: resource,
+			Sampler:  name,
+			Config:   sampler.Config,
+		}
 	}
 
 	return nil
@@ -376,6 +366,14 @@ func (sr *SamplerRegistry) DeleteSamplerConfig(resource string, name string) err
 		sr.logger.Error("could not store the sampler configuration delete", "error", err)
 	}
 
+	// Send delete event if necessary
+	if sr.eventsChan != nil {
+		sr.eventsChan <- ConfigDelete{
+			Resource: resource,
+			Sampler:  name,
+		}
+	}
+
 	return nil
 }
 
@@ -392,4 +390,28 @@ func (sr *SamplerRegistry) UpdateStats(resource string, name string, uid control
 	err = sr.setInstance(resource, name, instance)
 
 	return err
+}
+
+// Events returns a new channel that will be populated with the sampler configs. Events will contain the initial state
+// and posterior updates
+// CAUTION: Not reading from the returned channel until it gets closed will block the registry
+func (sr *SamplerRegistry) Events() chan Event {
+	if sr.eventsChan == nil {
+		sr.eventsChan = make(chan Event)
+	}
+
+	// Send config state to the created channel. That blocks the full registry until the goroutine finishes
+	go func() {
+		sr.RangeSamplers(func(sampler *defs.Sampler) (carryon bool) {
+			sr.eventsChan <- ConfigUpdate{
+				Resource: sampler.Resource,
+				Sampler:  sampler.Name,
+				Config:   sampler.Config,
+			}
+
+			return true
+		})
+	}()
+
+	return sr.eventsChan
 }

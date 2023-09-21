@@ -7,13 +7,13 @@ import (
 
 	"github.com/neblic/platform/controlplane/control"
 	csampler "github.com/neblic/platform/controlplane/sampler"
+	"github.com/neblic/platform/dataplane/digest"
 	dpsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/internal/pkg/data"
+	"github.com/neblic/platform/internal/pkg/exporter"
 	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler/defs"
-	"github.com/neblic/platform/sampler/internal/sample/digest"
-	"github.com/neblic/platform/sampler/internal/sample/exporter"
 	"github.com/neblic/platform/sampler/internal/sample/sampling"
 	"golang.org/x/time/rate"
 )
@@ -91,10 +91,11 @@ func New(
 	}
 
 	digesterSettings := digest.Settings{
-		ResourceName: settings.Resource,
-		SamplerName:  settings.Name,
-		NotifyErr:    forwardError,
-		Exporter:     settings.Exporter,
+		ResourceName:   settings.Resource,
+		SamplerName:    settings.Name,
+		EnabledDigests: []control.DigestType{control.DigestTypeSt},
+		NotifyErr:      forwardError,
+		Exporter:       settings.Exporter,
 	}
 	digester := digest.NewDigester(digesterSettings)
 
