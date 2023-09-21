@@ -28,7 +28,7 @@ type samplerIdentifier struct {
 	name     string
 }
 
-type runtime struct {
+type transformer struct {
 	eventRules map[control.SamplerEventUID]*rule.Rule
 	digester   *digest.Digester
 }
@@ -37,12 +37,12 @@ type neblic struct {
 	cfg      *Config
 	exporter *Exporter
 
-	logger      *zap.Logger
-	notifyErr   func(err error)
-	s           *server.Server
-	serverOpts  []server.Option
-	ruleBuilder *rule.Builder
-	runtimes    map[samplerIdentifier]*runtime
+	logger       *zap.Logger
+	notifyErr    func(err error)
+	s            *server.Server
+	serverOpts   []server.Option
+	ruleBuilder  *rule.Builder
+	transformers map[samplerIdentifier]*transformer
 }
 
 func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.Logs) (*neblic, error) {
@@ -90,13 +90,13 @@ func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.
 	}
 
 	return &neblic{
-		cfg:         cfg,
-		logger:      zapLogger,
-		notifyErr:   func(err error) { zapLogger.Error("error digesting sample", zap.Error(err)) },
-		exporter:    NewExporter(nextConsumer),
-		serverOpts:  serverOpts,
-		ruleBuilder: builder,
-		runtimes:    map[samplerIdentifier]*runtime{},
+		cfg:          cfg,
+		logger:       zapLogger,
+		notifyErr:    func(err error) { zapLogger.Error("error digesting sample", zap.Error(err)) },
+		exporter:     NewExporter(nextConsumer),
+		serverOpts:   serverOpts,
+		ruleBuilder:  builder,
+		transformers: map[samplerIdentifier]*transformer{},
 	}, nil
 }
 
@@ -148,20 +148,20 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 				continue
 			}
 
-			// Get runtime
+			// Get transformer
 			samplerIdentifier := samplerIdentifier{
 				resource: resource,
 				name:     sampler,
 			}
-			runtimeInstance, ok := n.runtimes[samplerIdentifier]
+			transformerInstance, ok := n.transformers[samplerIdentifier]
 			if !ok {
-				runtimeInstance = new(runtime)
+				transformerInstance = new(transformer)
 			}
 
 			// Update event rules
 			if config != nil && len(config.Events) > 0 {
-				if runtimeInstance.eventRules == nil {
-					runtimeInstance.eventRules = map[control.SamplerEventUID]*rule.Rule{}
+				if transformerInstance.eventRules == nil {
+					transformerInstance.eventRules = map[control.SamplerEventUID]*rule.Rule{}
 				}
 				for eventUID, event := range config.Events {
 					rule, err := n.ruleBuilder.Build(event.Rule.Expression)
@@ -170,31 +170,31 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 						continue
 					}
 
-					runtimeInstance.eventRules[eventUID] = rule
+					transformerInstance.eventRules[eventUID] = rule
 				}
 			} else {
-				runtimeInstance.eventRules = nil
+				transformerInstance.eventRules = nil
 			}
 
 			// Update digester
 			if config != nil && len(config.Digests) > 0 {
-				if runtimeInstance.digester == nil {
-					runtimeInstance.digester = n.newDigester(resource, sampler)
+				if transformerInstance.digester == nil {
+					transformerInstance.digester = n.newDigester(resource, sampler)
 				}
-				runtimeInstance.digester.SetDigestsConfig(config.Digests)
+				transformerInstance.digester.SetDigestsConfig(config.Digests)
 			} else {
-				if runtimeInstance.digester != nil {
-					runtimeInstance.digester.DeleteDigestsConfig()
-					runtimeInstance.digester.Close()
+				if transformerInstance.digester != nil {
+					transformerInstance.digester.DeleteDigestsConfig()
+					transformerInstance.digester.Close()
 				}
-				runtimeInstance.digester = nil
+				transformerInstance.digester = nil
 			}
 
-			// Update runtime
-			if runtimeInstance.digester != nil || runtimeInstance.eventRules != nil {
-				n.runtimes[samplerIdentifier] = runtimeInstance
+			// Update transformers
+			if transformerInstance.digester != nil || transformerInstance.eventRules != nil {
+				n.transformers[samplerIdentifier] = transformerInstance
 			} else {
-				delete(n.runtimes, samplerIdentifier)
+				delete(n.transformers, samplerIdentifier)
 			}
 		}
 
@@ -217,14 +217,14 @@ func (n *neblic) Capabilities() consumer.Capabilities {
 	}
 }
 
-func (n *neblic) getRuntime(resource string, sampler string) (*runtime, bool) {
+func (n *neblic) getRuntime(resource string, sampler string) (*transformer, bool) {
 	samplerIdentifier := samplerIdentifier{
 		resource: resource,
 		name:     sampler,
 	}
-	runtime, ok := n.runtimes[samplerIdentifier]
+	transformer, ok := n.transformers[samplerIdentifier]
 
-	return runtime, ok
+	return transformer, ok
 }
 
 // computeDigests asynchronous computes the digests for the input samples, generated digests are exported
@@ -233,8 +233,8 @@ func (n *neblic) computeDigests(samplerSamples []sample.SamplerSamples) {
 
 	// Generated digests are stored in an auxiliary struct to avoid iterating an modifying the samplers at the same time
 	for _, samplerSample := range samplerSamples {
-		runtime, ok := n.getRuntime(samplerSample.ResourceName, samplerSample.SamplerName)
-		if !ok || runtime.digester == nil {
+		transformer, ok := n.getRuntime(samplerSample.ResourceName, samplerSample.SamplerName)
+		if !ok || transformer.digester == nil {
 			continue
 		}
 
@@ -256,7 +256,7 @@ func (n *neblic) computeDigests(samplerSamples []sample.SamplerSamples) {
 				continue
 			}
 
-			runtime.digester.ProcessSample(sampleData.Streams, record)
+			transformer.digester.ProcessSample(sampleData.Streams, record)
 		}
 	}
 }
@@ -282,23 +282,23 @@ func (n *neblic) computeEvents(samplerSamples []sample.SamplerSamples) ([]sample
 		for eventUID, eventConfig := range samplerConfig.Events {
 
 			// Get the event rule
-			runtime, ok := n.getRuntime(samplerSample.ResourceName, samplerSample.SamplerName)
+			transformer, ok := n.getRuntime(samplerSample.ResourceName, samplerSample.SamplerName)
 			if !ok {
-				n.logger.Error("runtime not found. That should not happen. Skipping event evaluation",
+				n.logger.Error("transformer not found. That should not happen. Skipping event evaluation",
 					zap.String("resource", samplerSample.ResourceName),
 					zap.String("name", samplerSample.SamplerName),
 				)
 				continue
 			}
-			if runtime.eventRules == nil {
-				n.logger.Error("runtime found, but event rules has not been initialized. That should not happen. Skipping event evaluation",
+			if transformer.eventRules == nil {
+				n.logger.Error("transformer found, but event rules has not been initialized. That should not happen. Skipping event evaluation",
 					zap.String("resource", samplerSample.ResourceName),
 					zap.String("name", samplerSample.SamplerName),
 				)
 				continue
 			}
 
-			rule, ok := runtime.eventRules[eventUID]
+			rule, ok := transformer.eventRules[eventUID]
 			if !ok {
 				n.logger.Error("Event in the configuration cannot be found in the event rules. That should not happen. Skipping event evaluation",
 					zap.String("resource", samplerSample.ResourceName),
