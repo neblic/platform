@@ -146,7 +146,7 @@ func (s *Server) GetSamplerConfig(resourceName string, samplerName string) (cont
 	return sampler.Config, nil
 }
 
-func (s *Server) GetRegistryEvents() chan registry.Event {
+func (s *Server) GetEvents() chan registry.Event {
 	return s.samplerRegistry.Events()
 }
 

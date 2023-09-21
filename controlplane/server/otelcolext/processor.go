@@ -68,13 +68,13 @@ func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.
 		switch cfg.AuthConfig.Type {
 		case "bearer":
 			if cfg.AuthConfig.BearerConfig == nil {
-				return nil, fmt.Errorf("Bearer authentication enabled but token not configured")
+				return nil, fmt.Errorf("bearer authentication enabled but token not configured")
 			}
 			serverOpts = append(serverOpts, server.WithAuthBearer(cfg.AuthConfig.BearerConfig.Token))
 		case "":
 			// nothing to do
 		default:
-			return nil, fmt.Errorf("Invalid authentication type %s", cfg.AuthConfig.Type)
+			return nil, fmt.Errorf("invalid authentication type %s", cfg.AuthConfig.Type)
 		}
 	}
 
@@ -110,6 +110,76 @@ func (n *neblic) newDigester(resource string, sampler string) *digest.Digester {
 	})
 }
 
+func (n *neblic) configUpdater() {
+	for serverEvent := range n.s.GetEvents() {
+
+		// Get config from event
+		var resource string
+		var sampler string
+		var config *control.SamplerConfig
+		switch v := serverEvent.(type) {
+		case registry.ConfigUpdate:
+			resource = v.Resource
+			sampler = v.Sampler
+			config = &v.Config
+		case registry.ConfigDelete:
+			resource = v.Resource
+			sampler = v.Sampler
+		default:
+			continue
+		}
+
+		// Get transformer
+		samplerIdentifier := samplerIdentifier{
+			resource: resource,
+			name:     sampler,
+		}
+		transformerInstance, ok := n.transformers[samplerIdentifier]
+		if !ok {
+			transformerInstance = new(transformer)
+		}
+
+		// Update event rules
+		if config != nil && len(config.Events) > 0 {
+			if transformerInstance.eventRules == nil {
+				transformerInstance.eventRules = map[control.SamplerEventUID]*rule.Rule{}
+			}
+			for eventUID, event := range config.Events {
+				rule, err := n.ruleBuilder.Build(event.Rule.Expression)
+				if err != nil {
+					n.logger.Error("Rule cannot be built. Skipping it", zap.String("resource", resource), zap.String("sampler", sampler), zap.Error(err))
+					continue
+				}
+
+				transformerInstance.eventRules[eventUID] = rule
+			}
+		} else {
+			transformerInstance.eventRules = nil
+		}
+
+		// Update digester
+		if config != nil && len(config.Digests) > 0 {
+			if transformerInstance.digester == nil {
+				transformerInstance.digester = n.newDigester(resource, sampler)
+			}
+			transformerInstance.digester.SetDigestsConfig(config.Digests)
+		} else {
+			if transformerInstance.digester != nil {
+				transformerInstance.digester.DeleteDigestsConfig()
+				transformerInstance.digester.Close()
+			}
+			transformerInstance.digester = nil
+		}
+
+		// Update transformers
+		if transformerInstance.digester != nil || transformerInstance.eventRules != nil {
+			n.transformers[samplerIdentifier] = transformerInstance
+		} else {
+			delete(n.transformers, samplerIdentifier)
+		}
+	}
+}
+
 func (n *neblic) Start(ctx context.Context, host component.Host) error {
 	var err error
 	n.s, err = server.New(n.cfg.UID, n.serverOpts...)
@@ -122,79 +192,8 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 		return err
 	}
 
-	// Run config update goroutine
-	go func() {
-		eventsChan := n.s.GetRegistryEvents()
-
-		for registryEvent := range eventsChan {
-
-			// Get config from event
-			var resource string
-			var sampler string
-			var config *control.SamplerConfig
-			switch v := registryEvent.(type) {
-			case registry.ConfigUpdate:
-				resource = v.Resource
-				sampler = v.Sampler
-				config = &v.Config
-			case registry.ConfigDelete:
-				resource = v.Resource
-				sampler = v.Sampler
-			default:
-				continue
-			}
-
-			// Get transformer
-			samplerIdentifier := samplerIdentifier{
-				resource: resource,
-				name:     sampler,
-			}
-			transformerInstance, ok := n.transformers[samplerIdentifier]
-			if !ok {
-				transformerInstance = new(transformer)
-			}
-
-			// Update event rules
-			if config != nil && len(config.Events) > 0 {
-				if transformerInstance.eventRules == nil {
-					transformerInstance.eventRules = map[control.SamplerEventUID]*rule.Rule{}
-				}
-				for eventUID, event := range config.Events {
-					rule, err := n.ruleBuilder.Build(event.Rule.Expression)
-					if err != nil {
-						n.logger.Error("rule cannot be built. Skipping it", zap.String("resource", resource), zap.String("sampler", sampler), zap.Error(err))
-						continue
-					}
-
-					transformerInstance.eventRules[eventUID] = rule
-				}
-			} else {
-				transformerInstance.eventRules = nil
-			}
-
-			// Update digester
-			if config != nil && len(config.Digests) > 0 {
-				if transformerInstance.digester == nil {
-					transformerInstance.digester = n.newDigester(resource, sampler)
-				}
-				transformerInstance.digester.SetDigestsConfig(config.Digests)
-			} else {
-				if transformerInstance.digester != nil {
-					transformerInstance.digester.DeleteDigestsConfig()
-					transformerInstance.digester.Close()
-				}
-				transformerInstance.digester = nil
-			}
-
-			// Update transformers
-			if transformerInstance.digester != nil || transformerInstance.eventRules != nil {
-				n.transformers[samplerIdentifier] = transformerInstance
-			} else {
-				delete(n.transformers, samplerIdentifier)
-			}
-		}
-
-	}()
+	// Run configuration updater goroutine
+	go n.configUpdater()
 
 	return nil
 }
@@ -268,7 +267,7 @@ func (n *neblic) computeEvents(samplerSamples []sample.SamplerSamples) ([]sample
 	for _, samplerSample := range samplerSamples {
 		samplerConfig, err := n.s.GetSamplerConfig(samplerSample.ResourceName, samplerSample.SamplerName)
 		if err != nil {
-			n.logger.Error("could not get sampler config", zap.Error(err))
+			n.logger.Error("Could not get sampler config", zap.Error(err))
 			continue
 		}
 
@@ -280,14 +279,14 @@ func (n *neblic) computeEvents(samplerSamples []sample.SamplerSamples) ([]sample
 			// Get the event rule
 			transformer, ok := n.getRuntime(samplerSample.ResourceName, samplerSample.SamplerName)
 			if !ok {
-				n.logger.Error("transformer not found. That should not happen. Skipping event evaluation",
+				n.logger.Error("Transformer not found. That should not happen. Skipping event evaluation",
 					zap.String("resource", samplerSample.ResourceName),
 					zap.String("name", samplerSample.SamplerName),
 				)
 				continue
 			}
 			if transformer.eventRules == nil {
-				n.logger.Error("transformer found, but event rules has not been initialized. That should not happen. Skipping event evaluation",
+				n.logger.Error("Transformer found, but event rules has not been initialized. That should not happen. Skipping event evaluation",
 					zap.String("resource", samplerSample.ResourceName),
 					zap.String("name", samplerSample.SamplerName),
 				)
