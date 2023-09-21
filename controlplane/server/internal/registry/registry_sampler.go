@@ -332,14 +332,10 @@ func (sr *SamplerRegistry) UpdateSamplerConfig(resource string, name string, upd
 
 	// Send upsert event if necessary
 	if sr.eventsChan != nil {
-		sr.eventsChan <- Event{
-			Operation:    UpsertOperation,
-			RegistryType: SamplerType,
-			SamplerRegistryEvent: &SamplerRegistryEvent{
-				Resource: resource,
-				Sampler:  name,
-				Config:   &sampler.Config,
-			},
+		sr.eventsChan <- ConfigUpdate{
+			Resource: resource,
+			Sampler:  name,
+			Config:   sampler.Config,
 		}
 	}
 
@@ -372,14 +368,9 @@ func (sr *SamplerRegistry) DeleteSamplerConfig(resource string, name string) err
 
 	// Send delete event if necessary
 	if sr.eventsChan != nil {
-		sr.eventsChan <- Event{
-			Operation:    DeleteOperation,
-			RegistryType: SamplerType,
-			SamplerRegistryEvent: &SamplerRegistryEvent{
-				Resource: resource,
-				Sampler:  name,
-				Config:   nil,
-			},
+		sr.eventsChan <- ConfigDelete{
+			Resource: resource,
+			Sampler:  name,
 		}
 	}
 

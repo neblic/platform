@@ -160,14 +160,24 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 		}
 
 		for registryEvent := range eventsChan {
-			if registryEvent.RegistryType != registry.SamplerType {
+
+			// Get config from event
+			var resource string
+			var sampler string
+			var config *control.SamplerConfig
+			switch v := registryEvent.(type) {
+			case registry.ConfigUpdate:
+				resource = v.Resource
+				sampler = v.Sampler
+				config = &v.Config
+			case registry.ConfigDelete:
+				resource = v.Resource
+				sampler = v.Sampler
+			default:
 				continue
 			}
 
 			// Get runtime
-			resource := registryEvent.SamplerRegistryEvent.Resource
-			sampler := registryEvent.SamplerRegistryEvent.Sampler
-			config := registryEvent.SamplerRegistryEvent.Config
 			samplerIdentifier := samplerIdentifier{
 				resource: resource,
 				name:     sampler,
@@ -178,14 +188,7 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 			}
 
 			// Update event rules
-			var eventRulesOperation registry.Operation
-			if registryEvent.Operation == registry.UpsertOperation && len(config.Events) > 0 {
-				eventRulesOperation = registry.UpsertOperation
-			} else {
-				eventRulesOperation = registry.DeleteOperation
-			}
-			switch eventRulesOperation {
-			case registry.UpsertOperation:
+			if config != nil && len(config.Events) > 0 {
 				if runtimeInstance.eventRules == nil {
 					runtimeInstance.eventRules = map[control.SamplerEventUID]*rule.Rule{}
 				}
@@ -198,24 +201,17 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 
 					runtimeInstance.eventRules[eventUID] = rule
 				}
-			case registry.DeleteOperation:
+			} else {
 				runtimeInstance.eventRules = nil
 			}
 
 			// Update digester
-			var digesterOperation registry.Operation
-			if registryEvent.Operation == registry.UpsertOperation && len(config.Digests) > 0 {
-				digesterOperation = registry.UpsertOperation
-			} else {
-				digesterOperation = registry.DeleteOperation
-			}
-			switch digesterOperation {
-			case registry.UpsertOperation:
+			if config != nil && len(config.Digests) > 0 {
 				if runtimeInstance.digester == nil {
 					runtimeInstance.digester = n.newDigester(resource, sampler)
 				}
 				runtimeInstance.digester.SetDigestsConfig(config.Digests)
-			case registry.DeleteOperation:
+			} else {
 				if runtimeInstance.digester != nil {
 					runtimeInstance.digester.DeleteDigestsConfig()
 					runtimeInstance.digester.Close()

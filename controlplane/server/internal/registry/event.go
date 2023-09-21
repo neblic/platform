@@ -1,29 +1,34 @@
 package registry
 
-import "github.com/neblic/platform/controlplane/control"
+import (
+	"fmt"
 
-type Type uint
-
-const (
-	ClientType = iota
-	SamplerType
+	"github.com/neblic/platform/controlplane/control"
 )
 
-type Operation uint
+type Event interface {
+	fmt.Stringer
 
-const (
-	UpsertOperation = iota
-	DeleteOperation
-)
+	isEvent()
+}
 
-type SamplerRegistryEvent struct {
+type ConfigUpdate struct {
 	Resource string
 	Sampler  string
-	Config   *control.SamplerConfig
+	Config   control.SamplerConfig
 }
 
-type Event struct {
-	Operation
-	RegistryType         Type
-	SamplerRegistryEvent *SamplerRegistryEvent
+func (cu ConfigUpdate) String() string {
+	return fmt.Sprintf("ConfigUpdate(Resource: %s, Sampler: %s, Config %v)", cu.Resource, cu.Sampler, cu.Config)
 }
+func (ConfigUpdate) isEvent() {}
+
+type ConfigDelete struct {
+	Resource string
+	Sampler  string
+}
+
+func (cd ConfigDelete) String() string {
+	return fmt.Sprintf("ConfigDelete(Resource: %s, Sampler: %s)", cd.Resource, cd.Sampler)
+}
+func (ConfigDelete) isEvent() {}
