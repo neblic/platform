@@ -61,29 +61,29 @@ func num64(n interface{}) interface{} {
 	return nil
 }
 
-func (s *St) updateNum(prev *protos.NumberType, x interface{}) (*protos.NumberType, error) {
+func (s *St) updateNum(prev *protos.NumberSt, x interface{}) (*protos.NumberSt, error) {
 	if err := s.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
 
 	if prev == nil {
-		prev = &protos.NumberType{}
+		prev = &protos.NumberSt{}
 	}
 
 	switch num64(x).(type) {
 	case int64:
 		if prev.IntegerNum == nil {
-			prev.IntegerNum = &protos.IntNumType{}
+			prev.IntegerNum = &protos.IntNumSt{}
 		}
 		prev.IntegerNum.Count++
 	case uint64:
 		if prev.UintegerNum == nil {
-			prev.UintegerNum = &protos.UIntNumType{}
+			prev.UintegerNum = &protos.UIntNumSt{}
 		}
 		prev.UintegerNum.Count++
 	case float64:
 		if prev.FloatNum == nil {
-			prev.FloatNum = &protos.FloatNumType{}
+			prev.FloatNum = &protos.FloatNumSt{}
 		}
 		prev.FloatNum.Count++
 	default:
@@ -93,39 +93,39 @@ func (s *St) updateNum(prev *protos.NumberType, x interface{}) (*protos.NumberTy
 	return prev, nil
 }
 
-func (s *St) updateString(prev *protos.StringType, x string) (*protos.StringType, error) {
+func (s *St) updateString(prev *protos.StringSt, x string) (*protos.StringSt, error) {
 	if err := s.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
 
 	if prev == nil {
-		prev = &protos.StringType{}
+		prev = &protos.StringSt{}
 	}
 	prev.Count++
 
 	return prev, nil
 }
 
-func (s *St) updateBoolean(prev *protos.BooleanType, x bool) (*protos.BooleanType, error) {
+func (s *St) updateBoolean(prev *protos.BooleanSt, x bool) (*protos.BooleanSt, error) {
 	if err := s.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
 
 	if prev == nil {
-		prev = &protos.BooleanType{}
+		prev = &protos.BooleanSt{}
 	}
 	prev.Count++
 
 	return prev, nil
 }
 
-func (s *St) updateValue(prevVal *protos.ValueType, x interface{}) (*protos.ValueType, error) {
+func (s *St) updateValue(prevVal *protos.ValueSt, x interface{}) (*protos.ValueSt, error) {
 	if err := s.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
 
 	if prevVal == nil {
-		prevVal = &protos.ValueType{}
+		prevVal = &protos.ValueSt{}
 	}
 
 	v := reflect.ValueOf(x)
@@ -169,7 +169,7 @@ func (s *St) updateValue(prevVal *protos.ValueType, x interface{}) (*protos.Valu
 	return prevVal, nil
 }
 
-func (s *St) updateArray(prev *protos.ArrayType, x interface{}) (*protos.ArrayType, error) {
+func (s *St) updateArray(prev *protos.ArraySt, x interface{}) (*protos.ArraySt, error) {
 	if err := s.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
@@ -180,55 +180,29 @@ func (s *St) updateArray(prev *protos.ArrayType, x interface{}) (*protos.ArrayTy
 	}
 
 	if prev == nil {
-		prev = &protos.ArrayType{}
+		prev = &protos.ArraySt{
+			MinLength: math.Inf(+1),
+			MaxLength: math.Inf(-1),
+		}
 	}
 	prev.Count++
 
-	if prev.GetFixedLengthOrderedArray() == nil && prev.GetVariableLengthArray() == nil {
-		prev.FixedLengthOrderedArray = &protos.FixedLengthOrderedArrayType{
-			Fields: make([]*protos.ValueType, v.Len()),
+	for i := 0; i < v.Len(); i++ {
+		var err error
+		prev.Values, err = s.updateValue(prev.Values, v.Index(i).Interface())
+		if err != nil {
+			s.notifyErr(err)
 		}
 	}
 
-	if fixedLenArr := prev.GetFixedLengthOrderedArray(); fixedLenArr != nil && len(fixedLenArr.GetFields()) == v.Len() {
-		// as long as the array has the same length as the previous array, we consider it a fixed length array
-		for i := 0; i < v.Len(); i++ {
-			prevVal := fixedLenArr.GetFields()[i]
-			prevVal, err := s.updateValue(prevVal, v.Index(i).Interface())
-			if err != nil {
-				s.notifyErr(err)
-				continue
-			}
-
-			fixedLenArr.GetFields()[i] = prevVal
-		}
-
-	} else {
-		// as soon as we find an array with a different length, we consider it a variable length array
-		varLenArr := prev.GetVariableLengthArray()
-		if varLenArr == nil {
-			varLenArr = &protos.VariableLengthArrayType{}
-			prev.VariableLengthArray = varLenArr
-		}
-
-		if prev.FixedLengthOrderedArray != nil {
-			// updating from fixed length array to variable length array
-			varLenArr.MinLength = int64(len(prev.FixedLengthOrderedArray.GetFields()))
-			varLenArr.MaxLength = int64(v.Len())
-			varLenArr.SumLength = int64(v.Len() + len(prev.FixedLengthOrderedArray.GetFields()))
-
-			prev.FixedLengthOrderedArray = nil
-		} else {
-			varLenArr.MinLength = int64(math.Min(float64(varLenArr.MinLength), float64(v.Len())))
-			varLenArr.MaxLength = int64(math.Max(float64(varLenArr.MaxLength), float64(v.Len())))
-			varLenArr.SumLength += int64(v.Len())
-		}
-	}
+	prev.MinLength = math.Min(float64(prev.MinLength), float64(v.Len()))
+	prev.MaxLength = math.Max(float64(prev.MaxLength), float64(v.Len()))
+	prev.SumLength += float64(v.Len())
 
 	return prev, nil
 }
 
-func (s *St) updateObj(prev *protos.ObjType, x interface{}) (*protos.ObjType, error) {
+func (s *St) updateObj(prev *protos.ObjSt, x interface{}) (*protos.ObjSt, error) {
 	if err := s.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
@@ -239,8 +213,8 @@ func (s *St) updateObj(prev *protos.ObjType, x interface{}) (*protos.ObjType, er
 	}
 
 	if prev == nil {
-		prev = &protos.ObjType{
-			Fields: make(map[string]*protos.ValueType),
+		prev = &protos.ObjSt{
+			Fields: make(map[string]*protos.ValueSt),
 		}
 	}
 	prev.Count++
