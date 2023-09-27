@@ -1,8 +1,14 @@
 package control
 
 import (
+	"errors"
+	"regexp"
+
 	"github.com/neblic/platform/controlplane/protos"
 )
+
+var uidValidationRegex = regexp.MustCompile(`^[\.\/\ ()\w-]*$`)
+var uidValidationErrTemplate = "invalid %s uid %s, expected alphanumerical with spaces and ./() characters"
 
 type SamplerConfigUpdateReset struct {
 	LimiterIn  bool
@@ -145,6 +151,27 @@ func (scu SamplerConfigUpdate) ToProto() *protos.ClientSamplerConfigUpdate {
 		DigestUpdates: protoUpdateDigests,
 		EventUpdates:  protoUpdateEvents,
 	}
+}
+
+func (scu SamplerConfigUpdate) IsValid() error {
+	var errs error
+
+	for _, digestUpdate := range scu.DigestUpdates {
+		err := digestUpdate.IsValid()
+		errs = errors.Join(errs, err)
+	}
+
+	for _, eventUpdate := range scu.EventUpdates {
+		err := eventUpdate.IsValid()
+		errs = errors.Join(errs, err)
+	}
+
+	for _, streamUpdate := range scu.StreamUpdates {
+		err := streamUpdate.IsValid()
+		errs = errors.Join(errs, err)
+	}
+
+	return errs
 }
 
 // Used to get and update the sampler configuration.

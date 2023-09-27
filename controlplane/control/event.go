@@ -130,6 +130,13 @@ func NewEventUpdateFromProto(eventUpdate *protos.ClientEventUpdate) EventUpdate 
 		Event: NewEventFromProto(eventUpdate.GetEvent()),
 	}
 }
+func (eu *EventUpdate) IsValid() error {
+	isValid := uidValidationRegex.MatchString(string(eu.Event.UID))
+	if !isValid {
+		return fmt.Errorf(uidValidationErrTemplate, "event", eu.Event.UID)
+	}
+	return nil
+}
 
 func (eu *EventUpdate) ToProto() *protos.ClientEventUpdate {
 	protoOp := protos.ClientEventUpdate_UNKNOWN

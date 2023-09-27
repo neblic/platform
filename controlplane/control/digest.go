@@ -155,9 +155,17 @@ func NewDigestUpdateFromProto(digestUpdate *protos.ClientDigestUpdate) DigestUpd
 	}
 }
 
-func (s *DigestUpdate) ToProto() *protos.ClientDigestUpdate {
+func (du *DigestUpdate) IsValid() error {
+	isValid := uidValidationRegex.MatchString(string(du.Digest.UID))
+	if !isValid {
+		return fmt.Errorf(uidValidationErrTemplate, "digest", du.Digest.UID)
+	}
+	return nil
+}
+
+func (du *DigestUpdate) ToProto() *protos.ClientDigestUpdate {
 	protoOp := protos.ClientDigestUpdate_UNKNOWN
-	switch s.Op {
+	switch du.Op {
 	case DigestUpsert:
 		protoOp = protos.ClientDigestUpdate_UPSERT
 	case DigestDelete:
@@ -166,6 +174,6 @@ func (s *DigestUpdate) ToProto() *protos.ClientDigestUpdate {
 
 	return &protos.ClientDigestUpdate{
 		Op:     protoOp,
-		Digest: s.Digest.ToProto(),
+		Digest: du.Digest.ToProto(),
 	}
 }
