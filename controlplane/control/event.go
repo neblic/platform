@@ -1,8 +1,6 @@
 package control
 
 import (
-	"fmt"
-
 	"github.com/neblic/platform/controlplane/protos"
 )
 
@@ -79,10 +77,6 @@ func (e Event) GetUID() SamplerEventUID {
 
 func (e Event) GetName() string {
 	return e.Name
-}
-
-func (e Event) CLIInfo() string {
-	return fmt.Sprintf("UID: %s, Name: %s, StreamUID: %s, DataType: %s, Rule: %s", e.UID, e.Name, e.StreamUID, e.SampleType, e.Rule)
 }
 
 func NewEventFromProto(protoEvent *protos.Event) Event {

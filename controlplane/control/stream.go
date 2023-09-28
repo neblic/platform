@@ -1,8 +1,6 @@
 package control
 
 import (
-	"fmt"
-
 	"github.com/neblic/platform/controlplane/protos"
 )
 
@@ -21,10 +19,6 @@ func (s Stream) GetUID() SamplerStreamUID {
 
 func (s Stream) GetName() string {
 	return s.Name
-}
-
-func (s Stream) CLIInfo() string {
-	return fmt.Sprintf("UID: %s, Name: %s, Rule: %s", s.UID, s.Name, s.StreamRule)
 }
 
 func NewStreamFromProto(s *protos.Stream) Stream {

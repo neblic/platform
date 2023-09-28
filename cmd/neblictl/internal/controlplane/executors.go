@@ -108,9 +108,13 @@ func (e *Executors) SamplersList(ctx context.Context, parameters interpoler.Para
 	header := []string{"Resource", "Sampler", "Stats"}
 	rows := [][]string{}
 	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
+		statsInfo := fmt.Sprintf("Evaluated: %d, Exported: %d, Digested: %d",
+			samplerData.SamplingStats.SamplesEvaluated,
+			samplerData.SamplingStats.SamplesExported,
+			samplerData.SamplingStats.SamplesDigested)
 		rows = append(rows, []string{resourceAndSamplerEntry.resource,
 			resourceAndSamplerEntry.sampler,
-			samplerData.SamplingStats.CLIInfo(),
+			statsInfo,
 		})
 	}
 
@@ -153,7 +157,15 @@ func (e *Executors) SamplersListConfig(ctx context.Context, parameters interpole
 
 		samplingIn := "default"
 		if samplerData.Config.SamplingIn != nil {
-			samplingIn = fmt.Sprintf("%s", samplerData.Config.SamplingIn.CLIInfo())
+			switch samplerData.Config.SamplingIn.SamplingType {
+			case control.DeterministicSamplingType:
+				samplingIn = fmt.Sprintf("Type: Deterministic, SampleRate: %d, SampleEmtpyDeterminant: %t",
+					samplerData.Config.SamplingIn.DeterministicSampling.SampleRate,
+					samplerData.Config.SamplingIn.DeterministicSampling.SampleEmptyDeterminant,
+				)
+			default:
+				samplingIn = "Type: Unknown"
+			}
 		}
 
 		limiterOut := "default"
@@ -202,7 +214,12 @@ func (e *Executors) StreamsList(ctx context.Context, parameters interpoler.Param
 	rows := [][]string{}
 	for _, samplerData := range resourceAndSamplers {
 		for _, stream := range samplerData.Config.Streams {
-			rows = append(rows, []string{samplerData.Resource, samplerData.Name, stream.CLIInfo()})
+			streamInfo := fmt.Sprintf("Name: %s, Rule: %s, ExportRawSamples: %t",
+				stream.Name,
+				stream.StreamRule,
+				stream.ExportRawSamples,
+			)
+			rows = append(rows, []string{samplerData.Resource, samplerData.Name, streamInfo})
 		}
 	}
 
@@ -539,10 +556,26 @@ func (e *Executors) DigestsList(ctx context.Context, parameters interpoler.Param
 		for _, stream := range samplerData.Config.Streams {
 			for _, digest := range samplerData.Config.Digests {
 				if stream.UID == digest.StreamUID {
+
+					var typeInfo string
+					switch digest.Type {
+					case control.DigestTypeSt:
+						typeInfo = fmt.Sprintf("Type: Structure, MaxProcessedFields: %d", digest.St.MaxProcessedFields)
+					case control.DigestTypeValue:
+						typeInfo = fmt.Sprintf("Type: Value, MaxProcessedFields: %d", digest.Value.MaxProcessedFields)
+					}
+
+					digestInfo := fmt.Sprintf("Name: %s, Stream: %s, FlushPeriod: %s, %s",
+						digest.Name,
+						stream.Name,
+						digest.FlushPeriod,
+						typeInfo,
+					)
+
 					rows = append(rows, []string{
 						resourceAndSamplerEntry.resource,
 						resourceAndSamplerEntry.sampler,
-						digest.CLIInfo(),
+						digestInfo,
 					})
 				}
 			}
@@ -812,10 +845,16 @@ func (e *Executors) EventsList(ctx context.Context, parameters interpoler.Parame
 		for _, stream := range samplerData.Config.Streams {
 			for _, event := range samplerData.Config.Events {
 				if stream.UID == event.StreamUID {
+					eventInfo := fmt.Sprintf("Name: %s, Stream: %s, DataType: %s, Rule: %s",
+						event.Name,
+						stream.Name,
+						event.SampleType,
+						event.Rule,
+					)
 					rows = append(rows, []string{
 						resourceAndSamplerEntry.resource,
 						resourceAndSamplerEntry.sampler,
-						event.CLIInfo(),
+						eventInfo,
 					})
 				}
 			}

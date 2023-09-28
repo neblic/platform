@@ -1,8 +1,6 @@
 package control
 
 import (
-	"fmt"
-
 	"github.com/neblic/platform/controlplane/protos"
 )
 
@@ -21,15 +19,6 @@ type DeterministicSamplingConfig struct {
 type SamplingConfig struct {
 	SamplingType          SamplingType
 	DeterministicSampling DeterministicSamplingConfig
-}
-
-func (sc SamplingConfig) CLIInfo() string {
-	switch sc.SamplingType {
-	case DeterministicSamplingType:
-		return fmt.Sprintf("Type: Deterministic, SampleRate: %d, SampleEmptyDeterminant: %t", sc.DeterministicSampling.SampleRate, sc.DeterministicSampling.SampleEmptyDeterminant)
-	default:
-		return "Unknown"
-	}
 }
 
 func NewSamplingConfigFromProto(sr *protos.Sampling) SamplingConfig {

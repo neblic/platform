@@ -1,7 +1,6 @@
 package control
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/neblic/platform/controlplane/protos"
@@ -22,10 +21,6 @@ type DigestSt struct {
 	MaxProcessedFields int
 }
 
-func (ds DigestSt) CLIInfo() string {
-	return fmt.Sprintf("MaxProcessedFields: %d", ds.MaxProcessedFields)
-}
-
 func NewDigestStFromProto(protoDigestSt *protos.Digest_St) DigestSt {
 	if protoDigestSt == nil {
 		return DigestSt{}
@@ -44,10 +39,6 @@ func (ds *DigestSt) ToProto() *protos.Digest_St {
 
 type DigestValue struct {
 	MaxProcessedFields int
-}
-
-func (dv DigestValue) CLIInfo() string {
-	return fmt.Sprintf("MaxProcessedFields: %d", dv.MaxProcessedFields)
 }
 
 func NewDigestValueFromProto(protoDigestValue *protos.Digest_Value) DigestValue {
@@ -85,22 +76,6 @@ func (d Digest) GetUID() SamplerDigestUID {
 
 func (d Digest) GetName() string {
 	return d.Name
-}
-
-func (d Digest) CLIInfo() string {
-	var t string
-	switch d.Type {
-	case DigestTypeSt:
-		t = fmt.Sprintf("Type: Structure, %s", d.St.CLIInfo())
-	case DigestTypeValue:
-		t = fmt.Sprintf("Type: Value, %s", d.St.CLIInfo())
-	default:
-		t = "Type: Unknown"
-	}
-
-	// flush period intentionally not shown given that for now, it is an internal configuration that will configured
-	// with a default value by the server
-	return fmt.Sprintf("UID: %s, Name: %s, StreamUID: %s, FlushPeriod: %s, %s", d.UID, d.Name, d.StreamUID, d.FlushPeriod, t)
 }
 
 func NewDigestFromProto(protoDigest *protos.Digest) Digest {

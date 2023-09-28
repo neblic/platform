@@ -1,8 +1,6 @@
 package control
 
 import (
-	"fmt"
-
 	"github.com/neblic/platform/controlplane/protos"
 )
 
@@ -282,10 +280,6 @@ type SamplerSamplingStats struct {
 	SamplesEvaluated uint64
 	SamplesExported  uint64
 	SamplesDigested  uint64
-}
-
-func (s SamplerSamplingStats) CLIInfo() string {
-	return fmt.Sprintf("Evaluated: %d, Exported: %d, Digested: %d", s.SamplesEvaluated, s.SamplesExported, s.SamplesDigested)
 }
 
 func NewSamplerSamplingStatsFromProto(stats *protos.SamplerSamplingStats) SamplerSamplingStats {
