@@ -2,6 +2,7 @@ package otelcolext
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -127,6 +128,35 @@ func (n *neblic) configUpdater() {
 			sampler = v.Sampler
 		default:
 			continue
+		}
+
+		// Forward configuration
+		// In case of having deleted the configuration, send an empty byte array
+		var configData []byte
+		var err error
+		if config != nil {
+			configData, err = json.Marshal(config)
+		}
+		if err != nil {
+			n.logger.Error("Could not marshal config to JSON. Config will not be forwarded downstream")
+		} else {
+			err := n.exporter.Export(context.Background(), []sample.SamplerSamples{
+				{
+					ResourceName: resource,
+					SamplerName:  sampler,
+					Samples: []sample.Sample{
+						{
+							Ts:       time.Now(),
+							Type:     control.ConfigSampleType,
+							Encoding: sample.JSONEncoding,
+							Data:     configData,
+						},
+					},
+				},
+			})
+			if err != nil {
+				n.logger.Error("Could not export configuration", zap.Error(err))
+			}
 		}
 
 		// Get transformer

@@ -16,6 +16,7 @@ const (
 	StructDigestSampleType
 	ValueDigestSampleType
 	EventSampleType
+	ConfigSampleType
 )
 
 var ValidSampleTypes = []SampleType{UnknownSampleType, RawSampleType, StructDigestSampleType, EventSampleType}
@@ -36,6 +37,8 @@ func (s SampleType) String() string {
 		return "value-digest"
 	case EventSampleType:
 		return "event"
+	case ConfigSampleType:
+		return "config"
 	default:
 		return "unknown"
 	}
@@ -55,6 +58,8 @@ func ParseSampleType(t string) SampleType {
 		return ValueDigestSampleType
 	case "event":
 		return EventSampleType
+	case "config":
+		return ConfigSampleType
 	default:
 		return UnknownSampleType
 	}
