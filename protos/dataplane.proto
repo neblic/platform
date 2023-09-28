@@ -6,53 +6,46 @@ option go_package = "github.com/neblic/platform/dataplane/protos";
 Structure digest
 */
 
-message IntNumType { int64 count = 1; }
-message UIntNumType { int64 count = 1; }
-message FloatNumType { int64 count = 1; }
-message NumberType {
+message IntNumSt { int64 count = 1; }
+message UIntNumSt { int64 count = 1; }
+message FloatNumSt { int64 count = 1; }
+message NumberSt {
   // if more than one is set, multiple types detected
-  IntNumType integer_num = 1;
-  UIntNumType uinteger_num = 2;
-  FloatNumType float_num = 3;
+  IntNumSt integer_num = 1;
+  UIntNumSt uinteger_num = 2;
+  FloatNumSt float_num = 3;
 }
 
-message StringType { int64 count = 1; }
-message BooleanType { int64 count = 1; }
+message StringSt { int64 count = 1; }
+message BooleanSt { int64 count = 1; }
 
-message ValueType {
+message ValueSt {
   // if more than one is set, multiple types detected
-  NumberType number = 1;
-  StringType string = 2;
-  BooleanType boolean = 3;
-  ArrayType array = 4;
-  ObjType obj = 5;
+  NumberSt number = 1;
+  StringSt string = 2;
+  BooleanSt boolean = 3;
+  ArraySt array = 4;
+  ObjSt obj = 5;
 }
-message ObjType {
+message ObjSt {
   int64 count = 1;
-  map<string, ValueType> fields = 2;
+  map<string, ValueSt> fields = 2;
 
   // TODO: Add special field for stats about the rest of the fields
   // when there are more than the configured maximum
 }
 
-message FixedLengthOrderedArrayType { repeated ValueType fields = 1; }
-message VariableLengthArrayType {
-  int64 min_length = 1;
-  int64 max_length = 2;
-  // to be able to calculate the average when aggregating digests
-  int64 sum_length = 3;
-
-  // TODO: Register array type, if possible
-}
-message ArrayType {
+message ArraySt {
   int64 count = 1;
-  // only one should be set, when multiple lenghts are detected,
-  // the array is considered variable length
-  FixedLengthOrderedArrayType fixed_length_ordered_array = 2;
-  VariableLengthArrayType variable_length_array = 3;
+  ValueSt values = 2;
+
+  double min_length = 3;
+  double max_length = 4;
+  // to be able to calculate the average when aggregating digests
+  double sum_length = 5;
 }
 
-message StructureDigest { ObjType obj = 1; }
+message StructureDigest { ObjSt obj = 1; }
 
 
 /*
