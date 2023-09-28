@@ -18,16 +18,14 @@ type Client struct {
 	registeredOnce bool
 	currentState   client.State
 
-	samplers    map[resourceAndSampler]*control.Sampler
-	samplerUIDs map[resourceAndSampler]control.SamplerUID
+	samplers map[resourceAndSampler]*control.Sampler
 }
 
 func NewClient(uuid string, address string, opts ...client.Option) (*Client, error) {
 	client := &Client{
-		mutex:       new(sync.RWMutex),
-		internal:    client.New(uuid, opts...),
-		samplers:    map[resourceAndSampler]*control.Sampler{},
-		samplerUIDs: map[resourceAndSampler]control.SamplerUID{},
+		mutex:    new(sync.RWMutex),
+		internal: client.New(uuid, opts...),
+		samplers: map[resourceAndSampler]*control.Sampler{},
 	}
 
 	notifyFailedFirstRegistration := make(chan error)
@@ -87,14 +85,12 @@ func (c *Client) pullSamplerConfigs(ctx context.Context) error {
 	}
 
 	c.samplers = map[resourceAndSampler]*control.Sampler{}
-	c.samplerUIDs = map[resourceAndSampler]control.SamplerUID{}
 	for _, sampler := range samplers {
 		key := resourceAndSampler{
 			resource: sampler.Resource,
 			sampler:  sampler.Name,
 		}
 		c.samplers[key] = sampler
-		c.samplerUIDs[key] = sampler.UID
 	}
 
 	return nil
