@@ -7,7 +7,7 @@ import (
 	"github.com/neblic/platform/controlplane/protos"
 )
 
-var uidValidationRegex = regexp.MustCompile(`^[\.\/\ ()\w-]*$`)
+var uidValidationRegex = regexp.MustCompile(`^[\.\/()\w-]*$`)
 var uidValidationErrTemplate = "invalid %s uid %s, expected alphanumerical with spaces and ./() characters"
 
 type SamplerConfigUpdateReset struct {
