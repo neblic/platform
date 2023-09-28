@@ -68,6 +68,7 @@ func (dv *DigestValue) ToProto() *protos.Digest_Value {
 
 type Digest struct {
 	UID         SamplerDigestUID
+	Name        string
 	StreamUID   SamplerStreamUID
 	FlushPeriod time.Duration
 	BufferSize  int
@@ -76,6 +77,14 @@ type Digest struct {
 	Type  DigestType
 	St    DigestSt
 	Value DigestValue
+}
+
+func (d Digest) GetUID() SamplerDigestUID {
+	return d.UID
+}
+
+func (d Digest) GetName() string {
+	return d.Name
 }
 
 func (d Digest) CLIInfo() string {
@@ -91,7 +100,7 @@ func (d Digest) CLIInfo() string {
 
 	// flush period intentionally not shown given that for now, it is an internal configuration that will configured
 	// with a default value by the server
-	return fmt.Sprintf("UID: %s, StreamUID: %s, FlushPeriod: %s, %s", d.UID, d.StreamUID, d.FlushPeriod, t)
+	return fmt.Sprintf("UID: %s, Name: %s, StreamUID: %s, FlushPeriod: %s, %s", d.UID, d.Name, d.StreamUID, d.FlushPeriod, t)
 }
 
 func NewDigestFromProto(protoDigest *protos.Digest) Digest {
@@ -101,6 +110,7 @@ func NewDigestFromProto(protoDigest *protos.Digest) Digest {
 
 	digest := Digest{
 		UID:         SamplerDigestUID(protoDigest.GetUid()),
+		Name:        protoDigest.Name,
 		StreamUID:   SamplerStreamUID(protoDigest.GetStreamUid()),
 		FlushPeriod: protoDigest.GetFlushPeriod().AsDuration(),
 		BufferSize:  int(protoDigest.GetBufferSize()),
@@ -123,6 +133,7 @@ func NewDigestFromProto(protoDigest *protos.Digest) Digest {
 func (d *Digest) ToProto() *protos.Digest {
 	protoDigest := &protos.Digest{
 		Uid:         string(d.UID),
+		Name:        d.Name,
 		StreamUid:   string(d.StreamUID),
 		FlushPeriod: durationpb.New(d.FlushPeriod),
 		BufferSize:  int32(d.BufferSize),

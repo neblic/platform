@@ -15,6 +15,22 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+type named interface {
+	GetName() string
+}
+
+func getEntryByName[U comparable, T named](entries map[U]T, name string) (T, bool) {
+	var entry T
+	var ok bool
+	for _, entry = range entries {
+		if entry.GetName() == name {
+			ok = true
+			break
+		}
+	}
+	return entry, ok
+}
+
 func writeTable(header []string, rows [][]string, mergeColumnsByIndex []int, writer *internal.Writer) {
 	writer.WriteString("\n")
 
@@ -215,7 +231,7 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 	resourceParameter, _ := parameters.Get("resource-name")
 	samplerParameter, _ := parameters.Get("sampler-name")
 	streamRuleParameter, _ := parameters.Get("rule")
-	streamUIDParameter, streamUIDParameterSet := parameters.Get("stream-uid") // optional
+	streamNameParameter, _ := parameters.Get("stream-name")
 
 	exportRawParameter, _ := parameters.Get("export-raw")
 	exportRawBool, err := strconv.ParseBool(exportRawParameter.Value)
@@ -229,34 +245,22 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 		return err
 	}
 
-	// If multiple streans are created at once, they will all have the same UID
-	var streamUID control.SamplerStreamUID
-	if streamUIDParameterSet {
-		streamUID = control.SamplerStreamUID(streamUIDParameter.Value)
-	} else {
-		streamUID = control.SamplerStreamUID(uuid.New().String())
-	}
-
 	// Create rules one by one
-	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
+	for resourceAndSamplerEntry, samplerControl := range resourceAndSamplers {
 		// Check that the stream does not exist
-		streamExists := false
-		for _, stream := range samplerData.Config.Streams {
-			if stream.UID == streamUID {
-				streamExists = true
-				break
-			}
-		}
-		if streamExists {
+		_, ok := getEntryByName[control.SamplerStreamUID](samplerControl.Config.Streams, streamNameParameter.Value)
+		if ok {
 			writer.WriteStringf("%s.%s: Stream already exists\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
 			continue
 		}
+
 		update := &control.SamplerConfigUpdate{
 			StreamUpdates: []control.StreamUpdate{
 				{
 					Op: control.StreamUpsert,
 					Stream: control.Stream{
-						UID: streamUID,
+						UID:  control.SamplerStreamUID(uuid.New().String()),
+						Name: streamNameParameter.Value,
 						StreamRule: control.Rule{
 							Lang:       control.SrlCel,
 							Expression: streamRuleParameter.Value,
@@ -284,7 +288,7 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
 	resourceParameter, _ := parameters.Get("resource-name")
 	samplerParameter, _ := parameters.Get("sampler-name")
-	streamUIDParameter, _ := parameters.Get("stream-uid")
+	streamNameParameter, _ := parameters.Get("stream-name")
 	updatedRuleParameter, _ := parameters.Get("updated-rule")
 
 	exportRawParameter, _ := parameters.Get("export-raw")
@@ -294,13 +298,20 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 	}
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, streamUIDParameter.Value, false)
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, streamNameParameter.Value, false)
 	if err != nil {
 		return err
 	}
 
 	// Update streams one by one
-	for resourceAndSamplerEntry := range resourceAndSamplers {
+	for resourceAndSamplerEntry, samplerControl := range resourceAndSamplers {
+
+		// Find stream UID
+		stream, ok := getEntryByName(samplerControl.Config.Streams, streamNameParameter.Value)
+		if !ok {
+			writer.WriteStringf("%s.%s: Stream does not exist\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+			continue
+		}
 
 		// Modify sampling rule to existing config
 		update := &control.SamplerConfigUpdate{
@@ -308,7 +319,8 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 				{
 					Op: control.StreamUpsert,
 					Stream: control.Stream{
-						UID: control.SamplerStreamUID(streamUIDParameter.Value),
+						UID:  stream.UID,
+						Name: streamNameParameter.Value,
 						StreamRule: control.Rule{
 							Lang:       control.SrlCel,
 							Expression: updatedRuleParameter.Value,
@@ -337,23 +349,30 @@ func (e *Executors) StreamsDelete(ctx context.Context, parameters interpoler.Par
 	// Get options
 	resourceParameter, _ := parameters.Get("resource-name")
 	samplerParameter, _ := parameters.Get("sampler-name")
-	streamUIDParameter, _ := parameters.Get("stream-uid")
+	streamNameParameter, _ := parameters.Get("stream-name")
 
 	// Compute list of targeted resources and samplers
-	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, streamUIDParameter.Value, false)
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, streamNameParameter.Value, false)
 	if err != nil {
 		return err
 	}
 
 	// Delete streams one by one
-	for resourceAndSamplerEntry := range resourceAndSamplers {
+	for resourceAndSamplerEntry, samplerControl := range resourceAndSamplers {
+
+		stream, ok := getEntryByName(samplerControl.Config.Streams, streamNameParameter.Value)
+		if !ok {
+			writer.WriteStringf("%s.%s: Stream does not exist\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+			continue
+		}
+
 		// Modify sampling rule to existing config
 		update := &control.SamplerConfigUpdate{
 			StreamUpdates: []control.StreamUpdate{
 				{
 					Op: control.StreamDelete,
 					Stream: control.Stream{
-						UID: control.SamplerStreamUID(streamUIDParameter.Value),
+						UID: stream.UID,
 					},
 				},
 			},
@@ -373,23 +392,29 @@ func (e *Executors) StreamsDelete(ctx context.Context, parameters interpoler.Par
 	return nil
 }
 
-func (e *Executors) setMultipleSamplersConfig(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer, update *control.SamplerConfigUpdate) error {
+func (e *Executors) setMultipleSamplersConfig(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer, updateGen func(*control.Sampler) (*control.SamplerConfigUpdate, error)) error {
 	samplerParameter, _ := parameters.Get("sampler-name")
 	resourceParameter, _ := parameters.Get("resource-name")
-	streamUIDValue := "*"
-	streamUIDParameter, streamUIDParameterOk := parameters.Get("stream-uid")
-	if streamUIDParameterOk {
-		streamUIDValue = streamUIDParameter.Value
+	streamNameValue := "*"
+	streamNameParameter, streamNameParameterOk := parameters.Get("stream-name")
+	if streamNameParameterOk {
+		streamNameValue = streamNameParameter.Value
 	}
 
-	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, streamUIDValue, false)
+	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, streamNameValue, false)
 	if err != nil {
 		return err
 	}
 
-	for resourceAndSamplerEntry := range resourceAndSamplers {
+	for resourceAndSamplerEntry, sampler := range resourceAndSamplers {
+		update, err := updateGen(sampler)
+		if err != nil {
+			writer.WriteStringf("%s.%s: Could not update sampler config. %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			continue
+		}
+
 		if err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update); err != nil {
-			writer.WriteStringf("%s.%s: Could not update sampler config%v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not update sampler config. %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
@@ -406,23 +431,27 @@ func (e *Executors) SamplersLimiterInSet(ctx context.Context, parameters interpo
 		return fmt.Errorf("limit must be an integer")
 	}
 
-	update := &control.SamplerConfigUpdate{
-		LimiterIn: &control.LimiterConfig{
-			Limit: limitInt32,
-		},
+	updateGen := func(_ *control.Sampler) (*control.SamplerConfigUpdate, error) {
+		return &control.SamplerConfigUpdate{
+			LimiterIn: &control.LimiterConfig{
+				Limit: limitInt32,
+			},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) SamplersLimiterInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	update := &control.SamplerConfigUpdate{
-		Reset: control.SamplerConfigUpdateReset{
-			LimiterIn: true,
-		},
+	updateGen := func(_ *control.Sampler) (*control.SamplerConfigUpdate, error) {
+		return &control.SamplerConfigUpdate{
+			Reset: control.SamplerConfigUpdateReset{
+				LimiterIn: true,
+			},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) SamplersLimiterOutSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -432,23 +461,27 @@ func (e *Executors) SamplersLimiterOutSet(ctx context.Context, parameters interp
 		return fmt.Errorf("limit must be an integer")
 	}
 
-	update := &control.SamplerConfigUpdate{
-		LimiterOut: &control.LimiterConfig{
-			Limit: limitInt32,
-		},
+	updateGen := func(_ *control.Sampler) (*control.SamplerConfigUpdate, error) {
+		return &control.SamplerConfigUpdate{
+			LimiterOut: &control.LimiterConfig{
+				Limit: limitInt32,
+			},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) SamplersLimiterOutUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	update := &control.SamplerConfigUpdate{
-		Reset: control.SamplerConfigUpdateReset{
-			LimiterOut: true,
-		},
+	updateGen := func(_ *control.Sampler) (*control.SamplerConfigUpdate, error) {
+		return &control.SamplerConfigUpdate{
+			Reset: control.SamplerConfigUpdateReset{
+				LimiterOut: true,
+			},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) SamplersSamplerInSetDeterministic(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -464,27 +497,31 @@ func (e *Executors) SamplersSamplerInSetDeterministic(ctx context.Context, param
 		return fmt.Errorf("sample_empty_determinant must be a boolean")
 	}
 
-	update := &control.SamplerConfigUpdate{
-		SamplingIn: &control.SamplingConfig{
-			SamplingType: control.DeterministicSamplingType,
-			DeterministicSampling: control.DeterministicSamplingConfig{
-				SampleRate:             sampleRateInt32,
-				SampleEmptyDeterminant: sampleEmptyDetBool,
+	updateGen := func(_ *control.Sampler) (*control.SamplerConfigUpdate, error) {
+		return &control.SamplerConfigUpdate{
+			SamplingIn: &control.SamplingConfig{
+				SamplingType: control.DeterministicSamplingType,
+				DeterministicSampling: control.DeterministicSamplingConfig{
+					SampleRate:             sampleRateInt32,
+					SampleEmptyDeterminant: sampleEmptyDetBool,
+				},
 			},
-		},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) SamplersSamplerInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	update := &control.SamplerConfigUpdate{
-		Reset: control.SamplerConfigUpdateReset{
-			SamplingIn: true,
-		},
+	updateGen := func(_ *control.Sampler) (*control.SamplerConfigUpdate, error) {
+		return &control.SamplerConfigUpdate{
+			Reset: control.SamplerConfigUpdateReset{
+				SamplingIn: true,
+			},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) DigestsList(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -534,13 +571,9 @@ func (e *Executors) DigestsList(ctx context.Context, parameters interpoler.Param
 }
 
 func (e *Executors) DigestsStructureCreate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	digestUID := uuid.NewString()
-	digestUIDParameter, digestUIDParameterOk := parameters.Get("digest-uid")
-	if digestUIDParameterOk {
-		digestUID = digestUIDParameter.Value
-	}
+	digestNameParameter, _ := parameters.Get("digest-name")
 
-	streamUIDParameter, _ := parameters.Get("stream-uid")
+	streamNameParameter, _ := parameters.Get("stream-name")
 
 	flushPeriodParameter, _ := parameters.Get("flush-period")
 	flushPeriodInt32, err := flushPeriodParameter.AsInt32()
@@ -554,29 +587,43 @@ func (e *Executors) DigestsStructureCreate(ctx context.Context, parameters inter
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
-	update := &control.SamplerConfigUpdate{
-		DigestUpdates: []control.DigestUpdate{
-			{
-				Op: control.DigestUpsert,
-				Digest: control.Digest{
-					UID:         control.SamplerDigestUID(digestUID),
-					StreamUID:   control.SamplerStreamUID(streamUIDParameter.Value),
-					FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
-					Type:        control.DigestTypeSt,
-					St: control.DigestSt{
-						MaxProcessedFields: int(maxProcessedFieldsInt32),
+	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
+
+		_, ok := getEntryByName(samplerControl.Config.Digests, digestNameParameter.Value)
+		if ok {
+			return nil, fmt.Errorf("Digest already exists")
+		}
+
+		stream, ok := getEntryByName(samplerControl.Config.Streams, streamNameParameter.Value)
+		if !ok {
+			return nil, fmt.Errorf("Stream does not exist")
+		}
+
+		return &control.SamplerConfigUpdate{
+			DigestUpdates: []control.DigestUpdate{
+				{
+					Op: control.DigestUpsert,
+					Digest: control.Digest{
+						UID:         control.SamplerDigestUID(uuid.New().String()),
+						Name:        digestNameParameter.Value,
+						StreamUID:   stream.UID,
+						FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
+						Type:        control.DigestTypeSt,
+						St: control.DigestSt{
+							MaxProcessedFields: int(maxProcessedFieldsInt32),
+						},
 					},
 				},
 			},
-		},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) DigestsStructureUpdate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	digestUIDParameter, _ := parameters.Get("digest-uid")
-	streamUIDParameter, _ := parameters.Get("stream-uid")
+	digestNameParameter, _ := parameters.Get("digest-name")
+	streamNameParameter, _ := parameters.Get("stream-name")
 
 	flushPeriodParameter, _ := parameters.Get("flush-period")
 	flushPeriodInt32, err := flushPeriodParameter.AsInt32()
@@ -590,34 +637,44 @@ func (e *Executors) DigestsStructureUpdate(ctx context.Context, parameters inter
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
-	update := &control.SamplerConfigUpdate{
-		DigestUpdates: []control.DigestUpdate{
-			{
-				Op: control.DigestUpsert,
-				Digest: control.Digest{
-					UID:         control.SamplerDigestUID(digestUIDParameter.Value),
-					StreamUID:   control.SamplerStreamUID(streamUIDParameter.Value),
-					FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
-					Type:        control.DigestTypeSt,
-					St: control.DigestSt{
-						MaxProcessedFields: int(maxProcessedFieldsInt32),
+	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
+
+		digest, ok := getEntryByName(samplerControl.Config.Digests, digestNameParameter.Value)
+		if !ok {
+			return nil, fmt.Errorf("Digest does not exist")
+		}
+
+		stream, ok := getEntryByName(samplerControl.Config.Streams, streamNameParameter.Value)
+		if !ok {
+			return nil, fmt.Errorf("Stream does not exist")
+		}
+
+		return &control.SamplerConfigUpdate{
+			DigestUpdates: []control.DigestUpdate{
+				{
+					Op: control.DigestUpsert,
+					Digest: control.Digest{
+						UID:         digest.UID,
+						Name:        digestNameParameter.Value,
+						StreamUID:   stream.UID,
+						FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
+						Type:        control.DigestTypeSt,
+						St: control.DigestSt{
+							MaxProcessedFields: int(maxProcessedFieldsInt32),
+						},
 					},
 				},
 			},
-		},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) DigestsValueCreate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	digestUID := uuid.NewString()
-	digestUIDParameter, digestUIDParameterOk := parameters.Get("digest-uid")
-	if digestUIDParameterOk {
-		digestUID = digestUIDParameter.Value
-	}
+	digestNameParameter, _ := parameters.Get("digest-name")
 
-	streamUIDParameter, _ := parameters.Get("stream-uid")
+	streamNameParameter, _ := parameters.Get("stream-name")
 
 	flushPeriodParameter, _ := parameters.Get("flush-period")
 	flushPeriodInt32, err := flushPeriodParameter.AsInt32()
@@ -631,29 +688,43 @@ func (e *Executors) DigestsValueCreate(ctx context.Context, parameters interpole
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
-	update := &control.SamplerConfigUpdate{
-		DigestUpdates: []control.DigestUpdate{
-			{
-				Op: control.DigestUpsert,
-				Digest: control.Digest{
-					UID:         control.SamplerDigestUID(digestUID),
-					StreamUID:   control.SamplerStreamUID(streamUIDParameter.Value),
-					FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
-					Type:        control.DigestTypeValue,
-					Value: control.DigestValue{
-						MaxProcessedFields: int(maxProcessedFieldsInt32),
+	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
+
+		_, ok := getEntryByName(samplerControl.Config.Digests, digestNameParameter.Value)
+		if ok {
+			return nil, fmt.Errorf("Digest already exists")
+		}
+
+		stream, ok := getEntryByName(samplerControl.Config.Streams, streamNameParameter.Value)
+		if !ok {
+			return nil, fmt.Errorf("Stream does not exist")
+		}
+
+		return &control.SamplerConfigUpdate{
+			DigestUpdates: []control.DigestUpdate{
+				{
+					Op: control.DigestUpsert,
+					Digest: control.Digest{
+						UID:         control.SamplerDigestUID(uuid.New().String()),
+						Name:        digestNameParameter.Value,
+						StreamUID:   stream.UID,
+						FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
+						Type:        control.DigestTypeValue,
+						Value: control.DigestValue{
+							MaxProcessedFields: int(maxProcessedFieldsInt32),
+						},
 					},
 				},
 			},
-		},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) DigestsValueUpdate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	digestUIDParameter, _ := parameters.Get("digest-uid")
-	streamUIDParameter, _ := parameters.Get("stream-uid")
+	digestNameParameter, _ := parameters.Get("digest-name")
+	streamNameParameter, _ := parameters.Get("stream-name")
 
 	flushPeriodParameter, _ := parameters.Get("flush-period")
 	flushPeriodInt32, err := flushPeriodParameter.AsInt32()
@@ -667,41 +738,63 @@ func (e *Executors) DigestsValueUpdate(ctx context.Context, parameters interpole
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
-	update := &control.SamplerConfigUpdate{
-		DigestUpdates: []control.DigestUpdate{
-			{
-				Op: control.DigestUpsert,
-				Digest: control.Digest{
-					UID:         control.SamplerDigestUID(digestUIDParameter.Value),
-					StreamUID:   control.SamplerStreamUID(streamUIDParameter.Value),
-					FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
-					Type:        control.DigestTypeValue,
-					Value: control.DigestValue{
-						MaxProcessedFields: int(maxProcessedFieldsInt32),
+	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
+
+		digest, ok := getEntryByName(samplerControl.Config.Digests, digestNameParameter.Value)
+		if !ok {
+			return nil, fmt.Errorf("Digest does not exist")
+		}
+
+		stream, ok := getEntryByName(samplerControl.Config.Streams, streamNameParameter.Value)
+		if !ok {
+			return nil, fmt.Errorf("Stream does not exist")
+		}
+
+		return &control.SamplerConfigUpdate{
+			DigestUpdates: []control.DigestUpdate{
+				{
+					Op: control.DigestUpsert,
+					Digest: control.Digest{
+						UID:         digest.UID,
+						Name:        digestNameParameter.Value,
+						StreamUID:   stream.UID,
+						FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
+						Type:        control.DigestTypeValue,
+						Value: control.DigestValue{
+							MaxProcessedFields: int(maxProcessedFieldsInt32),
+						},
 					},
 				},
 			},
-		},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) DigestsDelete(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	digestUIDParameter, _ := parameters.Get("uid")
+	digestNameParameter, _ := parameters.Get("digest-name")
 
-	update := &control.SamplerConfigUpdate{
-		DigestUpdates: []control.DigestUpdate{
-			{
-				Op: control.DigestDelete,
-				Digest: control.Digest{
-					UID: control.SamplerDigestUID(digestUIDParameter.Value),
+	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
+
+		digest, ok := getEntryByName(samplerControl.Config.Digests, digestNameParameter.Value)
+		if !ok {
+			return nil, fmt.Errorf("Digest does not exist")
+		}
+
+		return &control.SamplerConfigUpdate{
+			DigestUpdates: []control.DigestUpdate{
+				{
+					Op: control.DigestDelete,
+					Digest: control.Digest{
+						UID: digest.UID,
+					},
 				},
 			},
-		},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) EventsList(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -751,74 +844,106 @@ func (e *Executors) EventsList(ctx context.Context, parameters interpoler.Parame
 }
 
 func (e *Executors) EventsCreate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	eventUID := uuid.NewString()
-	eventUIDParameter, eventUIDParameterOk := parameters.Get("event-uid")
-	if eventUIDParameterOk {
-		eventUID = eventUIDParameter.Value
-	}
-	streamUIDParameter, _ := parameters.Get("stream-uid")
+	eventNameParameter, _ := parameters.Get("event-name")
+	streamNameParameter, _ := parameters.Get("stream-name")
 	dataTypeParameter, _ := parameters.Get("sample-type")
 	ruleParameter, _ := parameters.Get("rule")
 
-	update := &control.SamplerConfigUpdate{
-		EventUpdates: []control.EventUpdate{
-			{
-				Op: control.EventUpsert,
-				Event: control.Event{
-					UID:        control.SamplerEventUID(eventUID),
-					StreamUID:  control.SamplerStreamUID(streamUIDParameter.Value),
-					SampleType: control.ParseSampleType(dataTypeParameter.Value),
-					Rule: control.Rule{
-						Lang:       control.SrlCel,
-						Expression: ruleParameter.Value,
+	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
+
+		_, ok := getEntryByName(samplerControl.Config.Events, eventNameParameter.Value)
+		if ok {
+			return nil, fmt.Errorf("Event already exists")
+		}
+
+		stream, ok := getEntryByName(samplerControl.Config.Streams, streamNameParameter.Value)
+		if !ok {
+			return nil, fmt.Errorf("Stream does not exist")
+		}
+
+		return &control.SamplerConfigUpdate{
+			EventUpdates: []control.EventUpdate{
+				{
+					Op: control.EventUpsert,
+					Event: control.Event{
+						UID:        control.SamplerEventUID(uuid.New().String()),
+						Name:       eventNameParameter.Value,
+						StreamUID:  stream.UID,
+						SampleType: control.ParseSampleType(dataTypeParameter.Value),
+						Rule: control.Rule{
+							Lang:       control.SrlCel,
+							Expression: ruleParameter.Value,
+						},
 					},
 				},
 			},
-		},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) EventsUpdate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	eventUIDParameter, _ := parameters.Get("event-uid")
-	streamUIDParameter, _ := parameters.Get("stream-uid")
+	eventNameParameter, _ := parameters.Get("event-name")
+	streamNameParameter, _ := parameters.Get("stream-name")
 	dataTypeParameter, _ := parameters.Get("sample-type")
 	ruleParameter, _ := parameters.Get("rule")
 
-	update := &control.SamplerConfigUpdate{
-		EventUpdates: []control.EventUpdate{
-			{
-				Op: control.EventUpsert,
-				Event: control.Event{
-					UID:        control.SamplerEventUID(eventUIDParameter.Value),
-					StreamUID:  control.SamplerStreamUID(streamUIDParameter.Value),
-					SampleType: control.ParseSampleType(dataTypeParameter.Value),
-					Rule: control.Rule{
-						Lang:       control.SrlCel,
-						Expression: ruleParameter.Value,
+	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
+
+		event, ok := getEntryByName(samplerControl.Config.Events, eventNameParameter.Value)
+		if !ok {
+			return nil, fmt.Errorf("Event does not exist")
+		}
+
+		stream, ok := getEntryByName(samplerControl.Config.Streams, streamNameParameter.Value)
+		if !ok {
+			return nil, fmt.Errorf("Stream does not exist")
+		}
+
+		return &control.SamplerConfigUpdate{
+			EventUpdates: []control.EventUpdate{
+				{
+					Op: control.EventUpsert,
+					Event: control.Event{
+						UID:        event.UID,
+						Name:       eventNameParameter.Value,
+						StreamUID:  stream.UID,
+						SampleType: control.ParseSampleType(dataTypeParameter.Value),
+						Rule: control.Rule{
+							Lang:       control.SrlCel,
+							Expression: ruleParameter.Value,
+						},
 					},
 				},
 			},
-		},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }
 
 func (e *Executors) EventsDelete(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
-	eventUIDParameter, _ := parameters.Get("uid")
+	eventNameParameter, _ := parameters.Get("event-name")
 
-	update := &control.SamplerConfigUpdate{
-		EventUpdates: []control.EventUpdate{
-			{
-				Op: control.EventDelete,
-				Event: control.Event{
-					UID: control.SamplerEventUID(eventUIDParameter.Value),
+	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
+
+		event, ok := getEntryByName(samplerControl.Config.Events, eventNameParameter.Value)
+		if !ok {
+			return nil, fmt.Errorf("Digest does not exist")
+		}
+
+		return &control.SamplerConfigUpdate{
+			EventUpdates: []control.EventUpdate{
+				{
+					Op: control.EventDelete,
+					Event: control.Event{
+						UID: event.UID,
+					},
 				},
 			},
-		},
+		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, update)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
 }

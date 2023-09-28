@@ -45,8 +45,9 @@ message Rule {
 
 message Stream {
   string uid = 1;
-  Rule rule = 2;
-  bool export_raw_samples = 3;
+  string name = 2;
+  Rule rule = 3;
+  bool export_raw_samples = 4;
 }
 
 message Digest {
@@ -60,13 +61,14 @@ message Digest {
   }
 
   string uid = 1;
-  string stream_uid = 2;
-  google.protobuf.Duration flush_period = 3;
-  int32 buffer_size = 4;
+  string name = 2;
+  string stream_uid = 3;
+  google.protobuf.Duration flush_period = 4;
+  int32 buffer_size = 5;
 
   oneof Type {
-    St st = 5;
-    Value value = 6;
+    St st = 6;
+    Value value = 7;
   }
 }
 
@@ -79,9 +81,10 @@ enum SampleType {
 
 message Event {
   string uid = 1;
-  string stream_uid = 2;
-  SampleType sample_type = 3;
-  Rule rule = 4;
+  string name = 2;
+  string stream_uid = 3;
+  SampleType sample_type = 4;
+  Rule rule = 5;
 }
 
 // Used to get and update the sampler configuration.
@@ -139,15 +142,15 @@ message Schema {
 }
 
 message Sampler {
+  // Identifies a unique Sampler,
+  string uid = 1;
   // User-friendly and user-defined name to identify a Sampler.
-  string name = 1;
+  string name = 2;
   // Defines the Sampler resource where it has been defined.
   // Multiple samplers can have the same name and resource but will hav
   // edifferent uids. e.g. multiple replicas of the same service will define
   // multiple times the same sampler with different uids.
   string resource = 3;
-  // Identifies a unique Sampler,
-  string uid = 2;
   // Sampler schema information.
   Schema schema = 4;
   // The Sampler configuration,

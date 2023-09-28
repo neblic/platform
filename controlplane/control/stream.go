@@ -10,12 +10,21 @@ type SamplerStreamUID string
 
 type Stream struct {
 	UID              SamplerStreamUID
+	Name             string
 	StreamRule       Rule
 	ExportRawSamples bool
 }
 
+func (s Stream) GetUID() SamplerStreamUID {
+	return s.UID
+}
+
+func (s Stream) GetName() string {
+	return s.Name
+}
+
 func (s Stream) CLIInfo() string {
-	return fmt.Sprintf("UID: %s, Rule: %s", s.UID, s.StreamRule)
+	return fmt.Sprintf("UID: %s, Name: %s, Rule: %s", s.UID, s.Name, s.StreamRule)
 }
 
 func NewStreamFromProto(s *protos.Stream) Stream {
@@ -25,6 +34,7 @@ func NewStreamFromProto(s *protos.Stream) Stream {
 
 	return Stream{
 		UID:              SamplerStreamUID(s.GetUid()),
+		Name:             s.Name,
 		StreamRule:       NewRuleFromProto(s.GetRule()),
 		ExportRawSamples: s.ExportRawSamples,
 	}
@@ -33,6 +43,7 @@ func NewStreamFromProto(s *protos.Stream) Stream {
 func (s Stream) ToProto() *protos.Stream {
 	return &protos.Stream{
 		Uid:              string(s.UID),
+		Name:             s.Name,
 		Rule:             s.StreamRule.ToProto(),
 		ExportRawSamples: s.ExportRawSamples,
 	}

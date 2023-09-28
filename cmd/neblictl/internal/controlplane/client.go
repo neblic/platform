@@ -125,7 +125,7 @@ func doesResourceAndSamplerMatch(resourceParameter, samplerParameter string, res
 
 }
 
-func (c *Client) getSamplers(ctx context.Context, resourceParameter string, samplerParameter string, streamUIDParameter string, cached bool) (map[resourceAndSampler]*control.Sampler, error) {
+func (c *Client) getSamplers(ctx context.Context, resourceParameter string, samplerParameter string, streamNameParameter string, cached bool) (map[resourceAndSampler]*control.Sampler, error) {
 	samplers, err := c.getAllSamplers(ctx, cached)
 
 	// Iterate over all samplers and select the ones matching the input
@@ -133,9 +133,17 @@ func (c *Client) getSamplers(ctx context.Context, resourceParameter string, samp
 	for resourceAndSamplerEntry, samplerData := range samplers {
 		if doesResourceAndSamplerMatch(resourceParameter, samplerParameter, resourceAndSamplerEntry) {
 
-			_, ok := samplerData.Config.Streams[control.SamplerStreamUID(streamUIDParameter)]
-			if streamUIDParameter != "" && streamUIDParameter != "*" && !ok {
-				// StreamUID parameter contains a valid uid that the current sampler does not contain. Skip it
+			// Check if stream with the provided name exists
+			var ok bool
+			for _, stream := range samplerData.Config.Streams {
+				if stream.Name == streamNameParameter {
+					ok = true
+					break
+				}
+			}
+
+			if streamNameParameter != "" && streamNameParameter != "*" && !ok {
+				// stream parameter contains a valid name that the current sampler does not contain. Skip it
 				continue
 			}
 
