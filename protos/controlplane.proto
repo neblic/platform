@@ -142,7 +142,7 @@ message Schema {
 }
 
 message Sampler {
-  // Identifies a unique Sampler,
+  // Identifies a single Sampler
   string uid = 1;
   // User-friendly and user-defined name to identify a Sampler.
   string name = 2;
