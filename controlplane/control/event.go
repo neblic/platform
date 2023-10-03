@@ -71,10 +71,6 @@ type Event struct {
 	Rule       Rule
 }
 
-func (e Event) GetUID() SamplerEventUID {
-	return e.UID
-}
-
 func (e Event) GetName() string {
 	return e.Name
 }

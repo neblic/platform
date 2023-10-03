@@ -70,10 +70,6 @@ type Digest struct {
 	Value DigestValue
 }
 
-func (d Digest) GetUID() SamplerDigestUID {
-	return d.UID
-}
-
 func (d Digest) GetName() string {
 	return d.Name
 }

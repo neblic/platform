@@ -13,10 +13,6 @@ type Stream struct {
 	ExportRawSamples bool
 }
 
-func (s Stream) GetUID() SamplerStreamUID {
-	return s.UID
-}
-
 func (s Stream) GetName() string {
 	return s.Name
 }
