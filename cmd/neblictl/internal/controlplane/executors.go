@@ -11,8 +11,6 @@ import (
 	"github.com/neblic/platform/cmd/neblictl/internal"
 	"github.com/neblic/platform/cmd/neblictl/internal/interpoler"
 	"github.com/neblic/platform/controlplane/control"
-	"github.com/olekukonko/tablewriter"
-	"golang.org/x/exp/slices"
 )
 
 type named interface {
@@ -29,20 +27,6 @@ func getEntryByName[U comparable, T named](entries map[U]T, name string) (T, boo
 		}
 	}
 	return entry, ok
-}
-
-func writeTable(header []string, rows [][]string, mergeColumnsByIndex []int, writer *internal.Writer) {
-	writer.WriteString("\n")
-
-	table := tablewriter.NewWriter(writer)
-	table.SetHeader(header)
-	if mergeColumnsByIndex != nil {
-		table.SetAutoMergeCellsByColumnIndex(mergeColumnsByIndex)
-	}
-	table.SetRowLine(true)
-	table.SetCenterSeparator("|")
-	table.AppendBulk(rows)
-	table.Render()
 }
 
 func cmpStrings(a, b string) int {
@@ -69,25 +53,11 @@ func (e *Executors) ResourcesList(ctx context.Context, parameters interpoler.Par
 	// Get all samplers
 	samplers, err := e.controlPlaneClient.getAllSamplers(ctx, false)
 
-	// Build deduplicated list of rows
-	header := []string{"Resource"}
-	rows := [][]string{}
-	resources := map[string]bool{}
-	for sampler := range samplers {
-		if _, ok := resources[sampler.resource]; !ok {
-			rows = append(rows, []string{sampler.resource})
-			resources[sampler.resource] = true
-		}
+	listResourcesView := NewListResourcesView()
+	for _, sampler := range samplers {
+		listResourcesView.AddSampler(sampler)
 	}
-
-	// Sort rows by resource
-	slices.SortStableFunc(rows, func(a []string, b []string) int {
-		// Order rows by resource (first entry)
-		return cmpStrings(a[0], b[0])
-	})
-
-	// Write table
-	writeTable(header, rows, nil, writer)
+	listResourcesView.Render(writer)
 
 	if err != nil && errors.Is(err, context.Canceled) {
 		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
@@ -105,31 +75,11 @@ func (e *Executors) SamplersList(ctx context.Context, parameters interpoler.Para
 		return err
 	}
 
-	header := []string{"Resource", "Sampler", "Stats"}
-	rows := [][]string{}
-	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
-		statsInfo := fmt.Sprintf("Evaluated: %d, Exported: %d, Digested: %d",
-			samplerData.SamplingStats.SamplesEvaluated,
-			samplerData.SamplingStats.SamplesExported,
-			samplerData.SamplingStats.SamplesDigested)
-		rows = append(rows, []string{resourceAndSamplerEntry.resource,
-			resourceAndSamplerEntry.sampler,
-			statsInfo,
-		})
+	listSamplersView := NewListSamplersView()
+	for _, sampler := range resourceAndSamplers {
+		listSamplersView.AddSampler(sampler)
 	}
-
-	// Sort rows by resource, rows with the same resource must be ordered by sampler.
-	slices.SortStableFunc(rows, func(a []string, b []string) int {
-		if a[0] != b[0] {
-			// The resource is not the same in the two rows. Order by resource (first entry)
-			return cmpStrings(a[0], b[0])
-		} else {
-			// The resource is the same in the two rows. Order by sampler (second entry)
-			return cmpStrings(a[1], b[1])
-		}
-	})
-
-	writeTable(header, rows, []int{0}, writer)
+	listSamplersView.Render(writer)
 
 	if err != nil && errors.Is(err, context.Canceled) {
 		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
@@ -147,52 +97,11 @@ func (e *Executors) SamplersListConfig(ctx context.Context, parameters interpole
 		return err
 	}
 
-	header := []string{"Resource", "Sampler", "Limiter In", "Sampling In", "Limiter Out"}
-	rows := [][]string{}
-	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
-		limiterIn := "default"
-		if samplerData.Config.LimiterIn != nil {
-			limiterIn = fmt.Sprintf("%d", samplerData.Config.LimiterIn.Limit)
-		}
-
-		samplingIn := "default"
-		if samplerData.Config.SamplingIn != nil {
-			switch samplerData.Config.SamplingIn.SamplingType {
-			case control.DeterministicSamplingType:
-				samplingIn = fmt.Sprintf("Type: Deterministic, SampleRate: %d, SampleEmtpyDeterminant: %t",
-					samplerData.Config.SamplingIn.DeterministicSampling.SampleRate,
-					samplerData.Config.SamplingIn.DeterministicSampling.SampleEmptyDeterminant,
-				)
-			default:
-				samplingIn = "Type: Unknown"
-			}
-		}
-
-		limiterOut := "default"
-		if samplerData.Config.LimiterOut != nil {
-			limiterOut = fmt.Sprintf("%d", samplerData.Config.LimiterOut.Limit)
-		}
-
-		rows = append(rows, []string{resourceAndSamplerEntry.resource,
-			resourceAndSamplerEntry.sampler,
-			limiterIn,
-			samplingIn,
-			limiterOut,
-		})
+	listSamplersConfigView := NewListSamplersConfigView()
+	for _, sampler := range resourceAndSamplers {
+		listSamplersConfigView.AddSampler(sampler)
 	}
-
-	// Sort rows by resource, rows with the same resource must be ordered by sampler.
-	slices.SortStableFunc(rows, func(a []string, b []string) int {
-		if a[0] != b[0] {
-			// The resource is not the same in the two rows. Order by resource (first entry)
-			return cmpStrings(a[0], b[0])
-		} else {
-			// The resource is the same in the two rows. Order by sampler (second entry)
-			return cmpStrings(a[1], b[1])
-		}
-	})
-
-	writeTable(header, rows, []int{0}, writer)
+	listSamplersConfigView.Render(writer)
 
 	if err != nil && errors.Is(err, context.Canceled) {
 		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
@@ -209,33 +118,11 @@ func (e *Executors) StreamsList(ctx context.Context, parameters interpoler.Param
 	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, "*", false)
 
-	// Build table rows
-	header := []string{"Resource", "Sampler", "Stream"}
-	rows := [][]string{}
-	for _, samplerData := range resourceAndSamplers {
-		for _, stream := range samplerData.Config.Streams {
-			streamInfo := fmt.Sprintf("Name: %s, Rule: %s, ExportRawSamples: %t",
-				stream.Name,
-				stream.StreamRule,
-				stream.ExportRawSamples,
-			)
-			rows = append(rows, []string{samplerData.Resource, samplerData.Name, streamInfo})
-		}
+	listStreamsView := NewListStreamsView()
+	for _, sampler := range resourceAndSamplers {
+		listStreamsView.AddSampler(sampler)
 	}
-
-	// Sort rows by resource, rows with the same resource must be ordered by sampler.
-	slices.SortStableFunc(rows, func(a []string, b []string) int {
-		if a[0] != b[0] {
-			// The resource is not the same in the two rows. Order by resource (first entry)
-			return cmpStrings(a[0], b[0])
-		} else {
-			// The resource is the same in the two rows. Order by sampler (second entry)
-			return cmpStrings(a[1], b[1])
-		}
-	})
-
-	// Write table
-	writeTable(header, rows, []int{0, 1}, writer)
+	listStreamsView.Render(writer)
 
 	if err != nil && errors.Is(err, context.Canceled) {
 		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
@@ -549,52 +436,12 @@ func (e *Executors) DigestsList(ctx context.Context, parameters interpoler.Param
 	if err != nil {
 		return err
 	}
-	header := []string{"Resource", "Sampler", "Digest"}
-	rows := [][]string{}
 
-	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
-		for _, stream := range samplerData.Config.Streams {
-			for _, digest := range samplerData.Config.Digests {
-				if stream.UID == digest.StreamUID {
-
-					var typeInfo string
-					switch digest.Type {
-					case control.DigestTypeSt:
-						typeInfo = fmt.Sprintf("Type: Structure, MaxProcessedFields: %d", digest.St.MaxProcessedFields)
-					case control.DigestTypeValue:
-						typeInfo = fmt.Sprintf("Type: Value, MaxProcessedFields: %d", digest.Value.MaxProcessedFields)
-					}
-
-					digestInfo := fmt.Sprintf("Name: %s, Stream: %s, FlushPeriod: %s, %s",
-						digest.Name,
-						stream.Name,
-						digest.FlushPeriod,
-						typeInfo,
-					)
-
-					rows = append(rows, []string{
-						resourceAndSamplerEntry.resource,
-						resourceAndSamplerEntry.sampler,
-						digestInfo,
-					})
-				}
-			}
-		}
+	listDigestsView := NewListDigestsView()
+	for _, sampler := range resourceAndSamplers {
+		listDigestsView.AddSampler(sampler)
 	}
-
-	// Sort rows by resource, rows with the same resource must be ordered by sampler.
-	slices.SortStableFunc(rows, func(a []string, b []string) int {
-		if a[0] != b[0] {
-			// The resource is not the same in the two rows. Order by resource (first entry)
-			return cmpStrings(a[0], b[0])
-		} else {
-			// The resource is the same in the two rows. Order by sampler (second entry)
-			return cmpStrings(a[1], b[1])
-		}
-	})
-
-	// Write table
-	writeTable(header, rows, []int{0, 1}, writer)
+	listDigestsView.Render(writer)
 
 	if err != nil && errors.Is(err, context.Canceled) {
 		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
@@ -838,42 +685,12 @@ func (e *Executors) EventsList(ctx context.Context, parameters interpoler.Parame
 	if err != nil {
 		return err
 	}
-	header := []string{"Resource", "Sampler", "Events"}
-	rows := [][]string{}
 
-	for resourceAndSamplerEntry, samplerData := range resourceAndSamplers {
-		for _, stream := range samplerData.Config.Streams {
-			for _, event := range samplerData.Config.Events {
-				if stream.UID == event.StreamUID {
-					eventInfo := fmt.Sprintf("Name: %s, Stream: %s, DataType: %s, Rule: %s",
-						event.Name,
-						stream.Name,
-						event.SampleType,
-						event.Rule,
-					)
-					rows = append(rows, []string{
-						resourceAndSamplerEntry.resource,
-						resourceAndSamplerEntry.sampler,
-						eventInfo,
-					})
-				}
-			}
-		}
+	listEventsView := NewListEventsView()
+	for _, sampler := range resourceAndSamplers {
+		listEventsView.AddSampler(sampler)
 	}
-
-	// Sort rows by resource, rows with the same resource must be ordered by sampler.
-	slices.SortStableFunc(rows, func(a []string, b []string) int {
-		if a[0] != b[0] {
-			// The resource is not the same in the two rows. Order by resource (first entry)
-			return cmpStrings(a[0], b[0])
-		} else {
-			// The resource is the same in the two rows. Order by sampler (second entry)
-			return cmpStrings(a[1], b[1])
-		}
-	})
-
-	// Write table
-	writeTable(header, rows, []int{0, 1}, writer)
+	listEventsView.Render(writer)
 
 	if err != nil && errors.Is(err, context.Canceled) {
 		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
