@@ -1157,7 +1157,7 @@ type Sampler struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// Identifies a unique Sampler,
+	// Identifies a single Sampler
 	Uid string `protobuf:"bytes,1,opt,name=uid,proto3" json:"uid,omitempty"`
 	// User-friendly and user-defined name to identify a Sampler.
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`

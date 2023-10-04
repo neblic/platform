@@ -60,10 +60,10 @@ func (v *Value) updateBoolean(state *protos.BooleanValue, boolean *bool) (*proto
 
 	if boolean != nil {
 		if *boolean {
-			state.TotalTrue++
+			state.TrueCount++
 		} else {
 			state.DefaultCount++
-			state.TotalFalse++
+			state.FalseCount++
 		}
 	} else {
 		state.NullCount++
