@@ -1,7 +1,6 @@
 package control
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/neblic/platform/controlplane/protos"
@@ -20,10 +19,6 @@ type SamplerDigestUID string
 
 type DigestSt struct {
 	MaxProcessedFields int
-}
-
-func (ds DigestSt) CLIInfo() string {
-	return fmt.Sprintf("MaxProcessedFields: %d", ds.MaxProcessedFields)
 }
 
 func NewDigestStFromProto(protoDigestSt *protos.Digest_St) DigestSt {
@@ -46,10 +41,6 @@ type DigestValue struct {
 	MaxProcessedFields int
 }
 
-func (dv DigestValue) CLIInfo() string {
-	return fmt.Sprintf("MaxProcessedFields: %d", dv.MaxProcessedFields)
-}
-
 func NewDigestValueFromProto(protoDigestValue *protos.Digest_Value) DigestValue {
 	if protoDigestValue == nil {
 		return DigestValue{}
@@ -68,6 +59,7 @@ func (dv *DigestValue) ToProto() *protos.Digest_Value {
 
 type Digest struct {
 	UID         SamplerDigestUID
+	Name        string
 	StreamUID   SamplerStreamUID
 	FlushPeriod time.Duration
 	BufferSize  int
@@ -78,20 +70,8 @@ type Digest struct {
 	Value DigestValue
 }
 
-func (d Digest) CLIInfo() string {
-	var t string
-	switch d.Type {
-	case DigestTypeSt:
-		t = fmt.Sprintf("Type: Structure, %s", d.St.CLIInfo())
-	case DigestTypeValue:
-		t = fmt.Sprintf("Type: Value, %s", d.St.CLIInfo())
-	default:
-		t = "Type: Unknown"
-	}
-
-	// flush period intentionally not shown given that for now, it is an internal configuration that will configured
-	// with a default value by the server
-	return fmt.Sprintf("UID: %s, StreamUID: %s, FlushPeriod: %s, %s", d.UID, d.StreamUID, d.FlushPeriod, t)
+func (d Digest) GetName() string {
+	return d.Name
 }
 
 func NewDigestFromProto(protoDigest *protos.Digest) Digest {
@@ -101,6 +81,7 @@ func NewDigestFromProto(protoDigest *protos.Digest) Digest {
 
 	digest := Digest{
 		UID:         SamplerDigestUID(protoDigest.GetUid()),
+		Name:        protoDigest.Name,
 		StreamUID:   SamplerStreamUID(protoDigest.GetStreamUid()),
 		FlushPeriod: protoDigest.GetFlushPeriod().AsDuration(),
 		BufferSize:  int(protoDigest.GetBufferSize()),
@@ -123,6 +104,7 @@ func NewDigestFromProto(protoDigest *protos.Digest) Digest {
 func (d *Digest) ToProto() *protos.Digest {
 	protoDigest := &protos.Digest{
 		Uid:         string(d.UID),
+		Name:        d.Name,
 		StreamUid:   string(d.StreamUID),
 		FlushPeriod: durationpb.New(d.FlushPeriod),
 		BufferSize:  int32(d.BufferSize),

@@ -1,8 +1,6 @@
 package control
 
 import (
-	"fmt"
-
 	"github.com/neblic/platform/controlplane/protos"
 )
 
@@ -67,13 +65,14 @@ func ParseSampleType(t string) SampleType {
 
 type Event struct {
 	UID        SamplerEventUID
+	Name       string
 	StreamUID  SamplerStreamUID
 	SampleType SampleType
 	Rule       Rule
 }
 
-func (e Event) CLIInfo() string {
-	return fmt.Sprintf("UID: %s, StreamUID: %s, DataType: %s, Rule: %s", e.UID, e.StreamUID, e.SampleType, e.Rule)
+func (e Event) GetName() string {
+	return e.Name
 }
 
 func NewEventFromProto(protoEvent *protos.Event) Event {
@@ -83,6 +82,7 @@ func NewEventFromProto(protoEvent *protos.Event) Event {
 
 	return Event{
 		UID:        SamplerEventUID(protoEvent.GetUid()),
+		Name:       protoEvent.Name,
 		StreamUID:  SamplerStreamUID(protoEvent.GetStreamUid()),
 		SampleType: NewSampleTypeFromProto(protoEvent.GetSampleType()),
 		Rule:       NewRuleFromProto(protoEvent.GetRule()),
@@ -92,6 +92,7 @@ func NewEventFromProto(protoEvent *protos.Event) Event {
 func (e *Event) ToProto() *protos.Event {
 	return &protos.Event{
 		Uid:        string(e.UID),
+		Name:       e.Name,
 		StreamUid:  string(e.StreamUID),
 		SampleType: e.SampleType.ToProto(),
 		Rule:       e.Rule.ToProto(),

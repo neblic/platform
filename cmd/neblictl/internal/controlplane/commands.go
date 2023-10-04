@@ -277,10 +277,10 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Default:     "*",
 					},
 					{
-						Name:        "stream-uid",
-						Description: "Filter by stream",
+						Name:        "stream-name",
+						Description: "Filter by stream name",
 						Filter:      true,
-						Completer:   controlPlaneCompleters.ListStreamsUID,
+						Completer:   controlPlaneCompleters.ListStreamsName,
 						Optional:    true,
 						Default:     "",
 					},
@@ -289,18 +289,16 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 			{
 				Name:        "streams:create",
 				Description: "Create streams",
-				ExtendedDescription: `* It it possible to create multiple streams targeting different samplers at once. 
-* If the uid is not specified, a random one will be generated.
-* All the created streams will have the same UID`,
+				ExtendedDescription: `* It it possible to create multiple streams targeting different samplers at once.
+* All the created streams will have the same name`,
 				Parameters: []interpoler.Parameter{
 					{
 						Name:        "rule",
 						Description: "CEL rule that will select the stream elements",
 					},
 					{
-						Name:        "stream-uid",
-						Description: "Stream uid",
-						Optional:    true,
+						Name:        "stream-name",
+						Description: "Stream name",
 					},
 					{
 						Name:        "resource-name",
@@ -336,9 +334,9 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				ExtendedDescription: `* It it possible to update multiple streams targeting different samplers at once.`,
 				Parameters: []interpoler.Parameter{
 					{
-						Name:        "stream-uid",
-						Description: "Stream uid",
-						Completer:   controlPlaneCompleters.ListStreamsUID,
+						Name:        "stream-name",
+						Description: "Stream name",
+						Completer:   controlPlaneCompleters.ListStreamsName,
 					},
 					{
 						Name:        "updated-rule",
@@ -378,9 +376,9 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				ExtendedDescription: `* It it possible to delete multiple streams targeting different samplers at once.`,
 				Parameters: []interpoler.Parameter{
 					{
-						Name:        "stream-uid",
-						Description: "Stream uid",
-						Completer:   controlPlaneCompleters.ListStreamsUID,
+						Name:        "stream-name",
+						Description: "Stream name",
+						Completer:   controlPlaneCompleters.ListStreamsName,
 					},
 					{
 						Name:        "resource-name",
@@ -431,14 +429,13 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				Description: "Generate structure digests",
 				Parameters: []interpoler.Parameter{
 					{
-						Name:        "digest-uid",
-						Description: "Digest uid",
-						Optional:    true,
+						Name:        "digest-name",
+						Description: "Digest name",
 					},
 					{
-						Name:        "stream-uid",
-						Description: "Stream uid",
-						Completer:   controlPlaneCompleters.ListStreamsUID,
+						Name:        "stream-name",
+						Description: "Stream name",
+						Completer:   controlPlaneCompleters.ListStreamsName,
 					},
 					{
 						Name:        "flush-period",
@@ -476,15 +473,15 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				Description: "Update structure digests",
 				Parameters: []interpoler.Parameter{
 					{
-						Name:        "digest-uid",
-						Description: "Digest uid",
-						Completer:   controlPlaneCompleters.ListDigestsUID,
+						Name:        "digest-name",
+						Description: "Digest name",
+						Completer:   controlPlaneCompleters.ListDigestsName,
 						Filter:      true,
 					},
 					{
-						Name:        "stream-uid",
-						Description: "Stream uid",
-						Completer:   controlPlaneCompleters.ListStreamsUID,
+						Name:        "stream-name",
+						Description: "Stream name",
+						Completer:   controlPlaneCompleters.ListStreamsName,
 					},
 					{
 						Name:        "flush-period",
@@ -522,14 +519,13 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				Description: "Configure generation of value digests",
 				Parameters: []interpoler.Parameter{
 					{
-						Name:        "digest-uid",
-						Description: "Digest uid",
-						Optional:    true,
+						Name:        "digest-name",
+						Description: "Digest name",
 					},
 					{
-						Name:        "stream-uid",
-						Description: "Stream uid",
-						Completer:   controlPlaneCompleters.ListStreamsUID,
+						Name:        "stream-name",
+						Description: "Stream name",
+						Completer:   controlPlaneCompleters.ListStreamsName,
 					},
 					{
 						Name:        "flush-period",
@@ -565,14 +561,14 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				Description: "Update value digests",
 				Parameters: []interpoler.Parameter{
 					{
-						Name:        "digest-uid",
-						Description: "Digest uid",
-						Completer:   controlPlaneCompleters.ListDigestsUID,
+						Name:        "digest-name",
+						Description: "Digest name",
+						Completer:   controlPlaneCompleters.ListDigestsName,
 					},
 					{
-						Name:        "stream-uid",
-						Description: "Stream uid",
-						Completer:   controlPlaneCompleters.ListStreamsUID,
+						Name:        "stream-name",
+						Description: "Stream name",
+						Completer:   controlPlaneCompleters.ListStreamsName,
 					},
 					{
 						Name:        "flush-period",
@@ -608,9 +604,9 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				Description: "Delete digest",
 				Parameters: []interpoler.Parameter{
 					{
-						Name:        "uid",
-						Description: "Digest uid",
-						Completer:   controlPlaneCompleters.ListDigestsUID,
+						Name:        "digest-name",
+						Description: "Digest name",
+						Completer:   controlPlaneCompleters.ListDigestsName,
 					},
 					{
 						Name:        "resource-name",
@@ -661,14 +657,13 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				Description: "Create events",
 				Parameters: []interpoler.Parameter{
 					{
-						Name:        "event-uid",
-						Description: "event uid",
-						Optional:    true,
+						Name:        "event-name",
+						Description: "event name",
 					},
 					{
-						Name:        "stream-uid",
-						Description: "Stream uid",
-						Completer:   controlPlaneCompleters.ListStreamsUID,
+						Name:        "stream-name",
+						Description: "Stream name",
+						Completer:   controlPlaneCompleters.ListStreamsName,
 					},
 					{
 						Name:        "sample-type",
@@ -677,7 +672,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 					},
 					{
 						Name:        "rule",
-						Description: "CEL rule that will create events from elements in the the stream-uid",
+						Description: "CEL rule that will create events from elements in the the stream-name",
 					},
 					{
 						Name:        "resource-name",
@@ -703,14 +698,14 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				Description: "Update events",
 				Parameters: []interpoler.Parameter{
 					{
-						Name:        "event-uid",
-						Description: "Event uid",
-						Completer:   controlPlaneCompleters.ListEventsUID,
+						Name:        "event-name",
+						Description: "Event name",
+						Completer:   controlPlaneCompleters.ListEventsName,
 					},
 					{
-						Name:        "stream-uid",
-						Description: "Stream uid",
-						Completer:   controlPlaneCompleters.ListStreamsUID,
+						Name:        "stream-name",
+						Description: "Stream name",
+						Completer:   controlPlaneCompleters.ListStreamsName,
 					},
 					{
 						Name:        "sample-type",
@@ -719,7 +714,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 					},
 					{
 						Name:        "rule",
-						Description: "CEL rule that will create events from elements in the the stream-uid",
+						Description: "CEL rule that will create events from elements in the the stream-name",
 					},
 					{
 						Name:        "resource-name",
@@ -745,9 +740,9 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 				Description: "Delete events",
 				Parameters: []interpoler.Parameter{
 					{
-						Name:        "uid",
-						Description: "event uid",
-						Completer:   controlPlaneCompleters.ListEventsUID,
+						Name:        "event-name",
+						Description: "Event name",
+						Completer:   controlPlaneCompleters.ListEventsName,
 					},
 					{
 						Name:        "resource-name",
