@@ -57,8 +57,8 @@ func NewBooleanValue() *BooleanValue {
 		DefaultCount: 0,
 		NullCount:    0,
 
-		TotalFalse: 0,
-		TotalTrue:  0,
+		FalseCount: 0,
+		TrueCount:  0,
 	}
 }
 

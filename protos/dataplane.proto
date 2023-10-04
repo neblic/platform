@@ -94,8 +94,8 @@ message BooleanValue {
   uint64 default_count = 2;
   uint64 null_count = 3;
 
-  uint64 total_false = 4;
-  uint64 total_true = 5;
+  uint64 false_count = 4;
+  uint64 true_count = 5;
 }
 
 message ArrayValue {
