@@ -177,6 +177,7 @@ type MetadataKey string
 const (
 	EventUID  MetadataKey = "event_uid"
 	EventRule MetadataKey = "event_rule"
+	DigestUID MetadataKey = "digest_uid"
 )
 
 // Sample defines a sample to be exported
