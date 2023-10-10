@@ -78,6 +78,7 @@ func (d *Digester) buildWorkerSettings(digestCfg control.Digest) (workerSettings
 	}
 
 	return workerSettings{
+		digestUID:    digestCfg.UID,
 		streamUID:    digestCfg.StreamUID,
 		resourceName: d.resourceName,
 		samplerName:  d.samplerName,
@@ -156,6 +157,7 @@ func (d *Digester) Close() error {
 }
 
 type workerSettings struct {
+	digestUID    control.SamplerDigestUID
 	streamUID    control.SamplerStreamUID
 	resourceName string
 	samplerName  string
@@ -226,7 +228,10 @@ func (w *worker) buildDigestSample(digestData []byte) dpsample.SamplerSamples {
 			Type:     w.digest.SampleType(),
 			Streams:  []control.SamplerStreamUID{w.streamUID},
 			Encoding: dpsample.JSONEncoding,
-			Data:     digestData,
+			Metadata: map[dpsample.MetadataKey]string{
+				dpsample.DigestUID: string(w.digestUID),
+			},
+			Data: digestData,
 		}},
 	}
 }
