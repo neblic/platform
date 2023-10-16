@@ -23,7 +23,7 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | \
             docker login ghcr.io -u "${{ github.actor }}" --password-stdin
       - name: Run goreleaser
-        uses: goreleaser/goreleaser-action@v4
+        uses: goreleaser/goreleaser-action@v5
         with:
           distribution: goreleaser
           version: latest
