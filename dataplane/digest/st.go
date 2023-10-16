@@ -128,6 +128,10 @@ func (s *St) updateValue(prevVal *protos.ValueSt, x interface{}) (*protos.ValueS
 		prevVal = &protos.ValueSt{}
 	}
 
+	if x == nil {
+		return prevVal, nil
+	}
+
 	v := reflect.ValueOf(x)
 	switch v.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
