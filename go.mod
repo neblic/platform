@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/golang/protobuf v1.5.3
-	github.com/google/cel-go v0.17.6
+	github.com/google/cel-go v0.18.1
 	github.com/google/uuid v1.3.1
 	github.com/mitchellh/mapstructure v1.5.1-0.20220423185008-bf980b35cac4
 	github.com/onsi/ginkgo/v2 v2.13.0
