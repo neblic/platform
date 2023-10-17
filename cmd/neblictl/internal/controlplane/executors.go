@@ -178,7 +178,7 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 		// Propagate new configuration
 		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Could not create the stream because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not update sampler config. %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
@@ -238,7 +238,7 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 		// Propagate new configuration
 		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Could not update the stream because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not update sampler config. %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 
@@ -285,7 +285,7 @@ func (e *Executors) StreamsDelete(ctx context.Context, parameters interpoler.Par
 		// Propagate new configuration
 		err := e.controlPlaneClient.setSamplerConfig(ctx, resourceAndSamplerEntry.sampler, resourceAndSamplerEntry.resource, update)
 		if err != nil {
-			writer.WriteStringf("%s.%s: Could not delete the sampling rule because %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			writer.WriteStringf("%s.%s: Could not update sampler config. %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
 			continue
 		}
 

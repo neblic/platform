@@ -138,7 +138,7 @@ func (c *Client) ConfigureSampler(ctx context.Context, samplerResource, samplerN
 
 	status := samplerConfRes.SamplerConfRes.GetStatus()
 	if status.GetType() != protos.Status_OK {
-		return fmt.Errorf("error configuring rule rules: %s", status.GetErrorMessage())
+		return fmt.Errorf("%s", status.GetErrorMessage())
 	}
 
 	return nil

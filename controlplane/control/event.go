@@ -1,6 +1,8 @@
 package control
 
 import (
+	"fmt"
+
 	"github.com/neblic/platform/controlplane/protos"
 )
 
@@ -129,6 +131,13 @@ func NewEventUpdateFromProto(eventUpdate *protos.ClientEventUpdate) EventUpdate 
 		Op:    op,
 		Event: NewEventFromProto(eventUpdate.GetEvent()),
 	}
+}
+func (eu *EventUpdate) IsValid() error {
+	isValid := nameValidationRegex.MatchString(string(eu.Event.Name))
+	if !isValid {
+		return fmt.Errorf(nameValidationErrTemplate, "event", eu.Event.Name)
+	}
+	return nil
 }
 
 func (eu *EventUpdate) ToProto() *protos.ClientEventUpdate {

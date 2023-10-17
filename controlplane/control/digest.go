@@ -1,6 +1,7 @@
 package control
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/neblic/platform/controlplane/protos"
@@ -155,9 +156,17 @@ func NewDigestUpdateFromProto(digestUpdate *protos.ClientDigestUpdate) DigestUpd
 	}
 }
 
-func (s *DigestUpdate) ToProto() *protos.ClientDigestUpdate {
+func (du *DigestUpdate) IsValid() error {
+	isValid := nameValidationRegex.MatchString(string(du.Digest.Name))
+	if !isValid {
+		return fmt.Errorf(nameValidationErrTemplate, "digest", du.Digest.Name)
+	}
+	return nil
+}
+
+func (du *DigestUpdate) ToProto() *protos.ClientDigestUpdate {
 	protoOp := protos.ClientDigestUpdate_UNKNOWN
-	switch s.Op {
+	switch du.Op {
 	case DigestUpsert:
 		protoOp = protos.ClientDigestUpdate_UPSERT
 	case DigestDelete:
@@ -166,6 +175,6 @@ func (s *DigestUpdate) ToProto() *protos.ClientDigestUpdate {
 
 	return &protos.ClientDigestUpdate{
 		Op:     protoOp,
-		Digest: s.Digest.ToProto(),
+		Digest: du.Digest.ToProto(),
 	}
 }

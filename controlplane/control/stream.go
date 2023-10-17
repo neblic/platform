@@ -1,6 +1,8 @@
 package control
 
 import (
+	"fmt"
+
 	"github.com/neblic/platform/controlplane/protos"
 )
 
@@ -70,9 +72,17 @@ func NewStreamUpdateFromProto(streamUpdate *protos.ClientStreamUpdate) StreamUpd
 	}
 }
 
-func (s *StreamUpdate) ToProto() *protos.ClientStreamUpdate {
+func (su *StreamUpdate) IsValid() error {
+	isValid := nameValidationRegex.MatchString(string(su.Stream.Name))
+	if !isValid {
+		return fmt.Errorf(nameValidationErrTemplate, "stream", su.Stream.Name)
+	}
+	return nil
+}
+
+func (su *StreamUpdate) ToProto() *protos.ClientStreamUpdate {
 	protoOp := protos.ClientStreamUpdate_UNKNOWN
-	switch s.Op {
+	switch su.Op {
 	case StreamUpsert:
 		protoOp = protos.ClientStreamUpdate_UPSERT
 	case StreamDelete:
@@ -81,6 +91,6 @@ func (s *StreamUpdate) ToProto() *protos.ClientStreamUpdate {
 
 	return &protos.ClientStreamUpdate{
 		Op:     protoOp,
-		Stream: s.Stream.ToProto(),
+		Stream: su.Stream.ToProto(),
 	}
 }

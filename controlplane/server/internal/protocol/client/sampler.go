@@ -8,6 +8,10 @@ import (
 	"github.com/neblic/platform/controlplane/server/internal/defs"
 )
 
+func validateUID() {
+
+}
+
 func (c *Client) handleListSamplersReq(_ *protos.ClientListSamplersReq) (*protos.ServerToClient, error) {
 
 	var protoSamplers []*protos.Sampler
@@ -47,6 +51,22 @@ func (c *Client) handleSamplerConfReq(req *protos.ClientSamplerConfReq) (*protos
 		}
 	} else {
 		update := control.NewSamplerConfigUpdateFromProto(req.GetSamplerConfigUpdate())
+
+		err := update.IsValid()
+		if err != nil {
+			serverToClientRes := c.stream.FromServerMsg()
+			serverToClientRes.Message = &protos.ServerToClient_SamplerConfRes{
+				SamplerConfRes: &protos.ClientSamplerConfRes{
+					Status: &protos.Status{
+						Type:         protos.Status_BAD_REQUEST,
+						ErrorMessage: err.Error(),
+					},
+				},
+			}
+
+			return serverToClientRes, nil
+		}
+
 		if err := c.samplerRegistry.UpdateSamplerConfig(
 			req.GetSamplerResource(),
 			req.GetSamplerName(),
