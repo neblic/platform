@@ -208,19 +208,22 @@ func (sr *SamplerRegistry) Register(resource string, name string, uid control.Sa
 	return err
 }
 
-func (sr *SamplerRegistry) Deregister(resource string, name string, uid control.SamplerUID) error {
+func (sr *SamplerRegistry) Deregister(uid control.SamplerUID) error {
 	sr.m.Lock()
 	defer sr.m.Unlock()
 
-	sampler, err := sr.getSampler(resource, name)
-	if err != nil {
-		return ErrUnknownSampler
+	// Find sampler instance
+	var found bool
+	var sampler *defs.Sampler
+	for _, sampler = range sr.samplers {
+		_, ok := sampler.GetInstance(uid)
+		if ok {
+			found = true
+			break
+		}
 	}
-
-	_, ok := sampler.Instances[uid]
-	if !ok {
-		sr.logger.Error("deregistering unknown sampler, nothing to do", "sampler_uid", uid)
-		return nil
+	if !found {
+		return ErrUnknownSamplerInstance
 	}
 
 	delete(sampler.Instances, uid)

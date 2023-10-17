@@ -73,7 +73,9 @@ func (p *Sampler) streamStateChangeCb(state defs.Status, name, resource string, 
 
 		p.registeredOnce = true
 	case defs.UnregisteredStatus:
-		if err := p.samplerRegistry.Deregister(resource, name, uid); err != nil {
+		// Unregistered status could happen when a connection is closed. In that case, name and resource
+		// parameters are empty.
+		if err := p.samplerRegistry.Deregister(uid); err != nil {
 			return fmt.Errorf("error deregistering client, uid: %s: %w", uid, err)
 		}
 
