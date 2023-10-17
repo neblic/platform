@@ -1,6 +1,7 @@
 package control
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/neblic/platform/controlplane/protos"
@@ -156,9 +157,9 @@ func NewDigestUpdateFromProto(digestUpdate *protos.ClientDigestUpdate) DigestUpd
 }
 
 func (du *DigestUpdate) IsValid() error {
-	isValid := uidValidationRegex.MatchString(string(du.Digest.UID))
+	isValid := nameValidationRegex.MatchString(string(du.Digest.Name))
 	if !isValid {
-		return fmt.Errorf(uidValidationErrTemplate, "digest", du.Digest.UID)
+		return fmt.Errorf(nameValidationErrTemplate, "digest", du.Digest.Name)
 	}
 	return nil
 }

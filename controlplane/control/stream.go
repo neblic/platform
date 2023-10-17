@@ -1,6 +1,8 @@
 package control
 
 import (
+	"fmt"
+
 	"github.com/neblic/platform/controlplane/protos"
 )
 
@@ -71,9 +73,9 @@ func NewStreamUpdateFromProto(streamUpdate *protos.ClientStreamUpdate) StreamUpd
 }
 
 func (su *StreamUpdate) IsValid() error {
-	isValid := uidValidationRegex.MatchString(string(su.Stream.UID))
+	isValid := nameValidationRegex.MatchString(string(su.Stream.Name))
 	if !isValid {
-		return fmt.Errorf(uidValidationErrTemplate, "stream", su.Stream.UID)
+		return fmt.Errorf(nameValidationErrTemplate, "stream", su.Stream.Name)
 	}
 	return nil
 }
