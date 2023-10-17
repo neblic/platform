@@ -138,11 +138,7 @@ func (c *Completers) ListDigestsName(ctx context.Context, parameters interpoler.
 }
 
 func (c *Completers) ListSampleType(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
-	sampleTypes := []string{}
-	for _, sampleType := range control.ValidSampleTypes {
-		sampleTypes = append(sampleTypes, sampleType.String())
-	}
-	return sampleTypes
+	return []string{control.RawSampleType.String()}
 }
 
 func (c *Completers) ListEventsName(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
