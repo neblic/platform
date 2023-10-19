@@ -133,10 +133,17 @@ func NewEventUpdateFromProto(eventUpdate *protos.ClientEventUpdate) EventUpdate 
 	}
 }
 func (eu *EventUpdate) IsValid() error {
+	// Validate event name
 	isValid := nameValidationRegex.MatchString(string(eu.Event.Name))
 	if !isValid {
 		return fmt.Errorf(nameValidationErrTemplate, "event", eu.Event.Name)
 	}
+
+	// Validate sample type when updating a rule
+	if eu.Op == EventUpsert && eu.Event.SampleType != RawSampleType {
+		return fmt.Errorf("invalid sample type %s", eu.Event.SampleType.String())
+	}
+
 	return nil
 }
 
