@@ -205,6 +205,15 @@ func (sr *SamplerRegistry) Register(resource string, name string, uid control.Sa
 
 	err = sr.setSampler(resource, name, sampler)
 
+	// Send upsert event if necessary
+	if sr.eventsChan != nil {
+		sr.eventsChan <- ConfigUpdate{
+			Resource: resource,
+			Sampler:  name,
+			Config:   sampler.Config,
+		}
+	}
+
 	return err
 }
 
