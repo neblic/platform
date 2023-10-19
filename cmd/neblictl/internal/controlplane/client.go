@@ -169,5 +169,10 @@ func (c *Client) setSamplerConfig(ctx context.Context, name, resource string, up
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	return c.internal.ConfigureSampler(ctx, resource, name, update)
+	err := c.internal.ConfigureSampler(ctx, resource, name, update)
+
+	// Update local cache
+	c.pullSamplerConfigs(ctx)
+
+	return err
 }
