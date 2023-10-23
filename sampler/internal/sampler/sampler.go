@@ -225,33 +225,30 @@ func (p *Sampler) buildSamplingRule(streamRule control.Rule) (*rule.Rule, error)
 	}
 }
 
-func (p *Sampler) buildRawSample(streams []control.SamplerStreamUID, key string, sampleData *data.Data) (dpsample.SamplerSamples, error) {
+func (p *Sampler) buildRawSample(streams []control.SamplerStreamUID, key string, sampleData *data.Data) (dpsample.OTLPLogs, error) {
 	dataJSON, err := sampleData.JSON()
 	if err != nil {
-		return dpsample.SamplerSamples{}, fmt.Errorf("couldn't get sampler body: %w", err)
+		return dpsample.OTLPLogs{}, fmt.Errorf("couldn't get sampler body: %w", err)
 	}
 
-	return dpsample.SamplerSamples{
-		ResourceName: p.resourceName,
-		SamplerName:  p.name,
-		Samples: []dpsample.Sample{{
-			Ts:       time.Now(),
-			Type:     control.RawSampleType,
-			Streams:  streams,
-			Encoding: dpsample.JSONEncoding,
-			Key:      key,
-			Data:     []byte(dataJSON),
-		}},
-	}, nil
+	otlpLogs := dpsample.NewOTLPLogs()
+	samplerOtlpLogs := otlpLogs.AppendSamplerOTLPLogs(p.resourceName, p.name)
+	rawSample := samplerOtlpLogs.AppendRawSampleOTLPLog()
+	rawSample.SetTimestamp(time.Now())
+	rawSample.SetStreams(streams)
+	rawSample.SetSampleKey(key)
+	rawSample.SetSampleRawData(dpsample.JSONEncoding, []byte(dataJSON))
+
+	return otlpLogs, nil
 }
 
 func (p *Sampler) exportRawSample(ctx context.Context, streams []control.SamplerStreamUID, key string, sampleData *data.Data) error {
-	resourceSample, err := p.buildRawSample(streams, key, sampleData)
+	otlpLogs, err := p.buildRawSample(streams, key, sampleData)
 	if err != nil {
 		return err
 	}
 
-	if err := p.exporter.Export(ctx, []dpsample.SamplerSamples{resourceSample}); err != nil {
+	if err := p.exporter.Export(ctx, otlpLogs); err != nil {
 		return fmt.Errorf("failure to export samples: %w", err)
 	}
 

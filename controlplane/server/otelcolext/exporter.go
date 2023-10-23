@@ -17,8 +17,8 @@ func NewExporter(c consumer.Logs) *Exporter {
 	}
 }
 
-func (e *Exporter) Export(ctx context.Context, logs []dpsample.SamplerSamples) error {
-	return e.consumer.ConsumeLogs(ctx, dpsample.SamplesToOTLPLogs(logs))
+func (e *Exporter) Export(ctx context.Context, otlpLogs dpsample.OTLPLogs) error {
+	return e.consumer.ConsumeLogs(ctx, otlpLogs.Logs())
 }
 
 func (e *Exporter) Close(context.Context) error {

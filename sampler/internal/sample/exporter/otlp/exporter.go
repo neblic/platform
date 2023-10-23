@@ -63,10 +63,8 @@ func New(ctx context.Context, logger logging.Logger, exportServerAddr string, op
 }
 
 // Export internally perform samples batches
-func (e *Exporter) Export(ctx context.Context, resourceSamples []dpsample.SamplerSamples) error {
-	logs := dpsample.SamplesToOTLPLogs(resourceSamples)
-
-	return e.exportLogs(ctx, logs)
+func (e *Exporter) Export(ctx context.Context, otlpLogs dpsample.OTLPLogs) error {
+	return e.exportLogs(ctx, otlpLogs.Logs())
 }
 
 func (e *Exporter) exportLogs(ctx context.Context, ld plog.Logs) error {

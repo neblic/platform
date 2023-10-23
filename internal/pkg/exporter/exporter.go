@@ -7,6 +7,6 @@ import (
 )
 
 type Exporter interface {
-	Export(context.Context, []dpsample.SamplerSamples) error
+	Export(context.Context, dpsample.OTLPLogs) error
 	Close(context.Context) error
 }
