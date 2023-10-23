@@ -219,21 +219,28 @@ loop:
 	ticker.Stop()
 }
 
-func (w *worker) buildDigestSample(digestData []byte) dpsample.SamplerSamples {
-	return dpsample.SamplerSamples{
-		ResourceName: w.resourceName,
-		SamplerName:  w.samplerName,
-		Samples: []dpsample.Sample{{
-			Ts:       time.Now(),
-			Type:     w.digest.SampleType(),
-			Streams:  []control.SamplerStreamUID{w.streamUID},
-			Encoding: dpsample.JSONEncoding,
-			Metadata: map[dpsample.MetadataKey]string{
-				dpsample.DigestUID: string(w.digestUID),
-			},
-			Data: digestData,
-		}},
+func (w *worker) buildDigestSample(digestData []byte) dpsample.OTLPLogs {
+	otlpLogs := dpsample.NewOTLPLogs()
+	samplerOtlpLogs := otlpLogs.AppendSamplerOTLPLogs(w.resourceName, w.samplerName)
+
+	switch w.digest.SampleType() {
+	case control.StructDigestSampleType:
+		digestOtlpLog := samplerOtlpLogs.AppendStructDigestOTLPLog()
+		digestOtlpLog.SetUID(w.digestUID)
+		digestOtlpLog.SetTimestamp(time.Now())
+		digestOtlpLog.SetStreams([]control.SamplerStreamUID{w.streamUID})
+		digestOtlpLog.SetSampleRawData(dpsample.JSONEncoding, digestData)
+	case control.ValueDigestSampleType:
+		digestOtlpLog := samplerOtlpLogs.AppendValueDigestOTLPLog()
+		digestOtlpLog.SetUID(w.digestUID)
+		digestOtlpLog.SetTimestamp(time.Now())
+		digestOtlpLog.SetStreams([]control.SamplerStreamUID{w.streamUID})
+		digestOtlpLog.SetSampleRawData(dpsample.JSONEncoding, digestData)
+	default:
+		panic(fmt.Errorf("unknown digest sample type %s", w.digest.SampleType()))
 	}
+
+	return otlpLogs
 }
 
 func (w *worker) exportDigest() {
@@ -246,8 +253,8 @@ func (w *worker) exportDigest() {
 		w.notifyErr(err)
 	}
 
-	smpl := w.buildDigestSample(digestData)
-	err = w.exporter.Export(context.Background(), []dpsample.SamplerSamples{smpl})
+	otlpLogs := w.buildDigestSample(digestData)
+	err = w.exporter.Export(context.Background(), otlpLogs)
 	if err != nil {
 		w.notifyErr(err)
 	}

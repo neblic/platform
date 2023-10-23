@@ -25,11 +25,11 @@ var testNotifyErr = func(t *testing.T) func(error) {
 }
 
 type mockExporter struct {
-	exportedSamplerSamples []dpsample.SamplerSamples
+	exportedOtlpLogs []dpsample.OTLPLogs
 }
 
-func (e *mockExporter) Export(ctx context.Context, samplerSamples []dpsample.SamplerSamples) error {
-	e.exportedSamplerSamples = append(e.exportedSamplerSamples, samplerSamples...)
+func (e *mockExporter) Export(ctx context.Context, otlpLogs dpsample.OTLPLogs) error {
+	e.exportedOtlpLogs = append(e.exportedOtlpLogs, otlpLogs)
 
 	return nil
 }
@@ -96,9 +96,9 @@ func TestBuildWorkers(t *testing.T) {
 
 func TestWorkerRun(t *testing.T) {
 	tcs := map[string]struct {
-		settings       workerSettings
-		samples        []*data.Data
-		expectedDigest dpsample.SamplerSamples
+		settings workerSettings
+		samples  []*data.Data
+		wantFn   func() dpsample.OTLPLogs
 	}{
 		"periodic digest": {
 			settings: workerSettings{
@@ -114,17 +114,14 @@ func TestWorkerRun(t *testing.T) {
 				data.NewSampleDataFromJSON(`{ "field_double": 1 }`),
 				data.NewSampleDataFromJSON(`{ "field_string": "some_string" }`),
 			},
-			expectedDigest: dpsample.SamplerSamples{
-				ResourceName: testResourceName,
-				SamplerName:  testSamplerName,
-				Samples: []dpsample.Sample{
-					{
-						Type:     control.StructDigestSampleType,
-						Streams:  []control.SamplerStreamUID{"stream_uid"},
-						Encoding: dpsample.JSONEncoding,
-						Data:     []byte(`{"obj":{"count":"2","fields":{"field_double":{"number":{"floatNum":{"count":"1"}}},"field_string":{"string":{"count":"1"}}}}}`),
-					},
-				},
+			wantFn: func() dpsample.OTLPLogs {
+				otlpLogs := dpsample.NewOTLPLogs()
+				samplerOtlpLogs := otlpLogs.AppendSamplerOTLPLogs(testResourceName, testSamplerName)
+				structDigest := samplerOtlpLogs.AppendStructDigestOTLPLog()
+				structDigest.SetStreams([]control.SamplerStreamUID{"stream_uid"})
+				structDigest.SetSampleRawData(dpsample.JSONEncoding, []byte(`{"obj":{"count":"2","fields":{"field_double":{"number":{"floatNum":{"count":"1"}}},"field_string":{"string":{"count":"1"}}}}}`))
+
+				return otlpLogs
 			},
 		},
 	}
@@ -140,22 +137,34 @@ func TestWorkerRun(t *testing.T) {
 			}
 
 			require.Eventually(t,
-				func() bool { return len(testExporter.exportedSamplerSamples) >= 1 },
+				func() bool { return len(testExporter.exportedOtlpLogs) >= 1 },
 				testTimeout, 50*time.Millisecond,
 			)
-			require.Len(t, testExporter.exportedSamplerSamples[0].Samples, 1)
+			time.Sleep(time.Millisecond * 50)
+			assert.Equal(t, testExporter.exportedOtlpLogs[0].Len(), 1)
 
-			// do not check the sample timestamp
-			testExporter.exportedSamplerSamples[0].Samples[0].Ts = time.Time{}
+			var wantResource string
+			var wantSampler string
+			var want dpsample.StructDigestOTLPLog
+			dpsample.RangeWithType[dpsample.StructDigestOTLPLog](tc.wantFn(), func(resource, sample string, structDigestOtlp dpsample.StructDigestOTLPLog) {
+				wantResource = resource
+				wantSampler = sample
+				want = structDigestOtlp
+			})
 
-			// do not check the JSON body with the Equal assertion
-			expectedJSONDigest := string(tc.expectedDigest.Samples[0].Data)
-			tc.expectedDigest.Samples[0].Data = nil
-			gotJSONDigest := string(testExporter.exportedSamplerSamples[0].Samples[0].Data)
-			testExporter.exportedSamplerSamples[0].Samples[0].Data = nil
+			var gotResource string
+			var gotSampler string
+			var got dpsample.StructDigestOTLPLog
+			dpsample.RangeWithType[dpsample.StructDigestOTLPLog](testExporter.exportedOtlpLogs[0], func(resource, sampler string, structDigestOtlp dpsample.StructDigestOTLPLog) {
+				gotResource = resource
+				gotSampler = sampler
+				got = structDigestOtlp
+			})
 
-			assert.Equal(t, tc.expectedDigest, testExporter.exportedSamplerSamples[0])
-			assert.JSONEq(t, expectedJSONDigest, gotJSONDigest)
+			assert.Equal(t, wantResource, gotResource)
+			assert.Equal(t, wantSampler, gotSampler)
+			assert.Equal(t, want.Streams(), got.Streams())
+			assert.Equal(t, string(want.SampleRawData()), string(got.SampleRawData()))
 
 			worker.stop()
 		})
