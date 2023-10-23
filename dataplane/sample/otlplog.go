@@ -379,6 +379,22 @@ func (l OTLPLogs) MoveAndAppendTo(dest OTLPLogs) {
 	l.logs.ResourceLogs().MoveAndAppendTo(dest.logs.ResourceLogs())
 }
 
+// RemoveOTLPLogIf calls f sequentially for each element present in the otlp logs.
+// f receives an interface containing a RawSampleOTLPLog, EventOTLPLog, etc.
+// If f returns true, the element is removed from otlp logs.
+func (l OTLPLogs) RemoveOTLPLogIf(f func(otlpLog any) bool) {
+	resourceLogs := l.logs.ResourceLogs()
+	for i := 0; i < resourceLogs.Len(); i++ {
+		scopeLogs := resourceLogs.At(i).ScopeLogs()
+		for j := 0; j < scopeLogs.Len(); j++ {
+			logRecords := scopeLogs.At(j).LogRecords()
+			logRecords.RemoveIf(func(logRecord plog.LogRecord) bool {
+				return f(OTLPLogFrom(logRecord))
+			})
+		}
+	}
+}
+
 func (l OTLPLogs) Logs() plog.Logs {
 	return l.logs
 }
