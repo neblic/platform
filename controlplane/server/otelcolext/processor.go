@@ -347,5 +347,13 @@ func (n *neblic) ConsumeLogs(ctx context.Context, logs plog.Logs) error {
 	// Move generated events to the original OTLP logs
 	eventOtlpLogs.MoveAndAppendTo(otlpLogs)
 
+	// Delete raw samples from exported data
+	otlpLogs.RemoveOTLPLogIf(func(otlpLog any) bool {
+		if _, ok := otlpLog.(sample.RawSampleOTLPLog); ok {
+			return true
+		}
+		return false
+	})
+
 	return n.exporter.Export(ctx, otlpLogs)
 }
