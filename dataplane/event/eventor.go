@@ -11,6 +11,7 @@ import (
 	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/sampler/defs"
 	"golang.org/x/exp/slices"
+	"golang.org/x/time/rate"
 )
 
 type Settings struct {
@@ -19,10 +20,11 @@ type Settings struct {
 }
 
 type event struct {
-	rule           rule.Rule
 	uid            control.SamplerEventUID
 	streamUID      control.SamplerStreamUID
+	rule           rule.Rule
 	ruleExpression string
+	limiter        rate.Limiter
 }
 
 type Eventor struct {
@@ -49,6 +51,8 @@ func NewEventor(settings Settings) (*Eventor, error) {
 func (e *Eventor) SetEventsConfig(eventsCfgs map[control.SamplerEventUID]control.Event) error {
 	var errs error
 
+	e.events = make(map[control.SamplerEventUID]*event)
+
 	for eventUID, eventCfg := range eventsCfgs {
 		rule, err := e.ruleBuilder.Build(eventCfg.Rule.Expression)
 		if err != nil {
@@ -61,6 +65,7 @@ func (e *Eventor) SetEventsConfig(eventsCfgs map[control.SamplerEventUID]control
 			uid:            eventCfg.UID,
 			streamUID:      eventCfg.StreamUID,
 			ruleExpression: eventCfg.Rule.Expression,
+			limiter:        *rate.NewLimiter(rate.Limit(eventCfg.Limiter.Limit), int(eventCfg.Limiter.Limit)),
 		}
 	}
 
@@ -91,12 +96,15 @@ func (e *Eventor) ProcessSample(samplerLogs sample.SamplerOTLPLogs) error {
 				}
 
 				if ruleMatches {
-					otlpLog := samplerLogs.AppendEventOTLPLog()
-					otlpLog.SetUID(event.uid)
-					otlpLog.SetTimestamp(time.Now())
-					otlpLog.SetStreams([]control.SamplerStreamUID{event.streamUID})
-					otlpLog.SetSampleRawData(rawSample.SampleEncoding(), rawSample.SampleRawData())
-					otlpLog.SetRuleExpression(event.ruleExpression)
+					if event.limiter.Allow() {
+						otlpLog := samplerLogs.AppendEventOTLPLog()
+						otlpLog.SetUID(event.uid)
+						otlpLog.SetTimestamp(time.Now())
+						otlpLog.SetStreams([]control.SamplerStreamUID{event.streamUID})
+						otlpLog.SetSampleKey(rawSample.SampleKey())
+						otlpLog.SetSampleRawData(rawSample.SampleEncoding(), rawSample.SampleRawData())
+						otlpLog.SetRuleExpression(event.ruleExpression)
+					}
 				}
 			}
 		}
