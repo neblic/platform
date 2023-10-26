@@ -15,11 +15,11 @@ receivers:
         #   authenticator: bearerauth
 processors:
   batch:
-    send_batch_size: "{env:PROCESSOR_BATCH_SEND_BATCH_SIZE}"
-    timeout: "{env:PROCESSOR_BATCH_TIMEOUT}"
-    send_batch_max_size: "{env:PROCESSOR_BATCH_SEND_BATCH_MAX_SIZE}"
-    metadata_keys: "{env:PROCESSOR_BATCH_METADATA_KEYS}"
-    metadata_cardinality_limit: "{env:PROCESSOR_BATCH_METADATA_CARDINALITY_LIMIT}"
+    send_batch_size: "${env:PROCESSOR_BATCH_SEND_BATCH_SIZE}"
+    timeout: "${env:PROCESSOR_BATCH_TIMEOUT}"
+    send_batch_max_size: "${env:PROCESSOR_BATCH_SEND_BATCH_MAX_SIZE}"
+    metadata_keys: "${env:PROCESSOR_BATCH_METADATA_KEYS}"
+    metadata_cardinality_limit: "${env:PROCESSOR_BATCH_METADATA_CARDINALITY_LIMIT}"
   # Required: Neblic extension configuration
   neblic:
     # Collector id, if not provided, a random uid is used
