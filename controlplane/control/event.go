@@ -71,6 +71,7 @@ type Event struct {
 	StreamUID  SamplerStreamUID
 	SampleType SampleType
 	Rule       Rule
+	Limiter    LimiterConfig
 }
 
 func (e Event) GetName() string {
@@ -88,6 +89,7 @@ func NewEventFromProto(protoEvent *protos.Event) Event {
 		StreamUID:  SamplerStreamUID(protoEvent.GetStreamUid()),
 		SampleType: NewSampleTypeFromProto(protoEvent.GetSampleType()),
 		Rule:       NewRuleFromProto(protoEvent.GetRule()),
+		Limiter:    NewLimiterFromProto(protoEvent.GetLimiter()),
 	}
 }
 
@@ -98,6 +100,7 @@ func (e *Event) ToProto() *protos.Event {
 		StreamUid:  string(e.StreamUID),
 		SampleType: e.SampleType.ToProto(),
 		Rule:       e.Rule.ToProto(),
+		Limiter:    e.Limiter.ToProto(),
 	}
 
 }

@@ -704,6 +704,11 @@ func (e *Executors) EventsCreate(ctx context.Context, parameters interpoler.Para
 	streamNameParameter, _ := parameters.Get("stream-name")
 	dataTypeParameter, _ := parameters.Get("sample-type")
 	ruleParameter, _ := parameters.Get("rule")
+	limitParameter, _ := parameters.Get("limit")
+	limitInt32, err := limitParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("limit must be an integer")
+	}
 
 	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
 
@@ -730,6 +735,9 @@ func (e *Executors) EventsCreate(ctx context.Context, parameters interpoler.Para
 							Lang:       control.SrlCel,
 							Expression: ruleParameter.Value,
 						},
+						Limiter: control.LimiterConfig{
+							Limit: limitInt32,
+						},
 					},
 				},
 			},
@@ -744,6 +752,11 @@ func (e *Executors) EventsUpdate(ctx context.Context, parameters interpoler.Para
 	streamNameParameter, _ := parameters.Get("stream-name")
 	dataTypeParameter, _ := parameters.Get("sample-type")
 	ruleParameter, _ := parameters.Get("rule")
+	limitParameter, _ := parameters.Get("limit")
+	limitInt32, err := limitParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("limit must be an integer")
+	}
 
 	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
 
@@ -769,6 +782,9 @@ func (e *Executors) EventsUpdate(ctx context.Context, parameters interpoler.Para
 						Rule: control.Rule{
 							Lang:       control.SrlCel,
 							Expression: ruleParameter.Value,
+						},
+						Limiter: control.LimiterConfig{
+							Limit: limitInt32,
 						},
 					},
 				},

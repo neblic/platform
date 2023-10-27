@@ -85,6 +85,7 @@ message Event {
   string stream_uid = 3;
   SampleType sample_type = 4;
   Rule rule = 5;
+  Limiter limiter = 6;
 }
 
 // Used to get and update the sampler configuration.

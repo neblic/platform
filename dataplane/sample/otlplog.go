@@ -346,6 +346,10 @@ func (s SamplerOTLPLogs) AppendConfigOTLPLog() ConfigOTLPLog {
 	}
 }
 
+func (s SamplerOTLPLogs) MoveAndAppendTo(dest SamplerOTLPLogs) {
+	s.scopeLogs.LogRecords().MoveAndAppendTo(dest.scopeLogs.LogRecords())
+}
+
 type OTLPLogs struct {
 	logs plog.Logs
 }
