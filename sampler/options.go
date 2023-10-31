@@ -38,7 +38,6 @@ type options struct {
 	controlServerAuth authOption
 	dataServerAuth    authOption
 
-	samplingIn    control.SamplingConfig
 	initialConfig control.SamplerConfigUpdate
 
 	updateStatsPeriod time.Duration
@@ -85,7 +84,6 @@ func newDefaultOptions() *options {
 		controlServerTLSEnable: false,
 		dataServerTLSEnable:    false,
 
-		samplingIn:    control.SamplingConfig{},
 		initialConfig: initialConfig,
 
 		updateStatsPeriod: time.Second * time.Duration(5),
@@ -149,12 +147,23 @@ func WithInitialLimiterInLimit(l int32) Option {
 	})
 }
 
-// WithDeterministicSamplingIn defines a deterministic sampling strategy which will be applied when a sample is received and before processing it in any way
-// (e.g. before determining if a sample belongs to a stream which would require parsing it and evaluating the stream rules).
-// Sampling is performed after the input limiter has been applied.
+// WithDeterministicSamplingIn defines a deterministic sampling strategy which will be applied
+//
+// Deprecated: Use WithInitialDeterministicSamplingIn instead
 func WithDeterministicSamplingIn(samplingRate int32) Option {
+	return WithInitialDeterministicSamplingIn(samplingRate)
+}
+
+// WithInitialDeterministicSamplingIn defines a deterministic sampling strategy which will be applied
+// when a sample is received and before processing it in any way (e.g. before determining if a sample belongs
+// to a stream which would require parsing it and evaluating the stream rules).
+// Sampling is performed after the input limiter has been applied.
+// This configuration is only used the first time a sampler is registered with a server, posterior executions
+// will use the configuration stored in the server and the provided configuration will be
+// ignored.
+func WithInitialDeterministicSamplingIn(samplingRate int32) Option {
 	return newFuncOption(func(o *options) {
-		o.samplingIn = control.SamplingConfig{
+		o.initialConfig.SamplingIn = &control.SamplingConfig{
 			SamplingType: control.DeterministicSamplingType,
 			DeterministicSampling: control.DeterministicSamplingConfig{
 				SampleRate: samplingRate,

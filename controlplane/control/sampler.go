@@ -302,7 +302,7 @@ func (pc *SamplerConfig) Merge(update SamplerConfigUpdate) {
 		pc.LimiterOut = nil
 	}
 	if update.LimiterOut != nil {
-		pc.LimiterIn = update.LimiterOut
+		pc.LimiterOut = update.LimiterOut
 	}
 
 	// Update Digests

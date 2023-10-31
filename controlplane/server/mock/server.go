@@ -5,6 +5,7 @@ import (
 	"net"
 	"reflect"
 
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,6 +38,27 @@ func RegisterSamplerHandler(stream protos.ControlPlane_SamplerConnServer) error 
 		},
 	})
 	Expect(err).ShouldNot(HaveOccurred())
+
+	// get initial config
+	initialConfigUpdate := control.NewSamplerConfigUpdateFromProto(msg.GetRegisterReq().SamplerConfigUpdate)
+	initialConfig := control.NewSamplerConfig()
+	initialConfig.Merge(initialConfigUpdate)
+
+	// server reconciliation. Send initial config
+	err = stream.Send(&protos.ServerToSampler{
+		Message: &protos.ServerToSampler_ConfReq{
+			ConfReq: &protos.ServerSamplerConfReq{
+				SamplerConfig: initialConfig.ToProto(),
+			},
+		},
+	})
+	Expect(err).ShouldNot(HaveOccurred())
+
+	// server reconciliation. Recieve answer
+	samplerConfRes, err := stream.Recv()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(reflect.TypeOf(samplerConfRes.GetMessage())).
+		To(Equal(reflect.TypeOf(&protos.SamplerToServer_ConfRes{})))
 
 	return nil
 }

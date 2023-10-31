@@ -30,10 +30,11 @@ type Sampler struct {
 	resourceName  string
 	samplingStats control.SamplerSamplingStats
 
-	streams    map[control.SamplerStreamUID]streamConfig
-	limiterIn  *rate.Limiter
-	samplerIn  sampling.Sampler
-	limiterOut *rate.Limiter
+	configUpdates uint64
+	streams       map[control.SamplerStreamUID]streamConfig
+	limiterIn     *rate.Limiter
+	samplerIn     sampling.Sampler
+	limiterOut    *rate.Limiter
 
 	controlPlaneClient *csampler.Sampler
 	digester           *digest.Digester
@@ -70,18 +71,6 @@ func New(
 	// move control plane connection to provider
 	controlPlaneClient := csampler.New(settings.Name, settings.Resource, clientOpts...)
 
-	var samplerIn sampling.Sampler
-	switch settings.SamplingIn.SamplingType {
-	case control.DeterministicSamplingType:
-		deterministicSampler, err := sampling.NewDeterministicSampler(
-			uint(settings.SamplingIn.DeterministicSampling.SampleRate),
-			settings.SamplingIn.DeterministicSampling.SampleEmptyDeterminant)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't initialize the deterministic sampler: %w", err)
-		}
-		samplerIn = deterministicSampler
-	}
-
 	forwardError := func(err error) {
 		if settings.ErrFwrder != nil {
 			select {
@@ -104,10 +93,11 @@ func New(
 		name:         settings.Name,
 		resourceName: settings.Resource,
 
-		streams:    make(map[control.SamplerStreamUID]streamConfig),
-		limiterIn:  rate.NewLimiter(rate.Limit(settings.InitialConfig.LimiterIn.Limit), int(settings.InitialConfig.LimiterIn.Limit)),
-		samplerIn:  samplerIn,
-		limiterOut: rate.NewLimiter(rate.Limit(settings.InitialConfig.LimiterOut.Limit), int(settings.InitialConfig.LimiterOut.Limit)),
+		configUpdates: 0,
+		streams:       make(map[control.SamplerStreamUID]streamConfig),
+		limiterIn:     nil,
+		samplerIn:     nil,
+		limiterOut:    nil,
 
 		controlPlaneClient: controlPlaneClient,
 		digester:           digester,
@@ -142,6 +132,7 @@ loop:
 		switch ev := event.(type) {
 		case csampler.ConfigUpdate:
 			p.updateConfig(ev.Config)
+			p.configUpdates++
 		case csampler.StateUpdate:
 			switch ev.State {
 			case csampler.Registered:
@@ -177,6 +168,21 @@ func (p *Sampler) updateConfig(config control.SamplerConfig) {
 			limit = rate.Inf
 		}
 		p.limiterIn = rate.NewLimiter(limit, int(config.LimiterIn.Limit))
+	}
+
+	// configure sampler in
+	if config.SamplingIn != nil {
+		switch config.SamplingIn.SamplingType {
+		case control.DeterministicSamplingType:
+			deterministicSampler, err := sampling.NewDeterministicSampler(
+				uint(config.SamplingIn.DeterministicSampling.SampleRate),
+				config.SamplingIn.DeterministicSampling.SampleEmptyDeterminant)
+			if err != nil {
+				p.logger.Error(fmt.Sprintf("couldn't initialize the deterministic sampler: %v", err))
+			} else {
+				p.samplerIn = deterministicSampler
+			}
+		}
 	}
 
 	// replace all existing streams
@@ -314,7 +320,15 @@ func (p *Sampler) sample(ctx context.Context, key string, sampleData *data.Data)
 	return false, nil
 }
 
+func (p *Sampler) ConfigUpdates() uint64 {
+	return p.configUpdates
+}
+
 func (p *Sampler) Sample(ctx context.Context, smpl defs.Sample) bool {
+	if p.configUpdates == 0 {
+		return false
+	}
+
 	var (
 		sampleData *data.Data
 	)
