@@ -42,7 +42,7 @@ func New(name, resource string, samplerOptions ...Option) *Sampler {
 	p.samplerStream = stream.New(
 		string(p.data.UID),
 		opts.streamOpts,
-		stream.NewSamplerHandler(p.data.Name, p.data.Resource, p.recvServerReqCb),
+		stream.NewSamplerHandler(p.data.Name, p.data.Resource, p.recvServerReqCb, opts.initialConfig.ToProto()),
 		p.logger,
 	)
 

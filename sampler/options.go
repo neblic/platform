@@ -3,6 +3,7 @@ package sampler
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/logging"
 )
@@ -37,9 +38,8 @@ type options struct {
 	controlServerAuth authOption
 	dataServerAuth    authOption
 
-	limiterIn  control.LimiterConfig
-	samplingIn control.SamplingConfig
-	limiterOut control.LimiterConfig
+	samplingIn    control.SamplingConfig
+	initialConfig control.SamplerConfigUpdate
 
 	updateStatsPeriod time.Duration
 
@@ -48,17 +48,45 @@ type options struct {
 }
 
 func newDefaultOptions() *options {
+	initialConfig := control.NewSamplerConfigUpdate()
+	initialConfig.LimiterIn = &control.LimiterConfig{Limit: 100}
+	initialConfig.LimiterOut = &control.LimiterConfig{Limit: 10}
+	streamUID := control.SamplerStreamUID(uuid.NewString())
+	initialConfig.StreamUpdates = []control.StreamUpdate{
+		{
+			Op: control.StreamUpsert,
+			Stream: control.Stream{
+				UID:  streamUID,
+				Name: "all",
+				StreamRule: control.Rule{
+					Lang:       control.SrlCel,
+					Expression: "true",
+				},
+			},
+		},
+	}
+	initialConfig.DigestUpdates = []control.DigestUpdate{
+		{
+			Op: control.DigestUpsert,
+			Digest: control.Digest{
+				UID:         control.SamplerDigestUID(uuid.NewString()),
+				Name:        "all",
+				StreamUID:   streamUID,
+				FlushPeriod: time.Second * time.Duration(60),
+				Type:        control.DigestTypeSt,
+				St: control.DigestSt{
+					MaxProcessedFields: int(100),
+				},
+			},
+		},
+	}
+
 	return &options{
 		controlServerTLSEnable: false,
 		dataServerTLSEnable:    false,
 
-		limiterIn: control.LimiterConfig{
-			Limit: 100,
-		},
-		samplingIn: control.SamplingConfig{},
-		limiterOut: control.LimiterConfig{
-			Limit: 10,
-		},
+		samplingIn:    control.SamplingConfig{},
+		initialConfig: initialConfig,
 
 		updateStatsPeriod: time.Second * time.Duration(5),
 	}
@@ -103,9 +131,21 @@ func WithBearerAuth(token string) Option {
 
 // WithLimiterInLimit establishes the initial limiter in rate limit
 // in samples per second
+//
+// Deprecated: Use WithInitialLimiterInLimit instead
 func WithLimiterInLimit(l int32) Option {
+	return WithInitialLimiterInLimit(l)
+}
+
+// WithInitialLimiterInLimit sets the initial limiter in rate limit. This configuration
+// is only used the first time a sampler is registered with a server, posterior executions
+// will use the configuration stored in the server and the provided configuration will be
+// ignored.
+func WithInitialLimiterInLimit(l int32) Option {
 	return newFuncOption(func(o *options) {
-		o.limiterIn.Limit = l
+		o.initialConfig.LimiterIn = &control.LimiterConfig{
+			Limit: l,
+		}
 	})
 }
 
@@ -125,9 +165,32 @@ func WithDeterministicSamplingIn(samplingRate int32) Option {
 
 // WithLimiterOutLimit establishes the initial limiter out rate limit
 // in samples per second
+//
+// Deprecated: Use WithInitialLimiterOutLimit instead
 func WithLimiterOutLimit(l int32) Option {
+	return WithInitialLimiterOutLimit(l)
+}
+
+// WithInitialLimiterInLimit sets the initial limiter in rate limit. This configuration
+// is only used the first time a sampler is registered with a server, posterior executions
+// will use the configuration stored in the server and the provided configuration will be
+// ignored.
+func WithInitialLimiterOutLimit(l int32) Option {
 	return newFuncOption(func(o *options) {
-		o.limiterOut.Limit = l
+		o.initialConfig.LimiterOut = &control.LimiterConfig{
+			Limit: l,
+		}
+	})
+}
+
+// WithoutDefaultInitialConfig avoids setting the default 'all' stream and digest. This configuration
+// is only used the first time a sampler is registered with a server, posterior executions
+// will use the configuration stored in the server and the provided configuration will be
+// ignored.
+func WithoutDefaultInitialConfig() Option {
+	return newFuncOption(func(o *options) {
+		o.initialConfig.StreamUpdates = []control.StreamUpdate{}
+		o.initialConfig.DigestUpdates = []control.DigestUpdate{}
 	})
 }
 

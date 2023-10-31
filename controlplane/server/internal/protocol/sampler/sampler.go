@@ -58,15 +58,17 @@ func (p *Sampler) recvToServerReqCb(clientToServerMsg *protos.SamplerToServer) (
 	}
 }
 
-func (p *Sampler) streamStateChangeCb(state defs.Status, name, resource string, uid control.SamplerUID) error {
+func (p *Sampler) streamStateChangeCb(state defs.Status, uid control.SamplerUID, req *protos.SamplerToServer) error {
 	switch state {
 	case defs.RegisteredStatus:
-		if err := p.samplerRegistry.Register(resource, name, uid, p); err != nil {
+		initialConfig := control.NewSamplerConfig()
+		initialConfig.Merge(control.NewSamplerConfigUpdateFromProto(req.GetRegisterReq().SamplerConfigUpdate))
+		if err := p.samplerRegistry.Register(req.Resouce, req.Name, uid, p, *initialConfig); err != nil {
 			return err
 		}
 
 		if !p.registeredOnce {
-			p.logger = p.logger.With("sampler_uid", uid, "sampler_name", name, "sampler_resource", resource)
+			p.logger = p.logger.With("sampler_uid", uid, "sampler_name", req.Name, "sampler_resource", req.Resouce)
 		}
 
 		p.logger.Debug("sampler registered")

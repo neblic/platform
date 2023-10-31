@@ -79,6 +79,78 @@ var _ = Describe("Sampler", func() {
 		controlPlaneServer.Stop()
 	})
 
+	Describe("Sampler initialization", func() {
+		When("default initial configuration is enabled", func() {
+			It("should create default stream and digest configurations", func() {
+				registered := make(chan struct{})
+				controlPlaneServer.SetSamplerHandlers(
+					mock.RegisterSamplerHandler,
+					func(stream protos.ControlPlane_SamplerConnServer) error {
+						registered <- struct{}{}
+						return nil
+					},
+				)
+				controlPlaneServer.Start(GinkgoT())
+
+				// initialize and start a sampler provider
+				settings := sampler.Settings{
+					ResourceName:      "sampled_service",
+					ControlServerAddr: controlPlaneServer.Addr(),
+					DataServerAddr:    logsReceiverLn.Addr().String(),
+				}
+				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
+				Expect(err).ToNot(HaveOccurred())
+
+				// create a sampler
+				sampler, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				Expect(err).ToNot(HaveOccurred())
+
+				// Wait until registration is performed
+				<-registered
+
+				sampled := sampler.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				Expect(sampled).To(BeTrue())
+
+				Expect(sampler.Close()).ToNot(HaveOccurred())
+			})
+		})
+
+		When("default initial configuration is disabled", func() {
+			It("should not create any stream nor digest configuration", func() {
+				registered := make(chan struct{})
+				controlPlaneServer.SetSamplerHandlers(
+					mock.RegisterSamplerHandler,
+					func(stream protos.ControlPlane_SamplerConnServer) error {
+						registered <- struct{}{}
+						return nil
+					},
+				)
+				controlPlaneServer.Start(GinkgoT())
+
+				// initialize and start a sampler provider
+				settings := sampler.Settings{
+					ResourceName:      "sampled_service",
+					ControlServerAddr: controlPlaneServer.Addr(),
+					DataServerAddr:    logsReceiverLn.Addr().String(),
+				}
+				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
+				Expect(err).ToNot(HaveOccurred())
+
+				// create a sampler
+				sampler, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				Expect(err).ToNot(HaveOccurred())
+
+				// Wait until registration is performed
+				<-registered
+
+				sampled := sampler.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				Expect(sampled).To(BeFalse())
+
+				Expect(sampler.Close()).ToNot(HaveOccurred())
+			})
+		})
+	})
+
 	Describe("Not exporting samples", func() {
 		When("there isn't a matching rule", func() {
 			It("should not export samples", func() {
@@ -98,7 +170,7 @@ var _ = Describe("Sampler", func() {
 					ControlServerAddr: controlPlaneServer.Addr(),
 					DataServerAddr:    logsReceiverLn.Addr().String(),
 				}
-				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
+				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
@@ -144,7 +216,7 @@ var _ = Describe("Sampler", func() {
 				ControlServerAddr: controlPlaneServer.Addr(),
 				DataServerAddr:    logsReceiverLn.Addr().String(),
 			}
-			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
+			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -218,7 +290,7 @@ var _ = Describe("Sampler", func() {
 				ControlServerAddr: controlPlaneServer.Addr(),
 				DataServerAddr:    logsReceiverLn.Addr().String(),
 			}
-			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
+			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -357,8 +429,9 @@ var _ = Describe("Sampler", func() {
 		When("there is a structure digest configuration", func() {
 			It("should periodically export structure digest samples", func() {
 				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithLimiterOutLimit(10),
+					sampler.WithInitialLimiterOutLimit(10),
 					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -430,8 +503,9 @@ var _ = Describe("Sampler", func() {
 		When("there is an out limiter set", func() {
 			It("should not export more samples than the allowed by the limiter settings", func() {
 				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithLimiterOutLimit(10),
+					sampler.WithInitialLimiterOutLimit(10),
 					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -480,8 +554,9 @@ var _ = Describe("Sampler", func() {
 		When("there is an in limiter set", func() {
 			It("should not export more samples than the allowed by the limiter settings", func() {
 				providerLimitedIn, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithLimiterInLimit(5),
+					sampler.WithInitialLimiterInLimit(5),
 					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -531,10 +606,11 @@ var _ = Describe("Sampler", func() {
 		When("there is an in sampler set", func() {
 			It("should not export samples if their determinant is not selected", func() {
 				providerSampledIn, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithLimiterInLimit(1000),
+					sampler.WithInitialLimiterInLimit(1000),
 					sampler.WithDeterministicSamplingIn(2),
-					sampler.WithLimiterOutLimit(1000),
+					sampler.WithInitialLimiterOutLimit(1000),
 					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 				// create a sampler
@@ -622,6 +698,7 @@ var _ = Describe("Sampler", func() {
 				provider, err := sampler.NewProvider(context.Background(), settings,
 					sampler.WithUpdateStatsPeriod(time.Second),
 					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -669,6 +746,7 @@ var _ = Describe("Sampler", func() {
 				provider, err := sampler.NewProvider(context.Background(), settings,
 					sampler.WithUpdateStatsPeriod(time.Second),
 					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
 					sampler.WithSamplerErrorChannel(errCh),
 				)
 				Expect(err).ToNot(HaveOccurred())

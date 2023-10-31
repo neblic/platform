@@ -55,6 +55,7 @@ func New(
 
 	var clientOpts []csampler.Option
 	clientOpts = append(clientOpts, csampler.WithLogger(logger))
+	clientOpts = append(clientOpts, csampler.WithInitialConfig(settings.InitialConfig))
 	if settings.EnableTLS {
 		clientOpts = append(clientOpts, csampler.WithTLS())
 	}
@@ -104,9 +105,9 @@ func New(
 		resourceName: settings.Resource,
 
 		streams:    make(map[control.SamplerStreamUID]streamConfig),
-		limiterIn:  rate.NewLimiter(rate.Limit(settings.LimiterIn.Limit), int(settings.LimiterIn.Limit)),
+		limiterIn:  rate.NewLimiter(rate.Limit(settings.InitialConfig.LimiterIn.Limit), int(settings.InitialConfig.LimiterIn.Limit)),
 		samplerIn:  samplerIn,
-		limiterOut: rate.NewLimiter(rate.Limit(settings.LimiterOut.Limit), int(settings.LimiterOut.Limit)),
+		limiterOut: rate.NewLimiter(rate.Limit(settings.InitialConfig.LimiterOut.Limit), int(settings.InitialConfig.LimiterOut.Limit)),
 
 		controlPlaneClient: controlPlaneClient,
 		digester:           digester,

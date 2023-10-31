@@ -1772,7 +1772,8 @@ type SamplerRegisterReq struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Tags map[string]string `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	SamplerConfigUpdate *ClientSamplerConfigUpdate `protobuf:"bytes,1,opt,name=sampler_config_update,json=samplerConfigUpdate,proto3" json:"sampler_config_update,omitempty"`
+	Tags                map[string]string          `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *SamplerRegisterReq) Reset() {
@@ -1805,6 +1806,13 @@ func (x *SamplerRegisterReq) ProtoReflect() protoreflect.Message {
 // Deprecated: Use SamplerRegisterReq.ProtoReflect.Descriptor instead.
 func (*SamplerRegisterReq) Descriptor() ([]byte, []int) {
 	return file_protos_controlplane_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *SamplerRegisterReq) GetSamplerConfigUpdate() *ClientSamplerConfigUpdate {
+	if x != nil {
+		return x.SamplerConfigUpdate
+	}
+	return nil
 }
 
 func (x *SamplerRegisterReq) GetTags() map[string]string {
@@ -3021,8 +3029,13 @@ var file_protos_controlplane_proto_rawDesc = []byte{
 	0x61, 0x6d, 0x70, 0x6c, 0x69, 0x6e, 0x67, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x73, 0x18, 0x02, 0x20,
 	0x01, 0x28, 0x0b, 0x32, 0x15, 0x2e, 0x53, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x72, 0x53, 0x61, 0x6d,
 	0x70, 0x6c, 0x69, 0x6e, 0x67, 0x53, 0x74, 0x61, 0x74, 0x73, 0x52, 0x0d, 0x73, 0x61, 0x6d, 0x70,
-	0x6c, 0x69, 0x6e, 0x67, 0x53, 0x74, 0x61, 0x74, 0x73, 0x22, 0x80, 0x01, 0x0a, 0x12, 0x53, 0x61,
+	0x6c, 0x69, 0x6e, 0x67, 0x53, 0x74, 0x61, 0x74, 0x73, 0x22, 0xd0, 0x01, 0x0a, 0x12, 0x53, 0x61,
 	0x6d, 0x70, 0x6c, 0x65, 0x72, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72, 0x52, 0x65, 0x71,
+	0x12, 0x4e, 0x0a, 0x15, 0x73, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x72, 0x5f, 0x63, 0x6f, 0x6e, 0x66,
+	0x69, 0x67, 0x5f, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32,
+	0x1a, 0x2e, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x53, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x72, 0x43,
+	0x6f, 0x6e, 0x66, 0x69, 0x67, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65, 0x52, 0x13, 0x73, 0x61, 0x6d,
+	0x70, 0x6c, 0x65, 0x72, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65,
 	0x12, 0x31, 0x0a, 0x04, 0x74, 0x61, 0x67, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1d,
 	0x2e, 0x53, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x72, 0x52, 0x65, 0x67, 0x69, 0x73, 0x74, 0x65, 0x72,
 	0x52, 0x65, 0x71, 0x2e, 0x54, 0x61, 0x67, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x04, 0x74,
@@ -3271,40 +3284,41 @@ var file_protos_controlplane_proto_depIdxs = []int32{
 	33, // 35: ServerToClient.list_samplers_res:type_name -> ClientListSamplersRes
 	39, // 36: ServerToClient.sampler_conf_res:type_name -> ClientSamplerConfRes
 	16, // 37: SamplerStatsMsg.sampling_stats:type_name -> SamplerSamplingStats
-	42, // 38: SamplerRegisterReq.tags:type_name -> SamplerRegisterReq.TagsEntry
-	7,  // 39: SamplerRegisterRes.status:type_name -> Status
-	15, // 40: ServerSamplerConfReq.sampler_config:type_name -> SamplerConfig
-	7,  // 41: ServerSamplerConfRes.status:type_name -> Status
-	16, // 42: ClientSamplerStats.sampling_stats:type_name -> SamplerSamplingStats
-	28, // 43: ClientSamplerStatsMsg.sampler_stats:type_name -> ClientSamplerStats
-	43, // 44: ClientRegisterReq.tags:type_name -> ClientRegisterReq.TagsEntry
-	7,  // 45: ClientRegisterRes.status:type_name -> Status
-	7,  // 46: ClientListSamplersRes.status:type_name -> Status
-	18, // 47: ClientListSamplersRes.samplers:type_name -> Sampler
-	4,  // 48: ClientStreamUpdate.op:type_name -> ClientStreamUpdate.Op
-	12, // 49: ClientStreamUpdate.stream:type_name -> Stream
-	5,  // 50: ClientDigestUpdate.op:type_name -> ClientDigestUpdate.Op
-	13, // 51: ClientDigestUpdate.digest:type_name -> Digest
-	6,  // 52: ClientEventUpdate.op:type_name -> ClientEventUpdate.Op
-	14, // 53: ClientEventUpdate.event:type_name -> Event
-	44, // 54: ClientSamplerConfigUpdate.reset:type_name -> ClientSamplerConfigUpdate.Reset
-	34, // 55: ClientSamplerConfigUpdate.stream_updates:type_name -> ClientStreamUpdate
-	10, // 56: ClientSamplerConfigUpdate.limiter_in:type_name -> Limiter
-	9,  // 57: ClientSamplerConfigUpdate.sampling_in:type_name -> Sampling
-	10, // 58: ClientSamplerConfigUpdate.limiter_out:type_name -> Limiter
-	35, // 59: ClientSamplerConfigUpdate.digest_updates:type_name -> ClientDigestUpdate
-	36, // 60: ClientSamplerConfigUpdate.event_updates:type_name -> ClientEventUpdate
-	37, // 61: ClientSamplerConfReq.sampler_config_update:type_name -> ClientSamplerConfigUpdate
-	7,  // 62: ClientSamplerConfRes.status:type_name -> Status
-	19, // 63: ControlPlane.SamplerConn:input_type -> SamplerToServer
-	21, // 64: ControlPlane.ClientConn:input_type -> ClientToServer
-	20, // 65: ControlPlane.SamplerConn:output_type -> ServerToSampler
-	22, // 66: ControlPlane.ClientConn:output_type -> ServerToClient
-	65, // [65:67] is the sub-list for method output_type
-	63, // [63:65] is the sub-list for method input_type
-	63, // [63:63] is the sub-list for extension type_name
-	63, // [63:63] is the sub-list for extension extendee
-	0,  // [0:63] is the sub-list for field type_name
+	37, // 38: SamplerRegisterReq.sampler_config_update:type_name -> ClientSamplerConfigUpdate
+	42, // 39: SamplerRegisterReq.tags:type_name -> SamplerRegisterReq.TagsEntry
+	7,  // 40: SamplerRegisterRes.status:type_name -> Status
+	15, // 41: ServerSamplerConfReq.sampler_config:type_name -> SamplerConfig
+	7,  // 42: ServerSamplerConfRes.status:type_name -> Status
+	16, // 43: ClientSamplerStats.sampling_stats:type_name -> SamplerSamplingStats
+	28, // 44: ClientSamplerStatsMsg.sampler_stats:type_name -> ClientSamplerStats
+	43, // 45: ClientRegisterReq.tags:type_name -> ClientRegisterReq.TagsEntry
+	7,  // 46: ClientRegisterRes.status:type_name -> Status
+	7,  // 47: ClientListSamplersRes.status:type_name -> Status
+	18, // 48: ClientListSamplersRes.samplers:type_name -> Sampler
+	4,  // 49: ClientStreamUpdate.op:type_name -> ClientStreamUpdate.Op
+	12, // 50: ClientStreamUpdate.stream:type_name -> Stream
+	5,  // 51: ClientDigestUpdate.op:type_name -> ClientDigestUpdate.Op
+	13, // 52: ClientDigestUpdate.digest:type_name -> Digest
+	6,  // 53: ClientEventUpdate.op:type_name -> ClientEventUpdate.Op
+	14, // 54: ClientEventUpdate.event:type_name -> Event
+	44, // 55: ClientSamplerConfigUpdate.reset:type_name -> ClientSamplerConfigUpdate.Reset
+	34, // 56: ClientSamplerConfigUpdate.stream_updates:type_name -> ClientStreamUpdate
+	10, // 57: ClientSamplerConfigUpdate.limiter_in:type_name -> Limiter
+	9,  // 58: ClientSamplerConfigUpdate.sampling_in:type_name -> Sampling
+	10, // 59: ClientSamplerConfigUpdate.limiter_out:type_name -> Limiter
+	35, // 60: ClientSamplerConfigUpdate.digest_updates:type_name -> ClientDigestUpdate
+	36, // 61: ClientSamplerConfigUpdate.event_updates:type_name -> ClientEventUpdate
+	37, // 62: ClientSamplerConfReq.sampler_config_update:type_name -> ClientSamplerConfigUpdate
+	7,  // 63: ClientSamplerConfRes.status:type_name -> Status
+	19, // 64: ControlPlane.SamplerConn:input_type -> SamplerToServer
+	21, // 65: ControlPlane.ClientConn:input_type -> ClientToServer
+	20, // 66: ControlPlane.SamplerConn:output_type -> ServerToSampler
+	22, // 67: ControlPlane.ClientConn:output_type -> ServerToClient
+	66, // [66:68] is the sub-list for method output_type
+	64, // [64:66] is the sub-list for method input_type
+	64, // [64:64] is the sub-list for extension type_name
+	64, // [64:64] is the sub-list for extension extendee
+	0,  // [0:64] is the sub-list for field type_name
 }
 
 func init() { file_protos_controlplane_proto_init() }

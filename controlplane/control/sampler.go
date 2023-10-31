@@ -60,9 +60,13 @@ type SamplerConfigUpdate struct {
 	EventUpdates  []EventUpdate
 }
 
+func NewSamplerConfigUpdate() SamplerConfigUpdate {
+	return SamplerConfigUpdate{}
+}
+
 func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpdate) SamplerConfigUpdate {
 	if protoUpdate == nil {
-		return SamplerConfigUpdate{}
+		return NewSamplerConfigUpdate()
 	}
 
 	var limiterIn *LimiterConfig
@@ -260,6 +264,78 @@ func (pc SamplerConfig) IsEmpty() bool {
 		pc.LimiterOut == nil &&
 		len(pc.Digests) == 0) &&
 		len(pc.Events) == 0
+}
+
+func (pc *SamplerConfig) Merge(update SamplerConfigUpdate) {
+	// Update Streams
+	if update.Reset.Streams || pc.Streams == nil {
+		pc.Streams = make(map[SamplerStreamUID]Stream)
+	}
+	for _, rule := range update.StreamUpdates {
+		switch rule.Op {
+		case StreamUpsert:
+			pc.Streams[rule.Stream.UID] = rule.Stream
+		case StreamDelete:
+			delete(pc.Streams, rule.Stream.UID)
+		default:
+		}
+	}
+
+	// Update LimiterIn
+	if update.Reset.LimiterIn {
+		pc.LimiterIn = nil
+	}
+	if update.LimiterIn != nil {
+		pc.LimiterIn = update.LimiterIn
+	}
+
+	// Update SamplingIn
+	if update.Reset.SamplingIn {
+		pc.SamplingIn = nil
+	}
+	if update.SamplingIn != nil {
+		pc.SamplingIn = update.SamplingIn
+	}
+
+	// Update LimiterOut
+	if update.Reset.LimiterOut {
+		pc.LimiterOut = nil
+	}
+	if update.LimiterOut != nil {
+		pc.LimiterIn = update.LimiterOut
+	}
+
+	// Update Digests
+	if update.Reset.Digests || pc.Digests == nil {
+		pc.Digests = make(map[SamplerDigestUID]Digest)
+	}
+	for _, rule := range update.DigestUpdates {
+		switch rule.Op {
+		case DigestUpsert:
+			pc.Digests[rule.Digest.UID] = rule.Digest
+		case DigestDelete:
+			delete(pc.Digests, rule.Digest.UID)
+		default:
+		}
+	}
+
+	// Update Events
+	if update.Reset.Events || pc.Events == nil {
+		pc.Events = make(map[SamplerEventUID]Event)
+	}
+	for _, update := range update.EventUpdates {
+		switch update.Op {
+		case EventUpsert:
+			// Update config
+			pc.Events[update.Event.UID] = update.Event
+
+		case EventDelete:
+			// Delete from config
+			delete(pc.Events, update.Event.UID)
+
+		default:
+		}
+	}
 }
 
 func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
