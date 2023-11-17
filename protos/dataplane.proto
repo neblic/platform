@@ -65,10 +65,16 @@ message MaxStat {
   double value = 1;
 }
 
+message HyperLogLog {
+  bytes data = 1;
+  uint64 cardinality = 2;
+}
+
 message NumberStat {
   MinStat min = 1;
   AvgStat avg = 2;
   MaxStat max = 3;
+  HyperLogLog hyper_log_log = 4;
 }
 
 message NumberValue {
@@ -79,12 +85,15 @@ message NumberValue {
   MinStat min = 4;
   AvgStat avg = 5;
   MaxStat max = 6;
+  HyperLogLog hyper_log_log = 7;
 }
 
 message StringValue {
   uint64 total_count = 1;
   uint64 default_count = 2;
   uint64 null_count = 3;
+
+  HyperLogLog hyper_log_log = 4;
 
   NumberStat length = 6;
 }

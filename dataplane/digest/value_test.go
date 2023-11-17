@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/neblic/platform/dataplane/protos"
+	"github.com/neblic/platform/dataplane/digest/types"
 	"github.com/neblic/platform/internal/pkg/data"
 )
 
@@ -18,14 +18,14 @@ func TestValue_updateBoolean(t *testing.T) {
 		fieldsProcessed    int
 	}
 	type args struct {
-		state   *protos.BooleanValue
+		state   *types.BooleanValue
 		boolean *bool
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *protos.BooleanValue
+		want    *types.BooleanValue
 		wantErr bool
 	}{
 		{
@@ -35,10 +35,10 @@ func TestValue_updateBoolean(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state:   protos.NewBooleanValue(),
+				state:   types.NewBooleanValue(),
 				boolean: nil,
 			},
-			want: &protos.BooleanValue{
+			want: &types.BooleanValue{
 				TotalCount:   1,
 				NullCount:    1,
 				DefaultCount: 0,
@@ -53,10 +53,10 @@ func TestValue_updateBoolean(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state:   protos.NewBooleanValue(),
+				state:   types.NewBooleanValue(),
 				boolean: &falseBoolean,
 			},
-			want: &protos.BooleanValue{
+			want: &types.BooleanValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 1,
@@ -71,10 +71,10 @@ func TestValue_updateBoolean(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state:   protos.NewBooleanValue(),
+				state:   types.NewBooleanValue(),
 				boolean: &trueBoolean,
 			},
-			want: &protos.BooleanValue{
+			want: &types.BooleanValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 0,
@@ -89,7 +89,7 @@ func TestValue_updateBoolean(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: &protos.BooleanValue{
+				state: &types.BooleanValue{
 					TotalCount:   10,
 					NullCount:    8,
 					DefaultCount: 1,
@@ -98,7 +98,7 @@ func TestValue_updateBoolean(t *testing.T) {
 				},
 				boolean: &falseBoolean,
 			},
-			want: &protos.BooleanValue{
+			want: &types.BooleanValue{
 				TotalCount:   11,
 				NullCount:    8,
 				DefaultCount: 2,
@@ -134,14 +134,14 @@ func TestValue_updateNum(t *testing.T) {
 		fieldsProcessed    int
 	}
 	type args struct {
-		state  *protos.NumberValue
+		state  *types.NumberValue
 		number *float64
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *protos.NumberValue
+		want    *types.NumberValue
 		wantErr bool
 	}{
 		{
@@ -151,23 +151,24 @@ func TestValue_updateNum(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state:  protos.NewNumberValue(),
+				state:  types.NewNumberValue(),
 				number: nil,
 			},
-			want: &protos.NumberValue{
+			want: &types.NumberValue{
 				TotalCount:   1,
 				NullCount:    1,
 				DefaultCount: 0,
-				Min: &protos.MinStat{
+				Min: &types.MinStat{
 					Value: math.Inf(+1),
 				},
-				Avg: &protos.AvgStat{
+				Avg: &types.AvgStat{
 					Sum:   0.0,
 					Count: 0,
 				},
-				Max: &protos.MaxStat{
+				Max: &types.MaxStat{
 					Value: math.Inf(-1),
 				},
+				HyperLogLog: types.NewHyperLogLog(),
 			},
 		},
 		{
@@ -177,23 +178,24 @@ func TestValue_updateNum(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state:  protos.NewNumberValue(),
+				state:  types.NewNumberValue(),
 				number: &zeroNumber,
 			},
-			want: &protos.NumberValue{
+			want: &types.NumberValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 1,
-				Min: &protos.MinStat{
+				Min: &types.MinStat{
 					Value: 0.0,
 				},
-				Avg: &protos.AvgStat{
+				Avg: &types.AvgStat{
 					Sum:   0.0,
 					Count: 1,
 				},
-				Max: &protos.MaxStat{
+				Max: &types.MaxStat{
 					Value: 0.0,
 				},
+				HyperLogLog: types.NewHyperLogLog().InsertFloat64(0.0),
 			},
 		},
 		{
@@ -203,23 +205,24 @@ func TestValue_updateNum(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state:  protos.NewNumberValue(),
+				state:  types.NewNumberValue(),
 				number: &oneNumber,
 			},
-			want: &protos.NumberValue{
+			want: &types.NumberValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 0,
-				Min: &protos.MinStat{
+				Min: &types.MinStat{
 					Value: 1.0,
 				},
-				Avg: &protos.AvgStat{
+				Avg: &types.AvgStat{
 					Sum:   1.0,
 					Count: 1,
 				},
-				Max: &protos.MaxStat{
+				Max: &types.MaxStat{
 					Value: 1.0,
 				},
+				HyperLogLog: types.NewHyperLogLog().InsertFloat64(1.0),
 			},
 		},
 		{
@@ -229,37 +232,39 @@ func TestValue_updateNum(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: &protos.NumberValue{
+				state: &types.NumberValue{
 					TotalCount:   10,
 					NullCount:    9,
 					DefaultCount: 0,
-					Min: &protos.MinStat{
+					Min: &types.MinStat{
 						Value: 1.0,
 					},
-					Avg: &protos.AvgStat{
+					Avg: &types.AvgStat{
 						Sum:   1.0,
 						Count: 1,
 					},
-					Max: &protos.MaxStat{
+					Max: &types.MaxStat{
 						Value: 1.0,
 					},
+					HyperLogLog: types.NewHyperLogLog(),
 				},
 				number: nil,
 			},
-			want: &protos.NumberValue{
+			want: &types.NumberValue{
 				TotalCount:   11,
 				NullCount:    10,
 				DefaultCount: 0,
-				Min: &protos.MinStat{
+				Min: &types.MinStat{
 					Value: 1.0,
 				},
-				Avg: &protos.AvgStat{
+				Avg: &types.AvgStat{
 					Sum:   1.0,
 					Count: 1,
 				},
-				Max: &protos.MaxStat{
+				Max: &types.MaxStat{
 					Value: 1.0,
 				},
+				HyperLogLog: types.NewHyperLogLog(),
 			},
 		},
 	}
@@ -290,14 +295,14 @@ func TestValue_updateString(t *testing.T) {
 		fieldsProcessed    int
 	}
 	type args struct {
-		state *protos.StringValue
+		state *types.StringValue
 		str   *string
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *protos.StringValue
+		want    *types.StringValue
 		wantErr bool
 	}{
 		{
@@ -307,24 +312,26 @@ func TestValue_updateString(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: protos.NewStringValue(),
+				state: types.NewStringValue(),
 				str:   nil,
 			},
-			want: &protos.StringValue{
+			want: &types.StringValue{
 				TotalCount:   1,
 				NullCount:    1,
 				DefaultCount: 0,
-				Length: &protos.NumberStat{
-					Min: &protos.MinStat{
+				HyperLogLog:  types.NewHyperLogLog(),
+				Length: &types.NumberStat{
+					Min: &types.MinStat{
 						Value: math.Inf(+1),
 					},
-					Avg: &protos.AvgStat{
+					Avg: &types.AvgStat{
 						Sum:   0.0,
 						Count: 0,
 					},
-					Max: &protos.MaxStat{
+					Max: &types.MaxStat{
 						Value: math.Inf(-1),
 					},
+					HyperLogLog: types.NewHyperLogLog(),
 				},
 			},
 		},
@@ -335,24 +342,26 @@ func TestValue_updateString(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: protos.NewStringValue(),
+				state: types.NewStringValue(),
 				str:   &emptyString,
 			},
-			want: &protos.StringValue{
+			want: &types.StringValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 1,
-				Length: &protos.NumberStat{
-					Min: &protos.MinStat{
+				HyperLogLog:  types.NewHyperLogLog().InsertBytes([]byte("")),
+				Length: &types.NumberStat{
+					Min: &types.MinStat{
 						Value: 0.0,
 					},
-					Avg: &protos.AvgStat{
+					Avg: &types.AvgStat{
 						Sum:   0.0,
 						Count: 1,
 					},
-					Max: &protos.MaxStat{
+					Max: &types.MaxStat{
 						Value: 0.0,
 					},
+					HyperLogLog: types.NewHyperLogLog().InsertInt64(0),
 				},
 			},
 		},
@@ -363,24 +372,26 @@ func TestValue_updateString(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: protos.NewStringValue(),
+				state: types.NewStringValue(),
 				str:   &somethingString,
 			},
-			want: &protos.StringValue{
+			want: &types.StringValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 0,
-				Length: &protos.NumberStat{
-					Min: &protos.MinStat{
+				HyperLogLog:  types.NewHyperLogLog().InsertBytes([]byte("something")),
+				Length: &types.NumberStat{
+					Min: &types.MinStat{
 						Value: 9.0,
 					},
-					Avg: &protos.AvgStat{
+					Avg: &types.AvgStat{
 						Sum:   9.0,
 						Count: 1,
 					},
-					Max: &protos.MaxStat{
+					Max: &types.MaxStat{
 						Value: 9.0,
 					},
+					HyperLogLog: types.NewHyperLogLog().InsertInt64(9),
 				},
 			},
 		},
@@ -391,40 +402,44 @@ func TestValue_updateString(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: &protos.StringValue{
+				state: &types.StringValue{
 					TotalCount:   10,
 					NullCount:    9,
 					DefaultCount: 0,
-					Length: &protos.NumberStat{
-						Min: &protos.MinStat{
+					HyperLogLog:  types.NewHyperLogLog(),
+					Length: &types.NumberStat{
+						Min: &types.MinStat{
 							Value: 9.0,
 						},
-						Avg: &protos.AvgStat{
+						Avg: &types.AvgStat{
 							Sum:   9.0,
 							Count: 1,
 						},
-						Max: &protos.MaxStat{
+						Max: &types.MaxStat{
 							Value: 9.0,
 						},
+						HyperLogLog: types.NewHyperLogLog(),
 					},
 				},
 				str: nil,
 			},
-			want: &protos.StringValue{
+			want: &types.StringValue{
 				TotalCount:   11,
 				NullCount:    10,
 				DefaultCount: 0,
-				Length: &protos.NumberStat{
-					Min: &protos.MinStat{
+				HyperLogLog:  types.NewHyperLogLog(),
+				Length: &types.NumberStat{
+					Min: &types.MinStat{
 						Value: 9.0,
 					},
-					Avg: &protos.AvgStat{
+					Avg: &types.AvgStat{
 						Sum:   9.0,
 						Count: 1,
 					},
-					Max: &protos.MaxStat{
+					Max: &types.MaxStat{
 						Value: 9.0,
 					},
+					HyperLogLog: types.NewHyperLogLog(),
 				},
 			},
 		},
@@ -453,14 +468,14 @@ func TestValue_updateArray(t *testing.T) {
 		fieldsProcessed    int
 	}
 	type args struct {
-		state *protos.ArrayValue
+		state *types.ArrayValue
 		array []interface{}
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *protos.ArrayValue
+		want    *types.ArrayValue
 		wantErr bool
 	}{
 		{
@@ -470,14 +485,14 @@ func TestValue_updateArray(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: protos.NewArrayValue(),
+				state: types.NewArrayValue(),
 				array: nil,
 			},
-			want: &protos.ArrayValue{
+			want: &types.ArrayValue{
 				TotalCount:   1,
 				NullCount:    1,
 				DefaultCount: 0,
-				Values:       protos.NewValueValue(),
+				Values:       types.NewValueValue(),
 			},
 		},
 		{
@@ -487,14 +502,14 @@ func TestValue_updateArray(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: protos.NewArrayValue(),
+				state: types.NewArrayValue(),
 				array: []interface{}{},
 			},
-			want: &protos.ArrayValue{
+			want: &types.ArrayValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 1,
-				Values:       protos.NewValueValue(),
+				Values:       types.NewValueValue(),
 			},
 		},
 		{
@@ -504,19 +519,19 @@ func TestValue_updateArray(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: protos.NewArrayValue(),
+				state: types.NewArrayValue(),
 				array: []interface{}{nil, true, false},
 			},
-			want: &protos.ArrayValue{
+			want: &types.ArrayValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 0,
-				Values: &protos.ValueValue{
+				Values: &types.ValueValue{
 					TotalCount: 3,
 					NullCount:  1,
 					Number:     nil,
 					String_:    nil,
-					Boolean: &protos.BooleanValue{
+					Boolean: &types.BooleanValue{
 						TotalCount:   3,
 						NullCount:    1,
 						DefaultCount: 1,
@@ -535,16 +550,16 @@ func TestValue_updateArray(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: &protos.ArrayValue{
+				state: &types.ArrayValue{
 					TotalCount:   10,
 					NullCount:    9,
 					DefaultCount: 0,
-					Values: &protos.ValueValue{
+					Values: &types.ValueValue{
 						TotalCount: 1,
 						NullCount:  0,
 						Number:     nil,
 						String_:    nil,
-						Boolean: &protos.BooleanValue{
+						Boolean: &types.BooleanValue{
 							TotalCount:   1,
 							NullCount:    0,
 							DefaultCount: 1,
@@ -557,16 +572,16 @@ func TestValue_updateArray(t *testing.T) {
 				},
 				array: []interface{}{true},
 			},
-			want: &protos.ArrayValue{
+			want: &types.ArrayValue{
 				TotalCount:   11,
 				NullCount:    9,
 				DefaultCount: 0,
-				Values: &protos.ValueValue{
+				Values: &types.ValueValue{
 					TotalCount: 2,
 					NullCount:  0,
 					Number:     nil,
 					String_:    nil,
-					Boolean: &protos.BooleanValue{
+					Boolean: &types.BooleanValue{
 						TotalCount:   2,
 						NullCount:    0,
 						DefaultCount: 1,
@@ -603,14 +618,14 @@ func TestValue_updateObj(t *testing.T) {
 		fieldsProcessed    int
 	}
 	type args struct {
-		state *protos.ObjValue
+		state *types.ObjValue
 		m     map[string]interface{}
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *protos.ObjValue
+		want    *types.ObjValue
 		wantErr bool
 	}{
 		{
@@ -620,14 +635,14 @@ func TestValue_updateObj(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: protos.NewObjValue(),
+				state: types.NewObjValue(),
 				m:     nil,
 			},
-			want: &protos.ObjValue{
+			want: &types.ObjValue{
 				TotalCount:   1,
 				NullCount:    1,
 				DefaultCount: 0,
-				Fields:       map[string]*protos.ValueValue{},
+				Fields:       map[string]*types.ValueValue{},
 			},
 		},
 		{
@@ -637,14 +652,14 @@ func TestValue_updateObj(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: protos.NewObjValue(),
+				state: types.NewObjValue(),
 				m:     map[string]interface{}{},
 			},
-			want: &protos.ObjValue{
+			want: &types.ObjValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 1,
-				Fields:       map[string]*protos.ValueValue{},
+				Fields:       map[string]*types.ValueValue{},
 			},
 		},
 		{
@@ -654,20 +669,20 @@ func TestValue_updateObj(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: protos.NewObjValue(),
+				state: types.NewObjValue(),
 				m: map[string]interface{}{
 					"booleanField": true,
 				},
 			},
-			want: &protos.ObjValue{
+			want: &types.ObjValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 0,
-				Fields: map[string]*protos.ValueValue{
+				Fields: map[string]*types.ValueValue{
 					"booleanField": {
 						TotalCount: 1,
 						NullCount:  0,
-						Boolean: &protos.BooleanValue{
+						Boolean: &types.BooleanValue{
 							TotalCount:   1,
 							NullCount:    0,
 							DefaultCount: 0,
@@ -685,15 +700,15 @@ func TestValue_updateObj(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: &protos.ObjValue{
+				state: &types.ObjValue{
 					TotalCount:   3,
 					NullCount:    1,
 					DefaultCount: 0,
-					Fields: map[string]*protos.ValueValue{
+					Fields: map[string]*types.ValueValue{
 						"booleanField": {
 							TotalCount: 2,
 							NullCount:  0,
-							Boolean: &protos.BooleanValue{
+							Boolean: &types.BooleanValue{
 								TotalCount:   2,
 								NullCount:    0,
 								DefaultCount: 0,
@@ -707,15 +722,15 @@ func TestValue_updateObj(t *testing.T) {
 					"numberField": 1.0,
 				},
 			},
-			want: &protos.ObjValue{
+			want: &types.ObjValue{
 				TotalCount:   4,
 				NullCount:    1,
 				DefaultCount: 0,
-				Fields: map[string]*protos.ValueValue{
+				Fields: map[string]*types.ValueValue{
 					"booleanField": {
 						TotalCount: 3,
 						NullCount:  1,
-						Boolean: &protos.BooleanValue{
+						Boolean: &types.BooleanValue{
 							TotalCount:   3,
 							NullCount:    1,
 							DefaultCount: 0,
@@ -726,20 +741,21 @@ func TestValue_updateObj(t *testing.T) {
 					"numberField": {
 						TotalCount: 3,
 						NullCount:  2,
-						Number: &protos.NumberValue{
+						Number: &types.NumberValue{
 							TotalCount:   3,
 							NullCount:    2,
 							DefaultCount: 0,
-							Min: &protos.MinStat{
+							Min: &types.MinStat{
 								Value: 1.0,
 							},
-							Avg: &protos.AvgStat{
+							Avg: &types.AvgStat{
 								Sum:   1.0,
 								Count: 1,
 							},
-							Max: &protos.MaxStat{
+							Max: &types.MaxStat{
 								Value: 1.0,
 							},
+							HyperLogLog: types.NewHyperLogLog().InsertFloat64(1.0),
 						},
 					},
 				},
@@ -770,14 +786,14 @@ func TestValue_updateValue(t *testing.T) {
 		fieldsProcessed    int
 	}
 	type args struct {
-		state         *protos.ValueValue
+		state         *types.ValueValue
 		jsonInterface interface{}
 	}
 	tests := []struct {
 		name    string
 		fields  fields
 		args    args
-		want    *protos.ValueValue
+		want    *types.ValueValue
 		wantErr bool
 	}{
 		{
@@ -787,10 +803,10 @@ func TestValue_updateValue(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state:         protos.NewValueValue(),
+				state:         types.NewValueValue(),
 				jsonInterface: nil,
 			},
-			want: &protos.ValueValue{
+			want: &types.ValueValue{
 				TotalCount: 1,
 				NullCount:  1,
 				Number:     nil,
@@ -807,15 +823,15 @@ func TestValue_updateValue(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state:         protos.NewValueValue(),
+				state:         types.NewValueValue(),
 				jsonInterface: true,
 			},
-			want: &protos.ValueValue{
+			want: &types.ValueValue{
 				TotalCount: 1,
 				NullCount:  0,
 				Number:     nil,
 				String_:    nil,
-				Boolean: &protos.BooleanValue{
+				Boolean: &types.BooleanValue{
 					TotalCount:   1,
 					NullCount:    0,
 					DefaultCount: 0,
@@ -833,12 +849,12 @@ func TestValue_updateValue(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: &protos.ValueValue{
+				state: &types.ValueValue{
 					TotalCount: 1,
 					NullCount:  0,
 					Number:     nil,
 					String_:    nil,
-					Boolean: &protos.BooleanValue{
+					Boolean: &types.BooleanValue{
 						TotalCount:   1,
 						NullCount:    0,
 						DefaultCount: 0,
@@ -850,12 +866,12 @@ func TestValue_updateValue(t *testing.T) {
 				},
 				jsonInterface: true,
 			},
-			want: &protos.ValueValue{
+			want: &types.ValueValue{
 				TotalCount: 2,
 				NullCount:  0,
 				Number:     nil,
 				String_:    nil,
-				Boolean: &protos.BooleanValue{
+				Boolean: &types.BooleanValue{
 					TotalCount:   2,
 					NullCount:    0,
 					DefaultCount: 0,
@@ -873,12 +889,12 @@ func TestValue_updateValue(t *testing.T) {
 				fieldsProcessed:    0,
 			},
 			args: args{
-				state: &protos.ValueValue{
+				state: &types.ValueValue{
 					TotalCount: 1,
 					NullCount:  0,
 					Number:     nil,
 					String_:    nil,
-					Boolean: &protos.BooleanValue{
+					Boolean: &types.BooleanValue{
 						TotalCount:   1,
 						NullCount:    0,
 						DefaultCount: 0,
@@ -890,26 +906,27 @@ func TestValue_updateValue(t *testing.T) {
 				},
 				jsonInterface: oneNumber,
 			},
-			want: &protos.ValueValue{
+			want: &types.ValueValue{
 				TotalCount: 2,
 				NullCount:  0,
-				Number: &protos.NumberValue{
+				Number: &types.NumberValue{
 					TotalCount:   2,
 					NullCount:    1,
 					DefaultCount: 0,
-					Min: &protos.MinStat{
+					Min: &types.MinStat{
 						Value: 1.0,
 					},
-					Avg: &protos.AvgStat{
+					Avg: &types.AvgStat{
 						Sum:   1.0,
 						Count: 1,
 					},
-					Max: &protos.MaxStat{
+					Max: &types.MaxStat{
 						Value: 1.0,
 					},
+					HyperLogLog: types.NewHyperLogLog().InsertFloat64(1.0),
 				},
 				String_: nil,
-				Boolean: &protos.BooleanValue{
+				Boolean: &types.BooleanValue{
 					TotalCount:   2,
 					NullCount:    1,
 					DefaultCount: 0,
@@ -943,7 +960,7 @@ func TestValue_AddSampleData(t *testing.T) {
 	type fields struct {
 		maxProcessedFields int
 		fieldsProcessed    int
-		digest             *protos.ObjValue
+		digest             *types.ObjValue
 	}
 	type args struct {
 		sampleData *data.Data
@@ -952,7 +969,7 @@ func TestValue_AddSampleData(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    *protos.ObjValue
+		want    *types.ObjValue
 		wantErr bool
 	}{
 		{
@@ -960,20 +977,20 @@ func TestValue_AddSampleData(t *testing.T) {
 			fields: fields{
 				maxProcessedFields: 100,
 				fieldsProcessed:    0,
-				digest:             protos.NewObjValue(),
+				digest:             types.NewObjValue(),
 			},
 			args: args{
 				sampleData: data.NewSampleDataFromJSON(`{"booleanField": true}`),
 			},
-			want: &protos.ObjValue{
+			want: &types.ObjValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 0,
-				Fields: map[string]*protos.ValueValue{
+				Fields: map[string]*types.ValueValue{
 					"booleanField": {
 						TotalCount: 1,
 						NullCount:  0,
-						Boolean: &protos.BooleanValue{
+						Boolean: &types.BooleanValue{
 							TotalCount:   1,
 							NullCount:    0,
 							DefaultCount: 0,
@@ -989,40 +1006,41 @@ func TestValue_AddSampleData(t *testing.T) {
 			fields: fields{
 				maxProcessedFields: 100,
 				fieldsProcessed:    0,
-				digest:             protos.NewObjValue(),
+				digest:             types.NewObjValue(),
 			},
 			args: args{
 				sampleData: data.NewSampleDataFromJSON(`{"arrayField": [0.0, 1.0, 2.0, 3.0, null]}`),
 			},
-			want: &protos.ObjValue{
+			want: &types.ObjValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 0,
-				Fields: map[string]*protos.ValueValue{
+				Fields: map[string]*types.ValueValue{
 					"arrayField": {
 						TotalCount: 1,
 						NullCount:  0,
-						Array: &protos.ArrayValue{
+						Array: &types.ArrayValue{
 							TotalCount:   1,
 							NullCount:    0,
 							DefaultCount: 0,
-							Values: &protos.ValueValue{
+							Values: &types.ValueValue{
 								TotalCount: 5,
 								NullCount:  1,
-								Number: &protos.NumberValue{
+								Number: &types.NumberValue{
 									TotalCount:   5,
 									NullCount:    1,
 									DefaultCount: 1,
-									Min: &protos.MinStat{
+									Min: &types.MinStat{
 										Value: 0.0,
 									},
-									Avg: &protos.AvgStat{
+									Avg: &types.AvgStat{
 										Sum:   6,
 										Count: 4,
 									},
-									Max: &protos.MaxStat{
+									Max: &types.MaxStat{
 										Value: 3.0,
 									},
+									HyperLogLog: types.NewHyperLogLog().InsertFloat64(0.0).InsertFloat64(1.0).InsertFloat64(2.0).InsertFloat64(3.0),
 								},
 							},
 						},
@@ -1035,54 +1053,55 @@ func TestValue_AddSampleData(t *testing.T) {
 			fields: fields{
 				maxProcessedFields: 100,
 				fieldsProcessed:    0,
-				digest:             protos.NewObjValue(),
+				digest:             types.NewObjValue(),
 			},
 			args: args{
 				sampleData: data.NewSampleDataFromJSON(`{"arrayField": [{"numberField": 5}, {"numberField": 10, "booleanField": false}, {}, null]}`),
 			},
-			want: &protos.ObjValue{
+			want: &types.ObjValue{
 				TotalCount:   1,
 				NullCount:    0,
 				DefaultCount: 0,
-				Fields: map[string]*protos.ValueValue{
+				Fields: map[string]*types.ValueValue{
 					"arrayField": {
 						TotalCount: 1,
 						NullCount:  0,
-						Array: &protos.ArrayValue{
+						Array: &types.ArrayValue{
 							TotalCount:   1,
 							NullCount:    0,
 							DefaultCount: 0,
-							Values: &protos.ValueValue{
+							Values: &types.ValueValue{
 								TotalCount: 4,
 								NullCount:  1,
-								Obj: &protos.ObjValue{
+								Obj: &types.ObjValue{
 									TotalCount:   4,
 									NullCount:    1,
 									DefaultCount: 1,
-									Fields: map[string]*protos.ValueValue{
+									Fields: map[string]*types.ValueValue{
 										"numberField": {
 											TotalCount: 3,
 											NullCount:  1,
-											Number: &protos.NumberValue{
+											Number: &types.NumberValue{
 												TotalCount:   3,
 												NullCount:    1,
 												DefaultCount: 0,
-												Min: &protos.MinStat{
+												Min: &types.MinStat{
 													Value: 5.0,
 												},
-												Avg: &protos.AvgStat{
+												Avg: &types.AvgStat{
 													Sum:   15.0,
 													Count: 2,
 												},
-												Max: &protos.MaxStat{
+												Max: &types.MaxStat{
 													Value: 10.0,
 												},
+												HyperLogLog: types.NewHyperLogLog().InsertFloat64(5.0).InsertFloat64(10.0),
 											},
 										},
 										"booleanField": {
 											TotalCount: 3,
 											NullCount:  2,
-											Boolean: &protos.BooleanValue{
+											Boolean: &types.BooleanValue{
 												TotalCount:   3,
 												NullCount:    2,
 												DefaultCount: 1,
