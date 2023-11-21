@@ -396,7 +396,7 @@ type ValueValue struct {
 	TotalCount uint64
 	NullCount  uint64
 	Number     *NumberValue
-	String_    *StringValue
+	String     *StringValue
 	Boolean    *BooleanValue
 	Array      *ArrayValue
 	Obj        *ObjValue
@@ -408,7 +408,7 @@ func NewValueValue() *ValueValue {
 		NullCount:  0,
 
 		Number:  nil,
-		String_: nil,
+		String:  nil,
 		Boolean: nil,
 		Array:   nil,
 		Obj:     nil,
@@ -425,10 +425,10 @@ func NewValueValueFromProto(valueValue *protos.ValueValue) (*ValueValue, error) 
 		errs = errors.Join(errs, err)
 	}
 
-	var string_ *StringValue
+	var string *StringValue
 	if valueValue.String_ != nil {
 		var err error
-		string_, err = NewStringValueFromProto(valueValue.String_)
+		string, err = NewStringValueFromProto(valueValue.String_)
 		errs = errors.Join(errs, err)
 	}
 
@@ -451,7 +451,7 @@ func NewValueValueFromProto(valueValue *protos.ValueValue) (*ValueValue, error) 
 		NullCount:  valueValue.NullCount,
 
 		Number:  number,
-		String_: string_,
+		String:  string,
 		Boolean: NewBooleanValueFromProto(valueValue.Boolean),
 		Array:   array,
 		Obj:     obj,
@@ -463,9 +463,9 @@ func (vv *ValueValue) ToProto() *protos.ValueValue {
 	if vv.Number != nil {
 		number = vv.Number.ToProto()
 	}
-	var string_ *protos.StringValue
-	if vv.String_ != nil {
-		string_ = vv.String_.ToProto()
+	var string *protos.StringValue
+	if vv.String != nil {
+		string = vv.String.ToProto()
 	}
 	var boolean *protos.BooleanValue
 	if vv.Boolean != nil {
@@ -485,7 +485,7 @@ func (vv *ValueValue) ToProto() *protos.ValueValue {
 		NullCount:  vv.NullCount,
 
 		Number:  number,
-		String_: string_,
+		String_: string,
 		Boolean: boolean,
 		Array:   array,
 		Obj:     obj,

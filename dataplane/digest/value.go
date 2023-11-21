@@ -236,15 +236,15 @@ func (v *Value) updateValue(state *types.ValueValue, jsonInterface interface{}) 
 
 	case string:
 		// Initialize string digest if necessary. Update otherwise
-		if state.String_ == nil {
+		if state.String == nil {
 			// First time a string is registered in this digest. The number of times this digest was seen is
 			// stored in the structure digest statistics, use it as a reference to track how many times this digest was null
-			state.String_ = types.NewStringValue()
-			state.String_.NullCount = state.TotalCount
-			state.String_.TotalCount = state.TotalCount
+			state.String = types.NewStringValue()
+			state.String.NullCount = state.TotalCount
+			state.String.TotalCount = state.TotalCount
 		}
 
-		_, err := v.updateString(state.String_, &jsonValue)
+		_, err := v.updateString(state.String, &jsonValue)
 		if err != nil {
 			return state, err
 		}
@@ -304,9 +304,9 @@ func (v *Value) updateValue(state *types.ValueValue, jsonInterface interface{}) 
 		state.Number.NullCount++
 		state.Number.TotalCount++
 	}
-	if computedDigestType != StringValueType && state.String_ != nil {
-		state.String_.NullCount++
-		state.String_.TotalCount++
+	if computedDigestType != StringValueType && state.String != nil {
+		state.String.NullCount++
+		state.String.TotalCount++
 	}
 	if computedDigestType != BooleanValueType && state.Boolean != nil {
 		state.Boolean.NullCount++

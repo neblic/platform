@@ -530,7 +530,7 @@ func TestValue_updateArray(t *testing.T) {
 					TotalCount: 3,
 					NullCount:  1,
 					Number:     nil,
-					String_:    nil,
+					String:     nil,
 					Boolean: &types.BooleanValue{
 						TotalCount:   3,
 						NullCount:    1,
@@ -558,7 +558,7 @@ func TestValue_updateArray(t *testing.T) {
 						TotalCount: 1,
 						NullCount:  0,
 						Number:     nil,
-						String_:    nil,
+						String:     nil,
 						Boolean: &types.BooleanValue{
 							TotalCount:   1,
 							NullCount:    0,
@@ -580,7 +580,7 @@ func TestValue_updateArray(t *testing.T) {
 					TotalCount: 2,
 					NullCount:  0,
 					Number:     nil,
-					String_:    nil,
+					String:     nil,
 					Boolean: &types.BooleanValue{
 						TotalCount:   2,
 						NullCount:    0,
@@ -810,7 +810,7 @@ func TestValue_updateValue(t *testing.T) {
 				TotalCount: 1,
 				NullCount:  1,
 				Number:     nil,
-				String_:    nil,
+				String:     nil,
 				Boolean:    nil,
 				Array:      nil,
 				Obj:        nil,
@@ -830,7 +830,7 @@ func TestValue_updateValue(t *testing.T) {
 				TotalCount: 1,
 				NullCount:  0,
 				Number:     nil,
-				String_:    nil,
+				String:     nil,
 				Boolean: &types.BooleanValue{
 					TotalCount:   1,
 					NullCount:    0,
@@ -853,7 +853,7 @@ func TestValue_updateValue(t *testing.T) {
 					TotalCount: 1,
 					NullCount:  0,
 					Number:     nil,
-					String_:    nil,
+					String:     nil,
 					Boolean: &types.BooleanValue{
 						TotalCount:   1,
 						NullCount:    0,
@@ -870,7 +870,7 @@ func TestValue_updateValue(t *testing.T) {
 				TotalCount: 2,
 				NullCount:  0,
 				Number:     nil,
-				String_:    nil,
+				String:     nil,
 				Boolean: &types.BooleanValue{
 					TotalCount:   2,
 					NullCount:    0,
@@ -893,7 +893,7 @@ func TestValue_updateValue(t *testing.T) {
 					TotalCount: 1,
 					NullCount:  0,
 					Number:     nil,
-					String_:    nil,
+					String:     nil,
 					Boolean: &types.BooleanValue{
 						TotalCount:   1,
 						NullCount:    0,
@@ -925,7 +925,7 @@ func TestValue_updateValue(t *testing.T) {
 					},
 					HyperLogLog: types.NewHyperLogLog().InsertFloat64(1.0),
 				},
-				String_: nil,
+				String: nil,
 				Boolean: &types.BooleanValue{
 					TotalCount:   2,
 					NullCount:    1,
