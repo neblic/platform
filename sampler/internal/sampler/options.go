@@ -28,10 +28,9 @@ type Settings struct {
 	EnableTLS        bool
 	Auth             AuthOptions
 
-	LimiterIn  control.LimiterConfig
-	SamplingIn control.SamplingConfig
-	Exporter   exporter.Exporter
-	LimiterOut control.LimiterConfig
+	SamplingIn    control.SamplingConfig
+	InitialConfig control.SamplerConfigUpdate
+	Exporter      exporter.Exporter
 
 	UpdateStatsPeriod time.Duration
 

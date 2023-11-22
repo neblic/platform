@@ -109,12 +109,12 @@ func NewListSamplersConfigView() *ListSamplersConfigView {
 }
 
 func (lscv *ListSamplersConfigView) AddSampler(sampler *control.Sampler) {
-	limiterIn := "default"
+	limiterIn := "none"
 	if sampler.Config.LimiterIn != nil {
 		limiterIn = fmt.Sprintf("%d", sampler.Config.LimiterIn.Limit)
 	}
 
-	samplingIn := "default"
+	samplingIn := "none"
 	if sampler.Config.SamplingIn != nil {
 		switch sampler.Config.SamplingIn.SamplingType {
 		case control.DeterministicSamplingType:
@@ -127,7 +127,7 @@ func (lscv *ListSamplersConfigView) AddSampler(sampler *control.Sampler) {
 		}
 	}
 
-	limiterOut := "default"
+	limiterOut := "none"
 	if sampler.Config.LimiterOut != nil {
 		limiterOut = fmt.Sprintf("%d", sampler.Config.LimiterOut.Limit)
 	}

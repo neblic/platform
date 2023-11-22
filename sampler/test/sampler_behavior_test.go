@@ -14,6 +14,7 @@ import (
 	"github.com/neblic/platform/sampler"
 	"github.com/neblic/platform/sampler/defs"
 	otlpmock "github.com/neblic/platform/sampler/internal/sample/exporter/otlp/mock"
+	internalSampler "github.com/neblic/platform/sampler/internal/sampler"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
@@ -30,7 +31,7 @@ type nativeSample struct {
 	ID int
 }
 
-func sendSamplerConfigHandler(samplerConfig *protos.SamplerConfig, configured chan struct{}) func(protos.ControlPlane_SamplerConnServer) error {
+func sendSamplerConfigHandler(samplerConfig *protos.SamplerConfig) func(protos.ControlPlane_SamplerConnServer) error {
 	return func(stream protos.ControlPlane_SamplerConnServer) error {
 		err := stream.Send(&protos.ServerToSampler{
 			Message: &protos.ServerToSampler_ConfReq{
@@ -46,7 +47,6 @@ func sendSamplerConfigHandler(samplerConfig *protos.SamplerConfig, configured ch
 		Expect(reflect.TypeOf(samplerConfRes.GetMessage())).
 			To(Equal(reflect.TypeOf(&protos.SamplerToServer_ConfRes{})))
 
-		configured <- struct{}{}
 		return nil
 	}
 }
@@ -79,17 +79,10 @@ var _ = Describe("Sampler", func() {
 		controlPlaneServer.Stop()
 	})
 
-	Describe("Not exporting samples", func() {
-		When("there isn't a matching rule", func() {
-			It("should not export samples", func() {
-				registered := make(chan struct{})
-				controlPlaneServer.SetSamplerHandlers(
-					mock.RegisterSamplerHandler,
-					func(stream protos.ControlPlane_SamplerConnServer) error {
-						registered <- struct{}{}
-						return nil
-					},
-				)
+	Describe("Sampler initialization", func() {
+		When("default initial configuration is enabled", func() {
+			It("should create default stream and digest configurations", func() {
+				controlPlaneServer.SetSamplerHandlers(mock.RegisterSamplerHandler)
 				controlPlaneServer.Start(GinkgoT())
 
 				// initialize and start a sampler provider
@@ -102,13 +95,108 @@ var _ = Describe("Sampler", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
-				sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				// Wait until sampler has recieived the first configuration (with the default stream and digest)
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 1
+					},
+					time.Second, time.Millisecond*5,
+				)
+
+				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				Expect(sampled).To(BeTrue())
+
+				Expect(s.Close()).ToNot(HaveOccurred())
+			})
+		})
+
+		When("default initial configuration is disabled", func() {
+			It("should not create any stream nor digest configuration", func() {
+				controlPlaneServer.SetSamplerHandlers(mock.RegisterSamplerHandler)
+				controlPlaneServer.Start(GinkgoT())
+
+				// initialize and start a sampler provider
+				settings := sampler.Settings{
+					ResourceName:      "sampled_service",
+					ControlServerAddr: controlPlaneServer.Addr(),
+					DataServerAddr:    logsReceiverLn.Addr().String(),
+				}
+				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
+				Expect(err).ToNot(HaveOccurred())
+
+				// create a sampler
+				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				Expect(err).ToNot(HaveOccurred())
+
+				// Wait until sampler has received the initial configuration (empty)
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 1
+					},
+					time.Second, time.Millisecond*5,
+				)
+
+				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
 				Expect(sampled).To(BeFalse())
 
-				Expect(p.Close()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
+			})
+		})
+	})
+
+	Describe("Not exporting samples", func() {
+		When("there isn't a matching rule", func() {
+			It("should not export samples", func() {
+				controlPlaneServer.SetSamplerHandlers(
+					mock.RegisterSamplerHandler,
+					sendSamplerConfigHandler(
+						&protos.SamplerConfig{
+							Streams: []*protos.Stream{
+								{
+									Uid: uuid.NewString(),
+									Rule: &protos.Rule{
+										Language: protos.Rule_CEL, Expression: "sample.id==2",
+									},
+								},
+							},
+						}),
+				)
+				controlPlaneServer.Start(GinkgoT())
+
+				// initialize and start a sampler provider
+				settings := sampler.Settings{
+					ResourceName:      "sampled_service",
+					ControlServerAddr: controlPlaneServer.Addr(),
+					DataServerAddr:    logsReceiverLn.Addr().String(),
+				}
+				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
+				Expect(err).ToNot(HaveOccurred())
+
+				// create a sampler
+				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				Expect(err).ToNot(HaveOccurred())
+
+				// Wait until sampler has received the initial configuration (empty) and the posterior update
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 2
+					},
+					time.Second, time.Millisecond*5,
+				)
+
+				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				Expect(sampled).To(BeFalse())
+
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -118,7 +206,6 @@ var _ = Describe("Sampler", func() {
 			err      error
 			provider defs.Provider
 		)
-		configured := make(chan struct{})
 
 		BeforeEach(func() {
 			// configure and run a control plane server that registers the sampler and sends a configuration
@@ -134,7 +221,7 @@ var _ = Describe("Sampler", func() {
 								},
 							},
 						},
-					}, configured),
+					}),
 			)
 			controlPlaneServer.Start(GinkgoT())
 
@@ -144,30 +231,37 @@ var _ = Describe("Sampler", func() {
 				ControlServerAddr: controlPlaneServer.Addr(),
 				DataServerAddr:    logsReceiverLn.Addr().String(),
 			}
-			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
+			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		When("there is a matching rule but exporting raw samples is disabled", func() {
 			It("should not export the sample", func() {
 				// create a sampler
-				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
-				// wait until the server has configured the sampler
-				<-configured
+				// Wait until sampler has received the initial configuration (empty) and the posterior update
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 2
+					},
+					time.Second, time.Millisecond*5,
+				)
 
 				// send samples to sampler
 				require.Never(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+						s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
 						return receiver.TotalItems.Load() >= 1
 					},
 					time.Millisecond*500, time.Millisecond)
 
-				Expect(p.Close()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -177,7 +271,6 @@ var _ = Describe("Sampler", func() {
 			err      error
 			provider defs.Provider
 		)
-		configured := make(chan struct{})
 
 		BeforeEach(func() {
 			// configure and run a control plane server that registers the sampler and sends a configuration
@@ -208,7 +301,7 @@ var _ = Describe("Sampler", func() {
 								ExportRawSamples: true,
 							},
 						},
-					}, configured),
+					}),
 			)
 			controlPlaneServer.Start(GinkgoT())
 
@@ -218,28 +311,29 @@ var _ = Describe("Sampler", func() {
 				ControlServerAddr: controlPlaneServer.Addr(),
 				DataServerAddr:    logsReceiverLn.Addr().String(),
 			}
-			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
+			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		When("there is a matching rule and", func() {
 			It("is a JSON sample it should export the sample", func() {
 				// create a sampler
-				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
-				// wait until the server has configured the sampler
-				<-configured
-
-				// send samples to sampler until it is sampled
+				// Wait until sampler has received the initial configuration (empty) and the posterior update
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
-						return sampled
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 2
 					},
-					time.Second, time.Millisecond)
+					time.Second, time.Millisecond*5,
+				)
+
+				// send samples to sampler
+				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				Expect(sampled).To(BeTrue())
 
 				// the receiver should have received the sample
 				require.Eventually(GinkgoT(),
@@ -247,29 +341,29 @@ var _ = Describe("Sampler", func() {
 						defer GinkgoRecover()
 						return receiver.TotalItems.Load() == 1
 					},
-					time.Second, time.Millisecond)
+					time.Second, time.Millisecond*5)
 
-				Expect(p.Close()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 
 			It("is a native sample it should export the sample", func() {
 				// create a sampler
-				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
-				// wait until the server has configured the sampler
-				<-configured
-
-				// send samples to sampler until it is sampled
+				// wait until sampler has received the initial configuration (empty) and the posterior update
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled := p.Sample(context.Background(), defs.NativeSample(nativeSample{ID: 1}, ""))
-						Expect(err).ToNot(HaveOccurred())
-						return sampled
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 2
 					},
-					time.Second, time.Millisecond)
+					time.Second, time.Millisecond*5,
+				)
+
+				// send sample
+				sampled := s.Sample(context.Background(), defs.NativeSample(nativeSample{ID: 1}, ""))
+				Expect(sampled).To(BeTrue())
 
 				// the receiver should have received the sample
 				require.Eventually(GinkgoT(),
@@ -277,31 +371,31 @@ var _ = Describe("Sampler", func() {
 						defer GinkgoRecover()
 						return receiver.TotalItems.Load() == 1
 					},
-					time.Second, time.Millisecond)
+					time.Second, time.Millisecond*5)
 
-				Expect(p.Close()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 
 			It("is a proto sample it should export the sample", func() {
 				// create a sampler
-				p, err := provider.Sampler("sampler1", defs.NewProtoSchema(&protos.SamplerToServer{}))
+				s, err := provider.Sampler("sampler1", defs.NewProtoSchema(&protos.SamplerToServer{}))
 				Expect(err).ToNot(HaveOccurred())
 
-				// wait until the server has configured the sampler
-				<-configured
-
-				// send samples to sampler until it is sampled
+				// Wait until sampler has received the initial configuration (empty) and the posterior update
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled := p.Sample(context.Background(), defs.ProtoSample(&protos.SamplerToServer{SamplerUid: "1"}, ""))
-						Expect(err).ToNot(HaveOccurred())
-						return sampled
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 2
 					},
-					time.Second, time.Millisecond)
+					time.Second, time.Millisecond*5,
+				)
 
-				// the receiver should have received the sample
+				// send sample
+				sampled := s.Sample(context.Background(), defs.ProtoSample(&protos.SamplerToServer{SamplerUid: "1"}, ""))
+				Expect(sampled).To(BeTrue())
+
+				// wait until the receiver has received the sample
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
@@ -309,14 +403,13 @@ var _ = Describe("Sampler", func() {
 					},
 					time.Second, time.Millisecond)
 
-				Expect(p.Close()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
 
 	Describe("Exporting digests", func() {
 		var settings sampler.Settings
-		configured := make(chan struct{})
 
 		BeforeEach(func() {
 			// configure and run a control plane server that registers the sampler and sends a configuration
@@ -342,7 +435,7 @@ var _ = Describe("Sampler", func() {
 							},
 						},
 					},
-				}, configured),
+				}),
 			)
 			controlPlaneServer.Start(GinkgoT())
 
@@ -357,25 +450,35 @@ var _ = Describe("Sampler", func() {
 		When("there is a structure digest configuration", func() {
 			It("should periodically export structure digest samples", func() {
 				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithLimiterOutLimit(10),
+					sampler.WithInitialLimiterOutLimit(10),
 					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := providerLimitedOut.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := providerLimitedOut.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
-				// wait until the server has configured the sampler
-				<-configured
-
-				// send samples to sampler until we receive a gigest
-				// we do this so we are sure the config has been read and applied by the sampler
+				// Wait until sampler has received the initial configuration (empty) and the posterior update
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 2
+					},
+					time.Second, time.Millisecond*5,
+				)
+
+				// send sample
+				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				Expect(sampled).To(BeTrue())
+
+				// wait until the receiver has received the digest
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
 						totalItems := receiver.TotalItems.Load()
 						return totalItems >= 1
 					},
@@ -399,7 +502,6 @@ var _ = Describe("Sampler", func() {
 
 	Describe("Limiting exported samples", func() {
 		var settings sampler.Settings
-		configured := make(chan struct{})
 
 		BeforeEach(func() {
 			// configure and run a control plane server that registers the sampler and sends a configuration
@@ -415,7 +517,7 @@ var _ = Describe("Sampler", func() {
 							ExportRawSamples: true,
 						},
 					},
-				}, configured),
+				}),
 			)
 			controlPlaneServer.Start(GinkgoT())
 
@@ -430,100 +532,94 @@ var _ = Describe("Sampler", func() {
 		When("there is an out limiter set", func() {
 			It("should not export more samples than the allowed by the limiter settings", func() {
 				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithLimiterOutLimit(10),
+					sampler.WithInitialLimiterOutLimit(10),
 					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := providerLimitedOut.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := providerLimitedOut.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
-				// wait until the server has configured the sampler
-				<-configured
-
-				// send samples to sampler until it is sampled
-				// we do this so we are sure the config has been read and applied by the sampler
+				// wait until sampler has received the initial configuration (empty) and the posterior update
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
-						return sampled
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 2
 					},
-					time.Second, time.Millisecond)
+					time.Second, time.Millisecond*5,
+				)
 
 				// send a large amount of samples so the limiter kicks in
 				numSampled := 0
 				for i := 0; i < 1000; i++ {
-					sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+					sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
 
 					if sampled {
 						numSampled++
 					}
 				}
 
-				Expect(numSampled + 1).To(Equal(10))
+				Expect(numSampled).To(Equal(10))
 
 				// the receiver should have received the sample
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
-						return receiver.TotalItems.Load() == int32(numSampled+1)
+						return receiver.TotalItems.Load() == int32(numSampled)
 					},
 					time.Second, time.Millisecond)
 
-				Expect(p.Close()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 
 		When("there is an in limiter set", func() {
 			It("should not export more samples than the allowed by the limiter settings", func() {
 				providerLimitedIn, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithLimiterInLimit(5),
+					sampler.WithInitialLimiterInLimit(5),
 					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := providerLimitedIn.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := providerLimitedIn.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
-				// wait until the server has configured the sampler
-				<-configured
-
-				// send samples to sampler until it is sampled
-				// we do this so we are sure the config has been read and applied by the sampler
+				// Wait until sampler has received the initial configuration (empty) and the posterior update
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
-						return sampled
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 2
 					},
-					time.Second, time.Millisecond)
+					time.Second, time.Millisecond*5,
+				)
 
 				// send a large amount of samples so the limiter kicks in
 				numSampled := 0
 				for i := 0; i < 1000; i++ {
-					sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+					sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
 
 					if sampled {
 						numSampled++
 					}
 				}
 
-				Expect(numSampled + 1).To(Equal(5))
+				Expect(numSampled).To(Equal(5))
 
 				// the receiver should have received the sample
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
-						return receiver.TotalItems.Load() == int32(numSampled+1)
+						return receiver.TotalItems.Load() == int32(numSampled)
 					},
 					time.Second, time.Millisecond)
 
-				Expect(p.Close()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 
 		})
@@ -531,36 +627,33 @@ var _ = Describe("Sampler", func() {
 		When("there is an in sampler set", func() {
 			It("should not export samples if their determinant is not selected", func() {
 				providerSampledIn, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithLimiterInLimit(1000),
-					sampler.WithDeterministicSamplingIn(2),
-					sampler.WithLimiterOutLimit(1000),
+					sampler.WithInitialLimiterInLimit(1000),
+					sampler.WithInitialDeterministicSamplingIn(2),
+					sampler.WithInitialLimiterOutLimit(1000),
 					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 				// create a sampler
-				p, err := providerSampledIn.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := providerSampledIn.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
-				// wait until the server has configured the sampler
-				<-configured
-
-				// send samples to sampler until it is sampled
-				// we do this so we are sure the config has been read and applied by the sampler
+				// Wait until sampler has received the initial configuration (empty) and the posterior update
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, "some_matching_key"))
-						return sampled
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 2
 					},
-					time.Second, time.Millisecond)
+					time.Second, time.Millisecond*5,
+				)
 
 				// should not be sampled
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, "some_non_matching_key"))
+						sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, "some_non_matching_key"))
 						return !sampled
 					},
 					time.Second, time.Millisecond)
@@ -568,7 +661,7 @@ var _ = Describe("Sampler", func() {
 				// should all be sampled
 				numSampled := 0
 				for i := 0; i < 100; i++ {
-					sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, "some_matching_key"))
+					sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, "some_matching_key"))
 
 					if sampled {
 						numSampled++
@@ -581,11 +674,11 @@ var _ = Describe("Sampler", func() {
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
-						return receiver.TotalItems.Load() == int32(numSampled+1)
+						return receiver.TotalItems.Load() == int32(numSampled)
 					},
 					time.Second, time.Millisecond)
 
-				Expect(p.Close()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -593,14 +686,9 @@ var _ = Describe("Sampler", func() {
 	Describe("Sending stats", func() {
 		When("the sampler is running", func() {
 			It("should send stats periodically", func() {
-				registered := make(chan struct{})
 				statsReceived := make(chan struct{})
 				controlPlaneServer.SetSamplerHandlers(
 					mock.RegisterSamplerHandler,
-					func(stream protos.ControlPlane_SamplerConnServer) error {
-						registered <- struct{}{}
-						return nil
-					},
 					func(stream protos.ControlPlane_SamplerConnServer) error {
 						stats, err := stream.Recv()
 						Expect(err).ShouldNot(HaveOccurred())
@@ -622,17 +710,27 @@ var _ = Describe("Sampler", func() {
 				provider, err := sampler.NewProvider(context.Background(), settings,
 					sampler.WithUpdateStatsPeriod(time.Second),
 					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
-				<-registered
+				// Wait until sampler has received the initial configuration (empty)
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 1
+					},
+					time.Second, time.Millisecond*5,
+				)
+
 				<-statsReceived
 
-				Expect(p.Close()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})
@@ -640,7 +738,6 @@ var _ = Describe("Sampler", func() {
 	Describe("Forwarding errors", func() {
 		When("an error channel is provided", func() {
 			It("should forward errors to the channel", func() {
-				configured := make(chan struct{})
 
 				// start control plane server
 				controlPlaneServer.SetSamplerHandlers(
@@ -654,7 +751,7 @@ var _ = Describe("Sampler", func() {
 								},
 							},
 						},
-					}, configured),
+					}),
 				)
 				controlPlaneServer.Start(GinkgoT())
 
@@ -670,28 +767,26 @@ var _ = Describe("Sampler", func() {
 					sampler.WithUpdateStatsPeriod(time.Second),
 					sampler.WithLogger(logger),
 					sampler.WithSamplerErrorChannel(errCh),
+					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				p, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
-				<-configured
-
-				// send samples to sampler until it is sampled
-				// we do this so we are sure the config has been read and applied by the sampler
+				// Wait until sampler has received the initial configuration (empty) and the posterior update
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled := p.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, "some_matching_key"))
-						return sampled
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 2
 					},
-					time.Second, time.Millisecond)
+					time.Second, time.Millisecond*5,
+				)
 
 				// send an invalid sample
-				sampled := p.Sample(context.Background(), defs.JSONSample(`invalid_json: `, ""))
+				sampled := s.Sample(context.Background(), defs.JSONSample(`invalid_json: `, ""))
 				Expect(sampled).To(BeFalse())
 
 				/// expect an error to be received
@@ -702,7 +797,7 @@ var _ = Describe("Sampler", func() {
 					},
 					time.Second, time.Millisecond)
 
-				Expect(p.Close()).ToNot(HaveOccurred())
+				Expect(s.Close()).ToNot(HaveOccurred())
 			})
 		})
 	})

@@ -3,6 +3,7 @@ package sampler
 import (
 	"time"
 
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/internal/stream"
 	"github.com/neblic/platform/logging"
 )
@@ -12,6 +13,8 @@ type options struct {
 
 	updateStatsPeriod time.Duration
 	logger            logging.Logger
+
+	initialConfig control.SamplerConfigUpdate
 }
 
 func newDefaultSamplerOptions() *options {
@@ -22,7 +25,8 @@ func newDefaultSamplerOptions() *options {
 			KeepAliveMaxPeriod: time.Second * time.Duration(10),
 			ServerReqsQueueLen: 10,
 		},
-		logger: logging.NewNopLogger(),
+		logger:        logging.NewNopLogger(),
+		initialConfig: control.NewSamplerConfigUpdate(),
 	}
 }
 
@@ -90,5 +94,11 @@ func WithAuthBearer(token string) Option {
 func WithLogger(l logging.Logger) Option {
 	return newFuncOption(func(po *options) {
 		po.logger = l
+	})
+}
+
+func WithInitialConfig(c control.SamplerConfigUpdate) Option {
+	return newFuncOption(func(po *options) {
+		po.initialConfig = c
 	})
 }

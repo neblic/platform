@@ -172,7 +172,7 @@ func (sr *SamplerRegistry) GetRegisteredInstances() []*defs.SamplerInstance {
 	return instances
 }
 
-func (sr *SamplerRegistry) Register(resource string, name string, uid control.SamplerUID, conn defs.SamplerConn) error {
+func (sr *SamplerRegistry) Register(resource string, name string, uid control.SamplerUID, conn defs.SamplerConn, initialConfig control.SamplerConfig) error {
 	sr.m.Lock()
 	defer sr.m.Unlock()
 
@@ -184,6 +184,7 @@ func (sr *SamplerRegistry) Register(resource string, name string, uid control.Sa
 		}
 
 		sampler = defs.NewSampler(resource, name)
+		sampler.Config = initialConfig
 	}
 
 	// Get instance if exists, create it otherwise
@@ -257,78 +258,8 @@ func (sr *SamplerRegistry) UpdateSamplerConfig(resource string, name string, upd
 		return err
 	}
 
-	// Update Streams
-	if update.Reset.Streams || sampler.Config.Streams == nil {
-		sampler.Config.Streams = make(map[control.SamplerStreamUID]control.Stream)
-	}
-	for _, rule := range update.StreamUpdates {
-		switch rule.Op {
-		case control.StreamUpsert:
-			sampler.Config.Streams[rule.Stream.UID] = rule.Stream
-		case control.StreamDelete:
-			delete(sampler.Config.Streams, rule.Stream.UID)
-		default:
-			sr.logger.Error(fmt.Sprintf("received unkown sampling rule update operation: %d", rule.Op))
-		}
-	}
-
-	// Update LimiterIn
-	if update.Reset.LimiterIn {
-		sampler.Config.LimiterIn = nil
-	}
-	if update.LimiterIn != nil {
-		sampler.Config.LimiterIn = update.LimiterIn
-	}
-
-	// Update SamplingIn
-	if update.Reset.SamplingIn {
-		sampler.Config.SamplingIn = nil
-	}
-	if update.SamplingIn != nil {
-		sampler.Config.SamplingIn = update.SamplingIn
-	}
-
-	// Update LimiterOut
-	if update.Reset.LimiterOut {
-		sampler.Config.LimiterOut = nil
-	}
-	if update.LimiterOut != nil {
-		sampler.Config.LimiterIn = update.LimiterOut
-	}
-
-	// Update Digests
-	if update.Reset.Digests || sampler.Config.Digests == nil {
-		sampler.Config.Digests = make(map[control.SamplerDigestUID]control.Digest)
-	}
-	for _, rule := range update.DigestUpdates {
-		switch rule.Op {
-		case control.DigestUpsert:
-			sampler.Config.Digests[rule.Digest.UID] = rule.Digest
-		case control.DigestDelete:
-			delete(sampler.Config.Digests, rule.Digest.UID)
-		default:
-			sr.logger.Error(fmt.Sprintf("received unkown digest update operation: %d", rule.Op))
-		}
-	}
-
-	// Update Events
-	if update.Reset.Events || sampler.Config.Events == nil {
-		sampler.Config.Events = make(map[control.SamplerEventUID]control.Event)
-	}
-	for _, update := range update.EventUpdates {
-		switch update.Op {
-		case control.EventUpsert:
-			// Update config
-			sampler.Config.Events[update.Event.UID] = update.Event
-
-		case control.EventDelete:
-			// Delete from config
-			delete(sampler.Config.Events, update.Event.UID)
-
-		default:
-			sr.logger.Error(fmt.Sprintf("received unkown event update operation: %d", update.Op))
-		}
-	}
+	// Update sampler configuration
+	sampler.Config.Merge(update)
 
 	// Mark instances as dirty and notify
 	for _, instance := range sampler.Instances {

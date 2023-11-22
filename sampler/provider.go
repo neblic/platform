@@ -83,10 +83,8 @@ func (p *Provider) Sampler(name string, schema defs.Schema) (defs.Sampler, error
 		ControlPlaneAddr: p.settings.ControlServerAddr,
 		EnableTLS:        p.opts.controlServerTLSEnable,
 
-		LimiterIn:  p.opts.limiterIn,
-		SamplingIn: p.opts.samplingIn,
-		Exporter:   p.sampleExporter,
-		LimiterOut: p.opts.limiterOut,
+		InitialConfig: p.opts.initialConfig,
+		Exporter:      p.sampleExporter,
 
 		UpdateStatsPeriod: p.opts.updateStatsPeriod,
 

@@ -226,6 +226,7 @@ message SamplerStatsMsg { SamplerSamplingStats sampling_stats = 2; }
 // register
 
 message SamplerRegisterReq {
+  ClientSamplerConfigUpdate sampler_config_update = 1;
   map<string, string> tags = 3;
 }
 

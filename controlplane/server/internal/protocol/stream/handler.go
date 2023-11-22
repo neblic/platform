@@ -94,7 +94,7 @@ func (ClientHandler) fromServerMsg(uid string) *protos.ServerToClient {
 }
 
 type SamplerRecvFromServerReqFunc func(*protos.SamplerToServer) (bool, *protos.ServerToSampler, error)
-type SamplerStatusChangeFunc func(defs.Status, string, string, control.SamplerUID) error
+type SamplerStatusChangeFunc func(defs.Status, control.SamplerUID, *protos.SamplerToServer) error
 
 type SamplerHandler struct {
 	rectToServerReqCb SamplerRecvFromServerReqFunc
@@ -143,7 +143,7 @@ func (ph SamplerHandler) startRegistration(req *protos.SamplerToServer) (string,
 }
 
 func (ph SamplerHandler) finishRegistration(req *protos.SamplerToServer) error {
-	if err := ph.statusChangeCb(defs.RegisteredStatus, req.Name, req.Resouce, control.SamplerUID(req.GetSamplerUid())); err != nil {
+	if err := ph.statusChangeCb(defs.RegisteredStatus, control.SamplerUID(req.GetSamplerUid()), req); err != nil {
 		return err
 	}
 
@@ -151,7 +151,7 @@ func (ph SamplerHandler) finishRegistration(req *protos.SamplerToServer) error {
 }
 
 func (ph SamplerHandler) deregister(uid string) error {
-	return ph.statusChangeCb(defs.UnregisteredStatus, "", "", control.SamplerUID(uid))
+	return ph.statusChangeCb(defs.UnregisteredStatus, control.SamplerUID(uid), nil)
 }
 
 func (SamplerHandler) fromServerMsg(uid string) *protos.ServerToSampler {
