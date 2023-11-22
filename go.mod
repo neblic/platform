@@ -13,8 +13,8 @@ require (
 	github.com/onsi/gomega v1.28.0
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector/component v0.84.0
-	go.opentelemetry.io/collector/config/configopaque v0.84.0
-	go.opentelemetry.io/collector/config/configtls v0.84.0
+	go.opentelemetry.io/collector/config/configopaque v0.89.0
+	go.opentelemetry.io/collector/config/configtls v0.89.0
 	go.opentelemetry.io/collector/consumer v0.84.0
 	go.opentelemetry.io/collector/exporter v0.84.0
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.84.0
@@ -41,7 +41,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-metro v0.0.0-20211217172704-adc40b04c140 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
@@ -75,7 +75,7 @@ require (
 	go.opentelemetry.io/otel v1.17.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/tools v0.12.1-0.20230815132531-74c255bcf846 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
