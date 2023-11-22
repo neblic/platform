@@ -6,7 +6,7 @@ import (
 	"math"
 
 	"github.com/neblic/platform/controlplane/control"
-	"github.com/neblic/platform/dataplane/protos"
+	"github.com/neblic/platform/dataplane/digest/types"
 	"github.com/neblic/platform/internal/pkg/data"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -27,7 +27,7 @@ type Value struct {
 	maxProcessedFields int
 
 	fieldsProcessed int
-	digest          *protos.ObjValue
+	digest          *types.ObjValue
 }
 
 func (v *Value) isDigest() {}
@@ -36,24 +36,24 @@ func NewValue(maxProcessedFields int) *Value {
 	return &Value{
 		maxProcessedFields: maxProcessedFields,
 
-		digest: protos.NewObjValue(),
+		digest: types.NewObjValue(),
 	}
 }
 
-func (v *Value) updateMinStat(state *protos.MinStat, value float64) {
+func (v *Value) updateMinStat(state *types.MinStat, value float64) {
 	state.Value = math.Min(state.Value, value)
 }
 
-func (v *Value) updateAvgStat(state *protos.AvgStat, value float64) {
+func (v *Value) updateAvgStat(state *types.AvgStat, value float64) {
 	state.Sum += value
 	state.Count++
 }
 
-func (v *Value) updateMaxStat(state *protos.MaxStat, value float64) {
+func (v *Value) updateMaxStat(state *types.MaxStat, value float64) {
 	state.Value = math.Max(state.Value, value)
 }
 
-func (v *Value) updateBoolean(state *protos.BooleanValue, boolean *bool) (*protos.BooleanValue, error) {
+func (v *Value) updateBoolean(state *types.BooleanValue, boolean *bool) (*types.BooleanValue, error) {
 	if err := v.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (v *Value) updateBoolean(state *protos.BooleanValue, boolean *bool) (*proto
 	return state, nil
 }
 
-func (v *Value) updateNum(state *protos.NumberValue, number *float64) (*protos.NumberValue, error) {
+func (v *Value) updateNum(state *types.NumberValue, number *float64) (*types.NumberValue, error) {
 	if err := v.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
@@ -85,6 +85,7 @@ func (v *Value) updateNum(state *protos.NumberValue, number *float64) (*protos.N
 		v.updateMinStat(state.Min, *number)
 		v.updateAvgStat(state.Avg, *number)
 		v.updateMaxStat(state.Max, *number)
+		state.HyperLogLog.InsertFloat64(*number)
 	} else {
 		state.NullCount++
 	}
@@ -94,7 +95,7 @@ func (v *Value) updateNum(state *protos.NumberValue, number *float64) (*protos.N
 
 }
 
-func (v *Value) updateString(state *protos.StringValue, str *string) (*protos.StringValue, error) {
+func (v *Value) updateString(state *types.StringValue, str *string) (*types.StringValue, error) {
 	if err := v.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
@@ -103,9 +104,11 @@ func (v *Value) updateString(state *protos.StringValue, str *string) (*protos.St
 		if *str == "" {
 			state.DefaultCount++
 		}
+		state.HyperLogLog.InsertBytes([]byte(*str))
 		v.updateMinStat(state.Length.Min, float64(len(*str)))
 		v.updateAvgStat(state.Length.Avg, float64(len(*str)))
 		v.updateMaxStat(state.Length.Max, float64(len(*str)))
+		state.Length.HyperLogLog.InsertInt64(int64(len(*str)))
 
 	} else {
 		state.NullCount++
@@ -115,7 +118,7 @@ func (v *Value) updateString(state *protos.StringValue, str *string) (*protos.St
 	return state, nil
 }
 
-func (v *Value) updateArray(state *protos.ArrayValue, array []interface{}) (*protos.ArrayValue, error) {
+func (v *Value) updateArray(state *types.ArrayValue, array []interface{}) (*types.ArrayValue, error) {
 	if err := v.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
@@ -140,7 +143,7 @@ func (v *Value) updateArray(state *protos.ArrayValue, array []interface{}) (*pro
 	return state, nil
 }
 
-func (v *Value) updateObj(state *protos.ObjValue, m map[string]interface{}) (*protos.ObjValue, error) {
+func (v *Value) updateObj(state *types.ObjValue, m map[string]interface{}) (*types.ObjValue, error) {
 	if err := v.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
@@ -151,7 +154,7 @@ func (v *Value) updateObj(state *protos.ObjValue, m map[string]interface{}) (*pr
 			valueState, ok := state.Fields[key]
 			if !ok {
 				nonNullCounter := state.TotalCount - state.NullCount
-				valueState = protos.NewValueValue()
+				valueState = types.NewValueValue()
 				valueState.NullCount = nonNullCounter
 				valueState.TotalCount = nonNullCounter
 				state.Fields[key] = valueState
@@ -185,7 +188,7 @@ func (v *Value) updateObj(state *protos.ObjValue, m map[string]interface{}) (*pr
 	return state, nil
 }
 
-func (v *Value) updateValue(state *protos.ValueValue, jsonInterface interface{}) (*protos.ValueValue, error) {
+func (v *Value) updateValue(state *types.ValueValue, jsonInterface interface{}) (*types.ValueValue, error) {
 	if err := v.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
@@ -198,7 +201,7 @@ func (v *Value) updateValue(state *protos.ValueValue, jsonInterface interface{})
 		if state.Boolean == nil {
 			// First time a boolean is registered in this digest. The number of times this digest was seen is
 			// stored in the structure digest statistics, use it as a reference to track how many times this digest was null
-			state.Boolean = protos.NewBooleanValue()
+			state.Boolean = types.NewBooleanValue()
 			state.Boolean.NullCount = state.TotalCount
 			state.Boolean.TotalCount = state.TotalCount
 		}
@@ -217,7 +220,7 @@ func (v *Value) updateValue(state *protos.ValueValue, jsonInterface interface{})
 		if state.Number == nil {
 			// First time a float is registered in this digest. The number of times this digest was seen is
 			// stored in the structure digest statistics, use it as a reference to track how many times this digest was null
-			state.Number = protos.NewNumberValue()
+			state.Number = types.NewNumberValue()
 			state.Number.NullCount = state.TotalCount
 			state.Number.TotalCount = state.TotalCount
 		}
@@ -233,15 +236,15 @@ func (v *Value) updateValue(state *protos.ValueValue, jsonInterface interface{})
 
 	case string:
 		// Initialize string digest if necessary. Update otherwise
-		if state.String_ == nil {
+		if state.String == nil {
 			// First time a string is registered in this digest. The number of times this digest was seen is
 			// stored in the structure digest statistics, use it as a reference to track how many times this digest was null
-			state.String_ = protos.NewStringValue()
-			state.String_.NullCount = state.TotalCount
-			state.String_.TotalCount = state.TotalCount
+			state.String = types.NewStringValue()
+			state.String.NullCount = state.TotalCount
+			state.String.TotalCount = state.TotalCount
 		}
 
-		_, err := v.updateString(state.String_, &jsonValue)
+		_, err := v.updateString(state.String, &jsonValue)
 		if err != nil {
 			return state, err
 		}
@@ -255,7 +258,7 @@ func (v *Value) updateValue(state *protos.ValueValue, jsonInterface interface{})
 		if state.Array == nil {
 			// First time an array is registered in this digest. The number of times this digest was seen is
 			// stored in the structure digest statistics, use it as a reference to track how many times this digest was null
-			state.Array = protos.NewArrayValue()
+			state.Array = types.NewArrayValue()
 			state.Array.NullCount = state.TotalCount
 			state.Array.TotalCount = state.TotalCount
 		}
@@ -272,7 +275,7 @@ func (v *Value) updateValue(state *protos.ValueValue, jsonInterface interface{})
 	case map[string]interface{}:
 		// Initialize map digest if necessary. Update otherwise
 		if state.Obj == nil {
-			state.Obj = protos.NewObjValue()
+			state.Obj = types.NewObjValue()
 			state.Obj.NullCount = state.TotalCount
 			state.Obj.TotalCount = state.TotalCount
 		}
@@ -301,9 +304,9 @@ func (v *Value) updateValue(state *protos.ValueValue, jsonInterface interface{})
 		state.Number.NullCount++
 		state.Number.TotalCount++
 	}
-	if computedDigestType != StringValueType && state.String_ != nil {
-		state.String_.NullCount++
-		state.String_.TotalCount++
+	if computedDigestType != StringValueType && state.String != nil {
+		state.String.NullCount++
+		state.String.TotalCount++
 	}
 	if computedDigestType != BooleanValueType && state.Boolean != nil {
 		state.Boolean.NullCount++
@@ -350,7 +353,7 @@ func (v *Value) AddSampleData(sampleData *data.Data) error {
 }
 
 func (v *Value) JSON() ([]byte, error) {
-	json, err := protojson.Marshal(v.digest)
+	json, err := protojson.Marshal(v.digest.ToProto())
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal digest to json: %w", err)
 	}
@@ -359,7 +362,7 @@ func (v *Value) JSON() ([]byte, error) {
 }
 
 func (v *Value) Reset() {
-	v.digest = protos.NewObjValue()
+	v.digest = types.NewObjValue()
 }
 
 func (v *Value) String() string {
