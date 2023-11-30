@@ -2,103 +2,93 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"flag"
 	"log"
 	"os"
 	"os/signal"
-	"reflect"
 	"strings"
-	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/a8m/envsubst"
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/rawbytes"
+	"github.com/knadh/koanf/v2"
 	"github.com/mitchellh/mapstructure"
-	"github.com/neblic/platform/cmd/kafka-sampler/filter"
 	"github.com/neblic/platform/cmd/kafka-sampler/neblic"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler"
 	"github.com/neblic/platform/sampler/global"
-	"github.com/spf13/viper"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
-func initViper() *Config {
-	viper.SetConfigName("config")                     // name of config file (without extension)
-	viper.SetConfigType("yaml")                       // REQUIRED if the config file does not have the extension in the name
-	viper.AddConfigPath("/etc/neblic/kafka-sampler/") // path to look for the config file in
-	viper.AddConfigPath(".")
-
-	// Configuration parameters read from a config file or an environment variable
-	// could mismatch the expected type in the configuration struct. A set of decode
-	// hook funcions are used to automatically convert between types:
-	// - string to time.Duration (e.g. 15s, 1m, etc.)
-	// - string to []string using "," to split
-	// - string to filter.Predicate
-	decodeHookFunc := mapstructure.ComposeDecodeHookFunc(
-		mapstructure.StringToTimeDurationHookFunc(),
-		mapstructure.StringToSliceHookFunc(","),
-		func() mapstructure.DecodeHookFuncType {
-			return func(
-				f reflect.Type,
-				t reflect.Type,
-				data interface{},
-			) (interface{}, error) {
-				// Check that the data is string. Standard hook logic
-				if f.Kind() != reflect.String {
-					return data, nil
-				}
-
-				// Check that the target type is a filter.Predicate interface.
-				predicateType := reflect.TypeOf((*filter.Predicate)(nil)).Elem()
-				if !t.Implements(predicateType) {
-					return data, nil
-				}
-
-				var predicate filter.Predicate
-				before, after, found := strings.Cut(data.(string), ":")
-				if found && before == "regex" {
-					// The processed string contains a regex and it follows the 'regex:<regex>' pattern.
-					var err error
-					predicate, err = filter.NewRegex(after)
-					if err != nil {
-						return nil, fmt.Errorf("error parsing the regex predicate %s: %v", after, err)
-					}
-				} else {
-					// The processed string contains a simple string
-					predicate = filter.NewString(data.(string))
-				}
-
-				return predicate, nil
-			}
+func decodeToStruct(i, o interface{}) error {
+	decoderConfig := &mapstructure.DecoderConfig{
+		DecodeHook: mapstructure.ComposeDecodeHookFunc(
+			mapstructure.StringToTimeDurationHookFunc(),
+		),
+		TagName:              "",
+		IgnoreUntaggedFields: false,
+		Metadata:             nil,
+		Result:               o,
+		WeaklyTypedInput:     true,
+		MatchName: func(f string, s string) bool {
+			return strings.EqualFold(strings.ToLower(f), strings.ToLower(s))
 		},
-	)
-	viper.DecodeHook(decodeHookFunc)
-
-	// Inject default values (that also enables the usage of env vars to override the value)
-	viper.SetDefault("verbose", false)
-	viper.SetDefault("kafka.servers", []string{"localhost:9092"})
-	viper.SetDefault("kafka.consumergroup", "kafkasampler")
-	viper.SetDefault("neblic.resourcename", "kafkasampler")
-	viper.SetDefault("neblic.controlserveraddr", "localhost:8899")
-	viper.SetDefault("neblic.dataserveraddr", "localhost:4317")
-	viper.SetDefault("neblic.updatestatsperiod", "15s")
-	viper.SetDefault("reconcileperiod", time.Minute)
-
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatal("config: error reading config file: " + err.Error())
 	}
 
-	// Allow the overwrite of all the provided keys using environment variables
-	for _, key := range viper.AllKeys() {
-		envKey := strings.ToUpper(strings.ReplaceAll(key, ".", "_"))
-		err := viper.BindEnv(key, envKey)
+	d, err := mapstructure.NewDecoder(decoderConfig)
+	if err != nil {
+		return err
+	}
+
+	return d.Decode(i)
+}
+
+func initConfig(path *string) *Config {
+	k := koanf.New(".")
+
+	if path != nil {
+		// Load YAML config file
+		yamlConfig, err := os.ReadFile(*path)
 		if err != nil {
-			log.Fatal("config: unable to bind env: " + err.Error())
+			log.Fatalf("Error reading config file: %v", err)
+		}
+
+		// Expand end vars
+		yamlConfigExp, err := envsubst.Bytes(yamlConfig)
+		if err != nil {
+			log.Fatalf("Error expanding env vars in config file: %v", err)
+		}
+
+		// Load file contents
+		if err := k.Load(rawbytes.Provider(yamlConfigExp), yaml.Parser()); err != nil {
+			log.Fatalf("Error loading config file: %v", err)
 		}
 	}
 
+	// Load env vars
+	k.Load(env.Provider("", ".", func(s string) string {
+		c := cases.Title(language.English)
+		parts := strings.Split(s, "_")
+
+		var titleParts []string
+		for _, part := range parts {
+			titleParts = append(titleParts, c.String(part))
+		}
+
+		return strings.Join(titleParts, ".")
+	}), nil)
+
+	// Decode back into the config struct overwritting default values
 	config := NewConfig()
-	if err := viper.Unmarshal(config); err != nil {
-		log.Fatal("config: unable to decode into struct: " + err.Error())
+	if err := decodeToStruct(k.Raw(), config); err != nil {
+		log.Fatalf("Error unmarshaling config: %v", err)
 	}
+
+	// We need to recreate the metric registry, otherwise it is not properly initilized and segfaults
+	config.Kafka.Sarama.MetricRegistry = sarama.NewConfig().MetricRegistry
 
 	return config
 }
@@ -149,10 +139,10 @@ func runKafkaSampler(ctx context.Context, logger logging.Logger, config *Config)
 }
 
 func main() {
+	var configPath = flag.String("config", "/etc/neblic/kafka-sampler/config.yaml", "configuration file path")
+	flag.Parse()
 
-	config := initViper()
-
-	// Initialize logger
+	config := initConfig(configPath)
 	logger, _ := logging.NewZapDev()
 
 	// trap Ctrl+C and call cancel on the context
