@@ -11,12 +11,13 @@ var nameValidationRegex = regexp.MustCompile(`^[\.\/()\w-_]*$`)
 var nameValidationErrTemplate = "invalid %s name %s, expected alphanumerical with ./()-_ characters"
 
 type SamplerConfigUpdateReset struct {
-	LimiterIn  bool
-	SamplingIn bool
-	Streams    bool
-	LimiterOut bool
-	Digests    bool
-	Events     bool
+	LimiterIn    bool
+	SamplingIn   bool
+	Streams      bool
+	LimiterOut   bool
+	Digests      bool
+	Events       bool
+	Capabilities bool
 }
 
 func NewSamplerConfigUpdateResetFromProto(protoReset *protos.ClientSamplerConfigUpdate_Reset) SamplerConfigUpdateReset {
@@ -25,23 +26,25 @@ func NewSamplerConfigUpdateResetFromProto(protoReset *protos.ClientSamplerConfig
 	}
 
 	return SamplerConfigUpdateReset{
-		Streams:    protoReset.GetStreams(),
-		LimiterIn:  protoReset.GetLimiterIn(),
-		SamplingIn: protoReset.GetSamplingIn(),
-		LimiterOut: protoReset.GetLimiterOut(),
-		Digests:    protoReset.GetDigests(),
-		Events:     protoReset.GetEvents(),
+		Streams:      protoReset.GetStreams(),
+		LimiterIn:    protoReset.GetLimiterIn(),
+		SamplingIn:   protoReset.GetSamplingIn(),
+		LimiterOut:   protoReset.GetLimiterOut(),
+		Digests:      protoReset.GetDigests(),
+		Events:       protoReset.GetEvents(),
+		Capabilities: protoReset.GetCapabilities(),
 	}
 }
 
 func (scr SamplerConfigUpdateReset) ToProto() *protos.ClientSamplerConfigUpdate_Reset {
 	return &protos.ClientSamplerConfigUpdate_Reset{
-		Streams:    scr.Streams,
-		LimiterIn:  scr.LimiterIn,
-		SamplingIn: scr.SamplingIn,
-		LimiterOut: scr.LimiterOut,
-		Digests:    scr.Digests,
-		Events:     scr.Events,
+		Streams:      scr.Streams,
+		LimiterIn:    scr.LimiterIn,
+		SamplingIn:   scr.SamplingIn,
+		LimiterOut:   scr.LimiterOut,
+		Digests:      scr.Digests,
+		Events:       scr.Events,
+		Capabilities: scr.Capabilities,
 	}
 }
 
@@ -58,6 +61,7 @@ type SamplerConfigUpdate struct {
 	LimiterOut    *LimiterConfig
 	DigestUpdates []DigestUpdate
 	EventUpdates  []EventUpdate
+	Capabilities  *CapabilitiesConfig
 }
 
 func NewSamplerConfigUpdate() SamplerConfigUpdate {
@@ -102,6 +106,12 @@ func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpda
 		eventUpdates = append(eventUpdates, NewEventUpdateFromProto(eventUpdate))
 	}
 
+	var capabilities *CapabilitiesConfig
+	if protoUpdate.GetCapabilities() != nil {
+		newCapabilities := NewCapabilitiesFromProto(protoUpdate.GetCapabilities())
+		capabilities = &newCapabilities
+	}
+
 	return SamplerConfigUpdate{
 		Reset: NewSamplerConfigUpdateResetFromProto(protoUpdate.GetReset_()),
 
@@ -111,6 +121,7 @@ func NewSamplerConfigUpdateFromProto(protoUpdate *protos.ClientSamplerConfigUpda
 		LimiterOut:    limiterOut,
 		DigestUpdates: digestUpdates,
 		EventUpdates:  eventUpdates,
+		Capabilities:  capabilities,
 	}
 }
 
@@ -145,6 +156,11 @@ func (scu SamplerConfigUpdate) ToProto() *protos.ClientSamplerConfigUpdate {
 		protoUpdateEvents = append(protoUpdateEvents, eventUpdate.ToProto())
 	}
 
+	var protoCapabilities *protos.Capabilities
+	if scu.Capabilities != nil {
+		protoCapabilities = scu.Capabilities.ToProto()
+	}
+
 	return &protos.ClientSamplerConfigUpdate{
 		Reset_: scu.Reset.ToProto(),
 
@@ -154,6 +170,7 @@ func (scu SamplerConfigUpdate) ToProto() *protos.ClientSamplerConfigUpdate {
 		LimiterOut:    protoLimiterOut,
 		DigestUpdates: protoUpdateDigests,
 		EventUpdates:  protoUpdateEvents,
+		Capabilities:  protoCapabilities,
 	}
 }
 
@@ -184,12 +201,13 @@ func (scu SamplerConfigUpdate) IsValid() error {
 // are updated. If a field is present, the previous value is replaced with the
 // new one.
 type SamplerConfig struct {
-	Streams    map[SamplerStreamUID]Stream
-	LimiterIn  *LimiterConfig
-	SamplingIn *SamplingConfig
-	LimiterOut *LimiterConfig
-	Digests    map[SamplerDigestUID]Digest
-	Events     map[SamplerEventUID]Event
+	Streams      map[SamplerStreamUID]Stream
+	LimiterIn    *LimiterConfig
+	SamplingIn   *SamplingConfig
+	LimiterOut   *LimiterConfig
+	Digests      map[SamplerDigestUID]Digest
+	Events       map[SamplerEventUID]Event
+	Capabilities *CapabilitiesConfig
 }
 
 func NewSamplerConfig() *SamplerConfig {
@@ -247,13 +265,20 @@ func NewSamplerConfigFromProto(config *protos.SamplerConfig) SamplerConfig {
 		events[SamplerEventUID(protoEvent.GetUid())] = NewEventFromProto(protoEvent)
 	}
 
+	var capabilities *CapabilitiesConfig
+	if config.Capabilities != nil {
+		p := NewCapabilitiesFromProto(config.GetCapabilities())
+		capabilities = &p
+	}
+
 	return SamplerConfig{
-		Streams:    streams,
-		LimiterIn:  limiterIn,
-		SamplingIn: samplingIn,
-		LimiterOut: limiterOut,
-		Digests:    digests,
-		Events:     events,
+		Streams:      streams,
+		LimiterIn:    limiterIn,
+		SamplingIn:   samplingIn,
+		LimiterOut:   limiterOut,
+		Digests:      digests,
+		Events:       events,
+		Capabilities: capabilities,
 	}
 }
 
@@ -263,7 +288,8 @@ func (pc SamplerConfig) IsEmpty() bool {
 		pc.SamplingIn == nil &&
 		pc.LimiterOut == nil &&
 		len(pc.Digests) == 0) &&
-		len(pc.Events) == 0
+		len(pc.Events) == 0 &&
+		pc.Capabilities == nil
 }
 
 func (pc *SamplerConfig) Merge(update SamplerConfigUpdate) {
@@ -336,6 +362,14 @@ func (pc *SamplerConfig) Merge(update SamplerConfigUpdate) {
 		default:
 		}
 	}
+
+	// Update Capabilities
+	if update.Reset.Capabilities {
+		pc.Capabilities = nil
+	}
+	if update.Capabilities != nil {
+		pc.Capabilities = update.Capabilities
+	}
 }
 
 func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
@@ -369,13 +403,19 @@ func (pc SamplerConfig) ToProto() *protos.SamplerConfig {
 		protoEvents = append(protoEvents, event.ToProto())
 	}
 
+	var protoCapabilities *protos.Capabilities
+	if pc.Capabilities != nil {
+		protoCapabilities = pc.Capabilities.ToProto()
+	}
+
 	return &protos.SamplerConfig{
-		Streams:    protoStreams,
-		LimiterIn:  protoLimiterIn,
-		SamplingIn: protoSamplingIn,
-		LimiterOut: protoLimiterOut,
-		Digests:    protoDigests,
-		Events:     protoEvents,
+		Streams:      protoStreams,
+		LimiterIn:    protoLimiterIn,
+		SamplingIn:   protoSamplingIn,
+		LimiterOut:   protoLimiterOut,
+		Digests:      protoDigests,
+		Events:       protoEvents,
+		Capabilities: protoCapabilities,
 	}
 }
 

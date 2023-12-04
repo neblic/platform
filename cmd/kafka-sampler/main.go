@@ -96,7 +96,11 @@ func initConfig(path *string) *Config {
 func initNeblic(ctx context.Context, logger logging.Logger, config *neblic.Config) {
 
 	// Propagate options
-	options := []sampler.Option{sampler.WithLogger(logger)}
+	options := []sampler.Option{
+		sampler.WithLogger(logger),
+		sampler.WithLocalStructDigests(true),
+		sampler.WithLocalValueDigests(true),
+	}
 	if config.Bearer != "" {
 		options = append(options, sampler.WithBearerAuth(config.Bearer))
 	}

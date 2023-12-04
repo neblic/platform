@@ -97,11 +97,11 @@ func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.
 	}, nil
 }
 
-func (n *neblic) newDigester(resource string, sampler string) *digest.Digester {
+func (n *neblic) newDigester(resource string, sampler string, capabilities *control.CapabilitiesConfig) *digest.Digester {
 	return digest.NewDigester(digest.Settings{
 		ResourceName:   resource,
 		SamplerName:    sampler,
-		EnabledDigests: []control.DigestType{control.DigestTypeValue},
+		EnabledDigests: capabilities.CapableDigesters(),
 		NotifyErr:      n.notifyErr,
 		Exporter:       n.exporter,
 	})
@@ -180,9 +180,11 @@ func (n *neblic) configUpdater() {
 
 		// Update digester
 		if config != nil && len(config.Digests) > 0 {
-			if transformerInstance.digester == nil {
-				transformerInstance.digester = n.newDigester(resource, sampler)
+			if transformerInstance.digester != nil {
+				transformerInstance.digester.DeleteDigestsConfig()
+				transformerInstance.digester.Close()
 			}
+			transformerInstance.digester = n.newDigester(resource, sampler, config.Capabilities)
 			transformerInstance.digester.SetDigestsConfig(config.Digests)
 		} else {
 			if transformerInstance.digester != nil {

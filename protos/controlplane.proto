@@ -51,9 +51,7 @@ message Stream {
 }
 
 message Digest {
-  message St {
-    int32 max_processed_fields = 1;
-  }
+  message St { int32 max_processed_fields = 1; }
 
   message Value {
     // Maximum number of fields to process when processing a sample
@@ -86,6 +84,11 @@ message Event {
   SampleType sample_type = 4;
   Rule rule = 5;
   Limiter limiter = 6;
+}
+
+message Capabilities {
+  bool struct_digests = 1;
+  bool value_digests = 2;
 }
 
 // Used to get and update the sampler configuration.
@@ -124,6 +127,8 @@ message SamplerConfig {
   repeated Digest digests = 5;
   // Configure the sampler events.
   repeated Event events = 6;
+  // Configure the capabilities of the sampler
+  Capabilities capabilities = 7;
 }
 
 message SamplerSamplingStats {
@@ -313,6 +318,7 @@ message ClientSamplerConfigUpdate {
     bool limiter_out = 4;
     bool digests = 5;
     bool events = 6;
+    bool capabilities = 7;
   }
   Reset reset = 1;
 
@@ -324,6 +330,7 @@ message ClientSamplerConfigUpdate {
   Limiter limiter_out = 5;
   repeated ClientDigestUpdate digest_updates = 6;
   repeated ClientEventUpdate event_updates = 7;
+  Capabilities capabilities = 8;
 }
 
 message ClientSamplerConfReq {

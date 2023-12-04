@@ -83,7 +83,7 @@ func New(
 	digesterSettings := digest.Settings{
 		ResourceName:   settings.Resource,
 		SamplerName:    settings.Name,
-		EnabledDigests: []control.DigestType{control.DigestTypeSt},
+		EnabledDigests: settings.InitialConfig.Capabilities.CapableDigesters(),
 		NotifyErr:      forwardError,
 		Exporter:       settings.Exporter,
 	}
