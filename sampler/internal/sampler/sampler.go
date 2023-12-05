@@ -357,9 +357,5 @@ func (p *Sampler) Close() error {
 		return fmt.Errorf("error closing control plane client: %w", err)
 	}
 
-	if err := p.exporter.Close(context.Background()); err != nil {
-		return fmt.Errorf("error closing samples dp. %w", err)
-	}
-
 	return nil
 }
