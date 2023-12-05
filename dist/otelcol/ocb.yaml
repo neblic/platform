@@ -2,26 +2,26 @@
 
 dist:
   name: otelcol
-  otelcol_version: 0.90.0
+  otelcol_version: 0.90.1
   output_path: ./dist/otelcol/build/
 replaces:
   # we use a replace instead of setting the path so the resulting replace is relative instead of absulte
   # this allows us to build the resulting sources inside a container as long as the platform is that path
-  - github.com/neblic/platform v0.0.0 => ../../..
+  - github.com/neblic/platform v0.0.0 => ../../../
 
 exporters:
-  - gomod: go.opentelemetry.io/collector/exporter/loggingexporter v0.90.0
-  - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.90.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/lokiexporter v0.90.0
+  - gomod: go.opentelemetry.io/collector/exporter/loggingexporter v0.90.1
+  - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.90.1
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/lokiexporter v0.90.1
 processors:
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.90.0
-  - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.90.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.90.1
+  - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.90.1
   - import: github.com/neblic/platform/controlplane/server/otelcolext
     gomod: github.com/neblic/platform v0.0.0
 receivers:
-  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.90.0
+  - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.90.1
 extensions:
   - import: github.com/neblic/platform/controlplane/server/otelcolext/bearerauthextension
     gomod: github.com/neblic/platform v0.0.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.90.0
-  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.90.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.90.1
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.90.1
