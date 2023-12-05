@@ -2,6 +2,7 @@ package sarama
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Shopify/sarama"
 	"github.com/neblic/platform/logging"
@@ -15,7 +16,7 @@ type ConsumerGroup struct {
 func NewConsumerGroup(logger logging.Logger, servers []string, groupID string, config *Config) (*ConsumerGroup, error) {
 	group, err := sarama.NewConsumerGroup(servers, groupID, config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating saram kafka consumer group: %w", err)
 	}
 
 	return &ConsumerGroup{

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -94,7 +95,8 @@ func initConfig(path *string) *Config {
 	return config
 }
 
-func initNeblic(ctx context.Context, logger logging.Logger, config *neblic.Config) {
+func initNeblic(ctx context.Context, logger logging.Logger, config *neblic.Config) error {
+	logger.Info("Initializing Neblic connection", "config", config)
 
 	// Propagate options
 	options := []sampler.Option{sampler.WithLogger(logger)}
@@ -113,16 +115,17 @@ func initNeblic(ctx context.Context, logger logging.Logger, config *neblic.Confi
 
 	provider, err := sampler.NewProvider(ctx, config.Settings, options...)
 	if err != nil {
-		log.Panicf("Error initializing the neblic provider: %v", err)
+		return fmt.Errorf("error initializing neblic provider: %w", err)
 	}
 	err = global.SetSamplerProvider(provider)
 	if err != nil {
-		log.Panicf("Error setting global sampler provider: %v", err)
+		return fmt.Errorf("error setting global sampler provider: %w", err)
 	}
 
+	return nil
 }
 
-func runKafkaSampler(ctx context.Context, logger logging.Logger, config *Config) {
+func runKafkaSampler(ctx context.Context, logger logging.Logger, config *Config) error {
 	logger.Info("Initializing Kafka connection", "endpoints", config.Kafka.Servers)
 
 	stdLog, err := zap.NewStdLogAt(logger.With("source", "sarama").ZapLogger().WithOptions(zap.AddCallerSkip(0)), zap.DebugLevel)
@@ -134,12 +137,14 @@ func runKafkaSampler(ctx context.Context, logger logging.Logger, config *Config)
 	// Run Kafka Sampler
 	kafkaSampler, err := NewKafkaSampler(ctx, logger, config)
 	if err != nil {
-		logger.Error(err.Error())
+		return fmt.Errorf("error initializing kafka sampler: %w", err)
 	}
 	err = kafkaSampler.Run()
 	if err != nil {
-		logger.Error(err.Error())
+		return fmt.Errorf("error running kafka sampler: %w", err)
 	}
+
+	return nil
 }
 
 func main() {
@@ -162,7 +167,11 @@ func main() {
 		cancel()
 	}()
 
-	initNeblic(ctx, logger, &config.Neblic)
+	if err := initNeblic(ctx, logger, &config.Neblic); err != nil {
+		log.Fatalf("Error initializing Neblic: %s", err)
+	}
 
-	runKafkaSampler(ctx, logger, config)
+	if err := runKafkaSampler(ctx, logger, config); err != nil {
+		log.Fatalf("Error starting: %s", err)
+	}
 }

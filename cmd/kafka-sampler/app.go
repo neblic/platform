@@ -19,7 +19,7 @@ type KafkaSampler struct {
 func NewKafkaSampler(ctx context.Context, logger logging.Logger, config *Config) (*KafkaSampler, error) {
 	consumerManager, err := kafka.NewConsumerManager(ctx, logger, &config.Kafka)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating kafka consumer manager: %w", err)
 	}
 
 	kafkaSampler := &KafkaSampler{
@@ -33,9 +33,7 @@ func NewKafkaSampler(ctx context.Context, logger logging.Logger, config *Config)
 }
 
 func (r *KafkaSampler) Run() error {
-
 	// Run first reconciliation
-	r.logger.Info("Running reconcilitation")
 	err := r.consumerManager.Reconcile()
 	if err != nil {
 		return err
@@ -56,10 +54,9 @@ func (r *KafkaSampler) Run() error {
 		case <-r.ctx.Done():
 			return nil
 		case <-ticker.C:
-			r.logger.Info("Running reconcilitation")
 			err := r.consumerManager.Reconcile()
 			if err != nil {
-				r.logger.Error("Error running reconciliation", "error", err)
+				r.logger.Error("Error running reconciliation, it will continue trying", "error", err)
 			}
 		}
 	}
