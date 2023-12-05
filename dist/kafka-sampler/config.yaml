@@ -1,35 +1,35 @@
-verbose: true
+logging:
+  level: info
 
-# optional: Topic list refresh period. In each refresh it will create/delete `Samplers` based on the cluster existing topics
-# reconcileperiod: 1m
-
-# Kafka related options
 kafka:
   # required: Kafka bootstrap addresses, format "url1:port,url2:port".
   servers: kafka:9092
 
-  # optional: consumer group that the Kafka consumers will use
-  # consumergroup: kafkasampler
+  # Consumer group that the Kafka consumers will use
+  # consumergroup: neblic-kafka-sampler
 
+  # Kafka configuration as defined in the Sarama library
   # https://pkg.go.dev/github.com/shopify/sarama#Config
-  # all lowercase and nested structs divided with `_`
+  # Convert field names to all lowercase and divide nested structs with `_`
   # sarama:  (...)
 
-  # optional: if unset, it will create a Sampler per each topic found in the Kafka cluster
+  # If unset, it will create a `Sampler` per each topic found in the Kafka cluster,
+  # supports regex RE2 syntax as described at https://github.com/google/re2/wiki/Syntax, except for `\C`.
+  # It always ignores internal topics like: `__consumer_offsets` and `__transaction_state`.
   # topicfilter: 
+  #   # Topic list refresh period. In each refresh it will create/delete `Samplers` based on the cluster existing topics
+  #   refreshperiod: 1m
+  #   # Topics matching `allowlist` will be monitored, and topics matching `denylist` will be ignored.
+  #   # `allowlist` and `denylist` can't be set at the same time.
   #   allowlist:
   #   denylist:
 
-# Neblic related options
 neblic:
-  # optional: `Sampler` resource name set to created `Samplers` 
+  # `Sampler` resource name set to created `Samplers`
   # resourcename: kafka-sampler
 
-  # optional: `Control Plane` server address
+  # `Control Plane` server address
   # controlserveraddr: localhost:8899
 
-  # optional: `Data Plane` server address
-  # dataserveraddrL localhost:4317
-
-  # optional: `Sampler` update stats period option
-  # updatestatsperiod: 15s
+  # `Data Plane` server address
+  # dataserveraddr: localhost:4317
