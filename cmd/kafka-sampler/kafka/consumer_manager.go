@@ -121,7 +121,7 @@ func (m *ConsumerManager) reconcile(topics []string) error {
 				continue
 			}
 
-			// Initalize consumer
+			// Initialize consumer
 			ctx, cancel := context.WithCancel(m.ctx)
 			consumerInstance := &consumerInstance{
 				wg:     sync.WaitGroup{},
