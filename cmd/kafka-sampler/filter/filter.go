@@ -1,6 +1,6 @@
 package filter
 
-import "fmt"
+import "errors"
 
 type Filter struct {
 	predicates []Predicate
@@ -37,7 +37,7 @@ func denylistEvalFunc(predicates []Predicate, element string) bool {
 
 func New(config *Config) (*Filter, error) {
 	if len(config.Allowlist) > 0 && len(config.Denylist) > 0 {
-		return nil, fmt.Errorf("allowlist and denylist at the same time is not supported. Specify one of the two")
+		return nil, errors.New("allowlist and denylist at the same time is not supported. Specify one of the two")
 	}
 
 	var predicates []Predicate

@@ -34,7 +34,9 @@ func (h *SamplerHandler) Setup(sess sarama.ConsumerGroupSession) error {
 		if err != nil {
 			errors = multierror.Append(errors, fmt.Errorf("cannot initialize sampler for topic %s: %w", topic, err))
 		}
+
 		h.samplers[topic] = sampler
+		h.logger.Info("Initialized sampler", "topic", topic)
 	}
 
 	return errors
@@ -44,8 +46,10 @@ func (h *SamplerHandler) Setup(sess sarama.ConsumerGroupSession) error {
 func (h *SamplerHandler) Cleanup(sarama.ConsumerGroupSession) error {
 	// Clean samplers
 	for topic, sampler := range h.samplers {
+		h.logger.Info("Closing sampler", "topic", topic)
+
 		if err := sampler.Close(); err != nil {
-			h.logger.Error("error closing sampler for topic %s: %w", topic, err)
+			h.logger.Error("Error closing sampler", "topic", topic, "error", err)
 		}
 	}
 
@@ -61,12 +65,13 @@ func (h *SamplerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 	// The `ConsumeClaim` itself is called within a goroutine, see:
 	// https://github.com/Shopify/sarama/blob/main/consumer_group.go#L27-L29
 
+	h.logger.Debug("Starting to consume messages", "topic", claim.Topic())
 	for {
 		select {
 		case message := <-claim.Messages():
 			sampler, ok := h.samplers[message.Topic]
 			if !ok {
-				return fmt.Errorf("received a message from the unexpected topic %s", message.Topic)
+				return fmt.Errorf("received a message from an unexpected topic: %s. There isn't an initialized sampler for this topic.", message.Topic)
 			}
 			sampler.Sample(session.Context(), defs.JSONSample(string(message.Value), string(message.Key)))
 
