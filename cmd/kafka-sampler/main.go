@@ -19,6 +19,7 @@ import (
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler"
 	"github.com/neblic/platform/sampler/global"
+	"go.uber.org/zap"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -122,10 +123,13 @@ func initNeblic(ctx context.Context, logger logging.Logger, config *neblic.Confi
 }
 
 func runKafkaSampler(ctx context.Context, logger logging.Logger, config *Config) {
-	log.Println("Starting a new Sarama consumer")
-	if config.Verbose {
-		sarama.Logger = log.New(os.Stdout, "[sarama] ", log.LstdFlags)
+	logger.Info("Initializing Kafka connection", "endpoints", config.Kafka.Servers)
+
+	stdLog, err := zap.NewStdLogAt(logger.With("source", "sarama").ZapLogger().WithOptions(zap.AddCallerSkip(0)), zap.DebugLevel)
+	if err != nil {
+		logger.Error("Error initializing sarama logger, program will continue without outputing sarama debug logs", "error", err)
 	}
+	sarama.Logger = stdLog
 
 	// Run Kafka Sampler
 	kafkaSampler, err := NewKafkaSampler(ctx, logger, config)
