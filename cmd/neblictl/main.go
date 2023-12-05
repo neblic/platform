@@ -32,6 +32,8 @@ var (
 	originalTermios      *unix.Termios = &unix.Termios{}
 )
 
+const logLevel = "debug"
+
 func createTokanizedCommand(inputText string, cursorPos int) *interpoler.TokanizedCommand {
 	parts := strings.Split(inputText, " ")
 
@@ -116,10 +118,11 @@ func fail(format string, a ...any) {
 
 func main() {
 	// Initialize logger
-	logger, err := logging.NewZapDev()
+	logger, err := logging.NewZapProd(logLevel)
 	if err != nil {
 		fail(err.Error())
 	}
+	defer logger.ZapLogger().Sync()
 
 	// Initialize configuration controller
 	configController, err := internal.NewConfigurationController()

@@ -32,30 +32,48 @@ func (l ZapLogger) ZapLogger() *zap.Logger {
 	return l.logger.Desugar()
 }
 
-func NewZapProd() (*ZapLogger, error) {
-	logger, err := zap.NewProduction()
-	sugar := logger.Sugar()
+type logType int
 
+const (
+	logTypeProd logType = iota
+	logTypeDev
+)
+
+func buildLogger(lvl string, t logType) (*ZapLogger, error) {
+	atomicLevel, err := zap.ParseAtomicLevel(lvl)
 	if err != nil {
-		return nil, fmt.Errorf("error setting logger: %w", err)
+		return nil, fmt.Errorf("error parsing log level: %w", err)
+	}
+
+	var cfg zap.Config
+	switch t {
+	case logTypeProd:
+		cfg = zap.NewProductionConfig()
+	case logTypeDev:
+		fallthrough
+	default:
+		cfg = zap.NewDevelopmentConfig()
+	}
+
+	cfg.Level = atomicLevel
+	logger, err := cfg.Build(
+		zap.AddCallerSkip(1),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error building logger: %w", err)
 	}
 
 	return &ZapLogger{
-		logger: sugar,
+		logger: logger.Sugar(),
 	}, nil
 }
 
+func NewZapProd(lvl string) (*ZapLogger, error) {
+	return buildLogger(lvl, logTypeProd)
+}
+
 func NewZapDev() (*ZapLogger, error) {
-	logger, err := zap.NewDevelopment()
-	sugar := logger.Sugar()
-
-	if err != nil {
-		return nil, fmt.Errorf("error setting logger: %w", err)
-	}
-
-	return &ZapLogger{
-		logger: sugar,
-	}, nil
+	return buildLogger("debug", logTypeDev)
 }
 
 func FromZapLogger(zapLogger *zap.Logger) *ZapLogger {
