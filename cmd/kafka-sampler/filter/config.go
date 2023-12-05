@@ -1,13 +1,17 @@
 package filter
 
+import "time"
+
 type Config struct {
-	Allowlist Predicates
-	Denylist  Predicates
+	RefreshPeriod time.Duration
+	Allowlist     Predicates
+	Denylist      Predicates
 }
 
 func NewConfig() *Config {
 	return &Config{
-		Allowlist: Predicates{},
-		Denylist:  Predicates{},
+		RefreshPeriod: time.Minute,
+		Allowlist:     Predicates{},
+		Denylist:      Predicates{},
 	}
 }
