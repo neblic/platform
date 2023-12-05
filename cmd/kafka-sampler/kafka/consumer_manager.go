@@ -2,7 +2,10 @@ package kafka
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"sync"
 
 	multierror "github.com/hashicorp/go-multierror"
@@ -13,7 +16,7 @@ import (
 
 var internalKafkaTopics = map[string]struct{}{"__consumer_offsets": {}, "__transaction_state": {}}
 
-type groupProvider func() (ConsumerGroup, error)
+type groupProvider func(topic string) (ConsumerGroup, error)
 
 type consumerInstance struct {
 	wg     sync.WaitGroup
@@ -50,8 +53,13 @@ func NewConsumerManager(ctx context.Context, logger logging.Logger, config *Conf
 		config:      config,
 		client:      client,
 		topicFilter: filter,
-		groupProvider: func() (ConsumerGroup, error) {
-			return sarama.NewConsumerGroup(logger, config.Servers, config.ConsumerGroup, &config.Sarama)
+		groupProvider: func(topic string) (ConsumerGroup, error) {
+			h := md5.New()
+			io.WriteString(h, topic)
+			consumerGroup := fmt.Sprintf("%s-%s", config.ConsumerGroup, hex.EncodeToString(h.Sum(nil)[:8]))
+
+			logger.Debug("Creating new consumer group", "topic", topic, "consumer_group", consumerGroup)
+			return sarama.NewConsumerGroup(logger, config.Servers, consumerGroup, &config.Sarama)
 		},
 		consumers: map[string]*consumerInstance{},
 	}, nil
@@ -103,7 +111,9 @@ func (m *ConsumerManager) reconcile(topics []string) error {
 		if _, ok := m.consumers[topic]; !ok {
 			m.logger.Info(fmt.Sprintf("Starting consumer for topic '%s'", topic))
 			// Create consumer group
-			group, err := m.groupProvider()
+			// Each topic has its own consumer group so they are independently consumed
+			// and all data ends up in the same sampler
+			group, err := m.groupProvider(topic)
 			if err != nil {
 				errors = multierror.Append(errors, fmt.Errorf("cannot create '%s' topic consumer group: %w", topic, err))
 				continue
