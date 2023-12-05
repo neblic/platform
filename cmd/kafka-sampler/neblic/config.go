@@ -21,7 +21,7 @@ type Config struct {
 func NewConfig() *Config {
 	return &Config{
 		Settings: sampler.Settings{
-			ResourceName:      "kafkasampler",
+			ResourceName:      "kafka-sampler",
 			ControlServerAddr: "localhost:8899",
 			DataServerAddr:    "localhost:4317",
 		},

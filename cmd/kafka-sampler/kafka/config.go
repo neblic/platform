@@ -15,7 +15,7 @@ type Config struct {
 func NewConfig() *Config {
 	return &Config{
 		Servers:       []string{"localhost:9092"},
-		ConsumerGroup: "kafkasampler",
+		ConsumerGroup: "neblic-kafka-sampler",
 		Sarama:        *sarama.NewConfig(),
 		TopicFilter:   *filter.NewConfig(),
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/neblic/platform/cmd/kafka-sampler/kafka"
@@ -48,13 +49,15 @@ func (r *KafkaSampler) Run() error {
 	}
 
 	// In case of having a reconcile period of 0 nanoseconds, disable it
-	if r.config.ReconcilePeriod == 0 {
+	if r.config.Kafka.TopicFilter.RefreshPeriod == 0 {
+		r.logger.Info("Reconciliation period is 0, disabling reconciliation. Added/deleted topics won't be detected.")
+
 		<-r.ctx.Done()
 		return nil
 	}
 
-	// Execute periodic reconcilitaions
-	ticker := time.NewTicker(r.config.ReconcilePeriod)
+	// Execute periodic reconciliations
+	ticker := time.NewTicker(r.config.Kafka.TopicFilter.RefreshPeriod)
 	for {
 		select {
 		case <-r.ctx.Done():

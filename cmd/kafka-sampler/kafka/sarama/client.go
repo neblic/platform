@@ -10,9 +10,6 @@ type Client struct {
 }
 
 func NewClient(servers []string, config *Config) (*Client, error) {
-	config.Metadata.RefreshFrequency = 0
-	config.Metadata.Full = false
-
 	c, err := sarama.NewClient(servers, config)
 
 	return &Client{
