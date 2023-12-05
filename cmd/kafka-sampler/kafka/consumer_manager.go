@@ -74,10 +74,11 @@ func (m *ConsumerManager) runConsumerInstance(g *consumerInstance) {
 		case <-g.ctx.Done():
 			return
 		default:
-			m.logger.Info("Starting group consume")
+			m.logger.Debug("Starting group consume", "topic", g.topic)
+
 			err := g.group.Consume(g.ctx, []string{g.topic})
 			if err != nil {
-				m.logger.Error(fmt.Sprintf("Error consuming from %s: %v", g.topic, err))
+				m.logger.Error("Consume error", "topic", g.topic, "error", err)
 			}
 		}
 	}
@@ -109,7 +110,8 @@ func (m *ConsumerManager) reconcile(topics []string) error {
 	// Add new topics
 	for topic := range topicsMap {
 		if _, ok := m.consumers[topic]; !ok {
-			m.logger.Info(fmt.Sprintf("Starting consumer for topic '%s'", topic))
+			m.logger.Info("Starting consumer", "topic", topic)
+
 			// Create consumer group
 			// Each topic has its own consumer group so they are independently consumed
 			// and all data ends up in the same sampler
@@ -138,13 +140,15 @@ func (m *ConsumerManager) reconcile(topics []string) error {
 
 		// If the topic no longer exists, stop the consumer group
 		if _, ok := topicsMap[topic]; !ok {
-			m.logger.Info(fmt.Sprintf("Stopping consumer for topic '%s'", topic))
+			m.logger.Info("Stopping consumer", "topic", topic)
 
 			// Cancel the consumer and wait until it finishes
 			consumer.cancel()
 			consumer.wg.Wait()
 
-			consumer.group.Close()
+			if err := consumer.group.Close(); err != nil {
+				m.logger.Error("Error closing consumer group", "topic", topic, "error", err)
+			}
 			delete(m.consumers, topic)
 		}
 	}
@@ -153,12 +157,14 @@ func (m *ConsumerManager) reconcile(topics []string) error {
 }
 
 func (m *ConsumerManager) Reconcile() error {
+	m.logger.Debug("Running topics reconcilitation")
 
 	// Pull last version of the topics
 	topics, err := m.pullTopics()
 	if err != nil {
 		return err
 	}
+	m.logger.Debug(fmt.Sprintf("Available topics: %s", topics))
 
 	// Remove internal kafka topics
 	externalTopics := make([]string, 0, len(topics))
@@ -167,9 +173,11 @@ func (m *ConsumerManager) Reconcile() error {
 			externalTopics = append(externalTopics, topic)
 		}
 	}
+	m.logger.Debug(fmt.Sprintf("Removed internal kafka topics: %v", internalKafkaTopics))
 
 	// Filter topics based on the user provided rules.
 	filteredTopics := m.topicFilter.EvaluateList(externalTopics)
+	m.logger.Debug(fmt.Sprintf("Assigned topics: %v", filteredTopics))
 
 	// Update internal status to reflect the list of pulled topics
 	err = m.reconcile(filteredTopics)
