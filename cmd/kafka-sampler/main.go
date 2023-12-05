@@ -107,7 +107,7 @@ func initNeblic(ctx context.Context, logger logging.Logger, config *neblic.Confi
 		options = append(options, sampler.WithTLS())
 	}
 	if config.LimiterOutLimit != 0 {
-		options = append(options, sampler.WithLimiterOutLimit(int32(config.LimiterOutLimit)))
+		options = append(options, sampler.WithInitialLimiterOutLimit(int32(config.LimiterOutLimit)))
 	}
 	if config.UpdateStatsPeriod != 0 {
 		options = append(options, sampler.WithUpdateStatsPeriod(config.UpdateStatsPeriod))
