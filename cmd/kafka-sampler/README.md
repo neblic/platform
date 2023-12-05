@@ -2,7 +2,7 @@
 
 <!--learn-start-->
 <!-- ### Kafka -->
-Neblic provides a standalone service called `kafk-sampler` capable of automatically monitoring your `Apache Kafka` topics and creating `Samplers` that will allow you to inspect all data that flows through them.
+Neblic provides a standalone service called `kafka-sampler` capable of automatically monitoring your `Apache Kafka` topics and creating `Samplers` that will allow you to inspect all data that flows through them.
 
 #### Supported encodings
 
@@ -18,7 +18,7 @@ See the [releases](https://github.com/neblic/platform/releases) page to download
 
 ## Usage
 
-On startup, it will subscribe to all or a subset (based on your configuration) of your Kafka topics and create a `Sampler` per each one. No other actions are required since it will automatically register the `Samplers` with the `Control Plane` server and keep the list of `Samplers` updated if topics are added or removed.
+On startup, it will subscribe to all or a subset (based on your configuration) of your Kafka topics and create a `Sampler` per each one. No other actions are required since it will automatically register the `Samplers` with Neblic's `Control Plane` server and keep the list of `Samplers` updated if topics are added or removed.
 <!--how-to-end-->
 
 <!--ref-start-->
