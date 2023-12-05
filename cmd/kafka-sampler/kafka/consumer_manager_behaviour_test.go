@@ -39,7 +39,7 @@ var _ = Describe("Manager behaviour", func() {
 			logger: logger,
 			config: NewConfig(),
 			client: client,
-			groupProvider: func() (ConsumerGroup, error) {
+			groupProvider: func(topic string) (ConsumerGroup, error) {
 				group := mock_kafka.NewMockConsumerGroup(mockCtrl)
 				group.EXPECT().Consume(gomock.Any(), gomock.Any()).AnyTimes().Return(nil)
 				group.EXPECT().Close().AnyTimes().Return(nil)
