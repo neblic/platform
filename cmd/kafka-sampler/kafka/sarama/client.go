@@ -3,7 +3,7 @@ package sarama
 import (
 	"fmt"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 )
 
 type Client struct {

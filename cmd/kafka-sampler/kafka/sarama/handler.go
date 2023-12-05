@@ -3,7 +3,7 @@ package sarama
 import (
 	"fmt"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/hashicorp/go-multierror"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler/defs"

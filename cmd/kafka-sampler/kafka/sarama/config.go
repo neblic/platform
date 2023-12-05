@@ -1,6 +1,6 @@
 package sarama
 
-import "github.com/Shopify/sarama"
+import "github.com/IBM/sarama"
 
 type Config = sarama.Config
 
