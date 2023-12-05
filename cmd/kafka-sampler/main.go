@@ -143,7 +143,11 @@ func main() {
 	flag.Parse()
 
 	config := initConfig(configPath)
-	logger, _ := logging.NewZapDev()
+	logger, err := logging.NewZapProd(config.Logging.Level)
+	if err != nil {
+		log.Fatalf("Error initializing logger: %v", err)
+	}
+	defer logger.ZapLogger().Sync()
 
 	// trap Ctrl+C and call cancel on the context
 	ctx, cancel := context.WithCancel(context.Background())
