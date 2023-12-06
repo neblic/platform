@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/neblic/platform/controlplane/control"
+	"github.com/neblic/platform/controlplane/event"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/controlplane/server/internal/auth"
 	protocolclient "github.com/neblic/platform/controlplane/server/internal/protocol/client"
@@ -146,7 +147,7 @@ func (s *Server) GetSamplerConfig(resourceName string, samplerName string) (cont
 	return sampler.Config, nil
 }
 
-func (s *Server) GetEvents() chan registry.Event {
+func (s *Server) GetEvents() chan event.Event {
 	return s.samplerRegistry.Events()
 }
 

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/neblic/platform/controlplane/control"
+	"github.com/neblic/platform/controlplane/event"
 	"github.com/neblic/platform/controlplane/server/internal/defs"
 	"github.com/neblic/platform/controlplane/server/internal/registry/storage"
 	"github.com/neblic/platform/logging"
@@ -20,7 +21,7 @@ type SamplerRegistry struct {
 	samplers map[defs.SamplerIdentifier]*defs.Sampler
 	storage  storage.Storage[defs.SamplerIdentifier, *defs.Sampler]
 
-	eventsChan  chan Event
+	eventsChan  chan event.Event
 	notifyDirty chan struct{}
 
 	logger logging.Logger
@@ -208,7 +209,7 @@ func (sr *SamplerRegistry) Register(resource string, name string, uid control.Sa
 
 	// Send upsert event if necessary
 	if sr.eventsChan != nil {
-		sr.eventsChan <- ConfigUpdate{
+		sr.eventsChan <- event.ConfigUpdate{
 			Resource: resource,
 			Sampler:  name,
 			Config:   sampler.Config,
@@ -275,7 +276,7 @@ func (sr *SamplerRegistry) UpdateSamplerConfig(resource string, name string, upd
 
 	// Send upsert event if necessary
 	if sr.eventsChan != nil {
-		sr.eventsChan <- ConfigUpdate{
+		sr.eventsChan <- event.ConfigUpdate{
 			Resource: resource,
 			Sampler:  name,
 			Config:   sampler.Config,
@@ -311,7 +312,7 @@ func (sr *SamplerRegistry) DeleteSamplerConfig(resource string, name string) err
 
 	// Send delete event if necessary
 	if sr.eventsChan != nil {
-		sr.eventsChan <- ConfigDelete{
+		sr.eventsChan <- event.ConfigDelete{
 			Resource: resource,
 			Sampler:  name,
 		}
@@ -338,15 +339,15 @@ func (sr *SamplerRegistry) UpdateStats(resource string, name string, uid control
 // Events returns a new channel that will be populated with the sampler configs. Events will contain the initial state
 // and posterior updates
 // CAUTION: Not reading from the returned channel until it gets closed will block the registry
-func (sr *SamplerRegistry) Events() chan Event {
+func (sr *SamplerRegistry) Events() chan event.Event {
 	if sr.eventsChan == nil {
-		sr.eventsChan = make(chan Event)
+		sr.eventsChan = make(chan event.Event)
 	}
 
 	// Send config state to the created channel. That blocks the full registry until the goroutine finishes
 	go func() {
 		sr.RangeSamplers(func(sampler *defs.Sampler) (carryon bool) {
-			sr.eventsChan <- ConfigUpdate{
+			sr.eventsChan <- event.ConfigUpdate{
 				Resource: sampler.Resource,
 				Sampler:  sampler.Name,
 				Config:   sampler.Config,
