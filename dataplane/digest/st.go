@@ -93,7 +93,7 @@ func (s *St) updateNum(prev *protos.NumberSt, x interface{}) (*protos.NumberSt, 
 	return prev, nil
 }
 
-func (s *St) updateString(prev *protos.StringSt, x string) (*protos.StringSt, error) {
+func (s *St) updateString(prev *protos.StringSt, _ string) (*protos.StringSt, error) {
 	if err := s.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (s *St) updateString(prev *protos.StringSt, x string) (*protos.StringSt, er
 	return prev, nil
 }
 
-func (s *St) updateBoolean(prev *protos.BooleanSt, x bool) (*protos.BooleanSt, error) {
+func (s *St) updateBoolean(prev *protos.BooleanSt, _ bool) (*protos.BooleanSt, error) {
 	if err := s.incrFieldsProcessed(); err != nil {
 		return nil, err
 	}

@@ -16,6 +16,40 @@ const (
 	DigestTypeValue
 )
 
+type ComputationLocation uint8
+
+const (
+	ComputationLocationUnknown ComputationLocation = iota
+	ComputationLocationSampler
+	ComputationLocationCollector
+)
+
+func (s ComputationLocation) String() string {
+	switch s {
+	case ComputationLocationUnknown:
+		return "unknown"
+	case ComputationLocationSampler:
+		return "sampler"
+	case ComputationLocationCollector:
+		return "collector"
+	default:
+		return "unknown"
+	}
+}
+
+func ParseComputationLocation(t string) ComputationLocation {
+	switch t {
+	case "unknown":
+		return ComputationLocationUnknown
+	case "sampler":
+		return ComputationLocationSampler
+	case "collector":
+		return ComputationLocationCollector
+	default:
+		return ComputationLocationUnknown
+	}
+}
+
 type SamplerDigestUID string
 
 type DigestSt struct {
@@ -59,11 +93,12 @@ func (dv *DigestValue) ToProto() *protos.Digest_Value {
 }
 
 type Digest struct {
-	UID         SamplerDigestUID
-	Name        string
-	StreamUID   SamplerStreamUID
-	FlushPeriod time.Duration
-	BufferSize  int
+	UID                 SamplerDigestUID
+	Name                string
+	StreamUID           SamplerStreamUID
+	FlushPeriod         time.Duration
+	BufferSize          int
+	ComputationLocation ComputationLocation
 
 	// digest specific config
 	Type  DigestType
@@ -88,6 +123,15 @@ func NewDigestFromProto(protoDigest *protos.Digest) Digest {
 		BufferSize:  int(protoDigest.GetBufferSize()),
 	}
 
+	switch protoDigest.GetComputationLocation() {
+	case protos.Digest_SAMPLER:
+		digest.ComputationLocation = ComputationLocationSampler
+	case protos.Digest_COLLECTOR:
+		digest.ComputationLocation = ComputationLocationCollector
+	default:
+		digest.ComputationLocation = ComputationLocationUnknown
+	}
+
 	switch t := protoDigest.GetType().(type) {
 	case *protos.Digest_St_:
 		digest.Type = DigestTypeSt
@@ -109,6 +153,15 @@ func (d *Digest) ToProto() *protos.Digest {
 		StreamUid:   string(d.StreamUID),
 		FlushPeriod: durationpb.New(d.FlushPeriod),
 		BufferSize:  int32(d.BufferSize),
+	}
+
+	switch d.ComputationLocation {
+	case ComputationLocationSampler:
+		protoDigest.ComputationLocation = protos.Digest_SAMPLER
+	case ComputationLocationCollector:
+		protoDigest.ComputationLocation = protos.Digest_COLLECTOR
+	default:
+		protoDigest.ComputationLocation = protos.Digest_UNKNOWN
 	}
 
 	switch d.Type {

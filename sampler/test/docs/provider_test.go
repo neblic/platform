@@ -36,6 +36,6 @@ func initProvider() defs.Provider {
 
 // --8<-- [end:ProviderInit]
 
-func TestInitProvider(t *testing.T) {
+func TestInitProvider(_ *testing.T) {
 	initProvider()
 }

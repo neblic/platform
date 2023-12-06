@@ -266,6 +266,23 @@ func (pc SamplerConfig) IsEmpty() bool {
 		len(pc.Events) == 0
 }
 
+func (pc *SamplerConfig) DigestTypesByLocation(location ComputationLocation) []DigestType {
+
+	digestTypesMap := make(map[DigestType]bool)
+	for _, valueDigest := range pc.Digests {
+		if valueDigest.ComputationLocation == location {
+			digestTypesMap[valueDigest.Type] = true
+		}
+	}
+
+	digestTypes := make([]DigestType, 0, len(digestTypesMap))
+	for digestType := range digestTypesMap {
+		digestTypes = append(digestTypes, digestType)
+	}
+
+	return digestTypes
+}
+
 func (pc *SamplerConfig) Merge(update SamplerConfigUpdate) {
 	// Update Streams
 	if update.Reset.Streams || pc.Streams == nil {

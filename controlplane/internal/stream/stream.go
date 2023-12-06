@@ -183,7 +183,7 @@ func (s *Stream[FromS, ToS]) ToServerMsg() ToS {
 	return s.handler.toServerMsg(s.serverUID)
 }
 
-func (s *Stream[FromS, ToS]) SendToS(ctx context.Context, toS ToS) error {
+func (s *Stream[FromS, ToS]) SendToS(_ context.Context, toS ToS) error {
 	if s.state != Registered {
 		return fmt.Errorf("can't send message to server, stream not registered")
 	}

@@ -15,16 +15,16 @@ type mockSampler struct {
 	schema defs.Schema
 }
 
-func (p *mockSampler) SampleJSON(ctx context.Context, jsonSample string) (bool, error) {
+func (p *mockSampler) SampleJSON(_ context.Context, _ string) (bool, error) {
 	return true, nil
 }
-func (p *mockSampler) SampleNative(ctx context.Context, nativeSample any) (bool, error) {
+func (p *mockSampler) SampleNative(_ context.Context, _ any) (bool, error) {
 	return true, nil
 }
-func (p *mockSampler) SampleProto(ctx context.Context, protoSample proto.Message) (bool, error) {
+func (p *mockSampler) SampleProto(_ context.Context, _ proto.Message) (bool, error) {
 	return true, nil
 }
-func (p *mockSampler) Sample(ctx context.Context, sample defs.Sample) bool {
+func (p *mockSampler) Sample(_ context.Context, _ defs.Sample) bool {
 	return true
 }
 func (p *mockSampler) Close() error {

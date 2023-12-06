@@ -96,7 +96,7 @@ type ControlPlaneServer struct {
 	protos.UnimplementedControlPlaneServer
 }
 
-func NewControlPlaneServer(t TestingT) *ControlPlaneServer {
+func NewControlPlaneServer(_ TestingT) *ControlPlaneServer {
 	s := &ControlPlaneServer{}
 	return s
 }

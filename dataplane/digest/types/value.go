@@ -425,10 +425,10 @@ func NewValueValueFromProto(valueValue *protos.ValueValue) (*ValueValue, error) 
 		errs = errors.Join(errs, err)
 	}
 
-	var string *StringValue
+	var str *StringValue
 	if valueValue.String_ != nil {
 		var err error
-		string, err = NewStringValueFromProto(valueValue.String_)
+		str, err = NewStringValueFromProto(valueValue.String_)
 		errs = errors.Join(errs, err)
 	}
 
@@ -451,7 +451,7 @@ func NewValueValueFromProto(valueValue *protos.ValueValue) (*ValueValue, error) 
 		NullCount:  valueValue.NullCount,
 
 		Number:  number,
-		String:  string,
+		String:  str,
 		Boolean: NewBooleanValueFromProto(valueValue.Boolean),
 		Array:   array,
 		Obj:     obj,
@@ -463,9 +463,9 @@ func (vv *ValueValue) ToProto() *protos.ValueValue {
 	if vv.Number != nil {
 		number = vv.Number.ToProto()
 	}
-	var string *protos.StringValue
+	var str *protos.StringValue
 	if vv.String != nil {
-		string = vv.String.ToProto()
+		str = vv.String.ToProto()
 	}
 	var boolean *protos.BooleanValue
 	if vv.Boolean != nil {
@@ -485,7 +485,7 @@ func (vv *ValueValue) ToProto() *protos.ValueValue {
 		NullCount:  vv.NullCount,
 
 		Number:  number,
-		String_: string,
+		String_: str,
 		Boolean: boolean,
 		Array:   array,
 		Obj:     obj,

@@ -51,9 +51,7 @@ message Stream {
 }
 
 message Digest {
-  message St {
-    int32 max_processed_fields = 1;
-  }
+  message St { int32 max_processed_fields = 1; }
 
   message Value {
     // Maximum number of fields to process when processing a sample
@@ -66,9 +64,16 @@ message Digest {
   google.protobuf.Duration flush_period = 4;
   int32 buffer_size = 5;
 
+  enum Location {
+    UNKNOWN = 0;
+    SAMPLER = 1;
+    COLLECTOR = 2;
+  }
+  Location computation_location = 6;
+
   oneof Type {
-    St st = 6;
-    Value value = 7;
+    St st = 7;
+    Value value = 8;
   }
 }
 
@@ -86,6 +91,11 @@ message Event {
   SampleType sample_type = 4;
   Rule rule = 5;
   Limiter limiter = 6;
+}
+
+message Capabilities {
+  bool struct_digest = 1;
+  bool value_digest = 2;
 }
 
 // Used to get and update the sampler configuration.
@@ -227,6 +237,7 @@ message SamplerStatsMsg { SamplerSamplingStats sampling_stats = 2; }
 
 message SamplerRegisterReq {
   ClientSamplerConfigUpdate sampler_config_update = 1;
+  Capabilities capabilities = 2;
   map<string, string> tags = 3;
 }
 
@@ -313,6 +324,7 @@ message ClientSamplerConfigUpdate {
     bool limiter_out = 4;
     bool digests = 5;
     bool events = 6;
+    bool capabilities = 7;
   }
   Reset reset = 1;
 

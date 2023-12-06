@@ -112,3 +112,5 @@ func (e *Eventor) ProcessSample(samplerLogs sample.SamplerOTLPLogs) error {
 
 	return errs
 }
+
+func (e *Eventor) Close() {}

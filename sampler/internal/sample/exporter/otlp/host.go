@@ -8,9 +8,9 @@ type Host struct{}
 
 // ReportFatalError does not have to do anything because otlpexporter.LogsExporter doesn't report errors
 // if it ever reports fatal errors, it should notify the Exporter.
-func (h *Host) ReportFatalError(err error) {}
+func (h *Host) ReportFatalError(_ error) {}
 
-func (h *Host) GetFactory(kind component.Kind, componentType component.Type) component.Factory {
+func (h *Host) GetFactory(_ component.Kind, _ component.Type) component.Factory {
 	return nil
 }
 func (h *Host) GetExtensions() map[component.ID]component.Component {

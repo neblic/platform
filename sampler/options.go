@@ -1,6 +1,7 @@
 package sampler
 
 import (
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,6 +39,7 @@ type options struct {
 	controlServerAuth authOption
 	dataServerAuth    authOption
 
+	initialStream *control.Stream
 	initialConfig control.SamplerConfigUpdate
 
 	updateStatsPeriod time.Duration
@@ -46,44 +48,72 @@ type options struct {
 	samplersErr chan error
 }
 
+func newDefaultStreamUpdate(uid control.SamplerStreamUID) control.StreamUpdate {
+	return control.StreamUpdate{
+		Op: control.StreamUpsert,
+		Stream: control.Stream{
+			UID:  uid,
+			Name: "all",
+			StreamRule: control.Rule{
+				Lang:       control.SrlCel,
+				Expression: "true",
+			},
+		},
+	}
+}
+
+func newDefaultStructDigestUpdate(streamUID control.SamplerStreamUID, location control.ComputationLocation) control.DigestUpdate {
+	return control.DigestUpdate{
+		Op: control.DigestUpsert,
+		Digest: control.Digest{
+			UID:                 control.SamplerDigestUID(uuid.NewString()),
+			Name:                "struct",
+			StreamUID:           streamUID,
+			FlushPeriod:         time.Second * time.Duration(60),
+			ComputationLocation: location,
+			Type:                control.DigestTypeSt,
+			St: control.DigestSt{
+				MaxProcessedFields: int(100),
+			},
+		},
+	}
+}
+
+func newDefaultValueDigestUpdate(streamUID control.SamplerStreamUID, location control.ComputationLocation) control.DigestUpdate {
+	return control.DigestUpdate{
+		Op: control.DigestUpsert,
+		Digest: control.Digest{
+			UID:                 control.SamplerDigestUID(uuid.NewString()),
+			Name:                "value",
+			StreamUID:           control.SamplerStreamUID(streamUID),
+			FlushPeriod:         time.Second * time.Duration(60),
+			ComputationLocation: location,
+			Type:                control.DigestTypeValue,
+			Value: control.DigestValue{
+				MaxProcessedFields: int(100),
+			},
+		},
+	}
+}
+
 func newDefaultOptions() *options {
 	initialConfig := control.NewSamplerConfigUpdate()
 	initialConfig.LimiterIn = &control.LimiterConfig{Limit: 100}
 	initialConfig.LimiterOut = &control.LimiterConfig{Limit: 10}
-	streamUID := control.SamplerStreamUID(uuid.NewString())
+	initialStreamUID := control.SamplerStreamUID(uuid.NewString())
+	initialStreamUpdate := newDefaultStreamUpdate(initialStreamUID)
 	initialConfig.StreamUpdates = []control.StreamUpdate{
-		{
-			Op: control.StreamUpsert,
-			Stream: control.Stream{
-				UID:  streamUID,
-				Name: "all",
-				StreamRule: control.Rule{
-					Lang:       control.SrlCel,
-					Expression: "true",
-				},
-			},
-		},
+		initialStreamUpdate,
 	}
 	initialConfig.DigestUpdates = []control.DigestUpdate{
-		{
-			Op: control.DigestUpsert,
-			Digest: control.Digest{
-				UID:         control.SamplerDigestUID(uuid.NewString()),
-				Name:        "all",
-				StreamUID:   streamUID,
-				FlushPeriod: time.Second * time.Duration(60),
-				Type:        control.DigestTypeSt,
-				St: control.DigestSt{
-					MaxProcessedFields: int(100),
-				},
-			},
-		},
+		newDefaultStructDigestUpdate(initialStreamUID, control.ComputationLocationSampler),
 	}
 
 	return &options{
 		controlServerTLSEnable: false,
 		dataServerTLSEnable:    false,
 
+		initialStream: &initialStreamUpdate.Stream,
 		initialConfig: initialConfig,
 
 		updateStatsPeriod: time.Second * time.Duration(5),
@@ -192,12 +222,77 @@ func WithInitialLimiterOutLimit(l int32) Option {
 	})
 }
 
+// WithInitalStructDigest enables the computation of struct digest. Location defines where this computation
+// must take place (in the sampler of in the collector). In case of computing the digest in the collector,
+// the raw samples are exported (that can have an impact in the sampler performance)
+func WithInitialStructDigest(location control.ComputationLocation) Option {
+	return newFuncOption(func(o *options) {
+		// Check if the default struct digest is present
+		index := slices.IndexFunc(o.initialConfig.DigestUpdates, func(digestUpdate control.DigestUpdate) bool {
+			return digestUpdate.Digest.Type == control.DigestTypeSt && digestUpdate.Digest.Name == "struct"
+		})
+
+		// If the default struct digest is not present, add it
+		if index == -1 {
+
+			// If the default stream is not present, add it
+			if o.initialStream == nil {
+				initialStreamUID := control.SamplerStreamUID(uuid.NewString())
+				initialStreamUpdate := newDefaultStreamUpdate(initialStreamUID)
+
+				o.initialStream = &initialStreamUpdate.Stream
+				o.initialConfig.StreamUpdates = append(o.initialConfig.StreamUpdates, initialStreamUpdate)
+			}
+
+			// In case os computing the digest in the collector, we need to export the raw samples
+			if location == control.ComputationLocationCollector {
+				o.initialStream.ExportRawSamples = true
+			}
+
+			o.initialConfig.DigestUpdates = append(o.initialConfig.DigestUpdates, newDefaultStructDigestUpdate(o.initialStream.UID, location))
+		}
+	})
+}
+
+// WithInitalValueDigest enables the computation of value digest. Location defines where this computation
+// must take place (in the sampler of in the collector). In case of computing the digest in the collector,
+// the raw samples are exported (that can have an impact in the sampler performance)
+func WithInitalValueDigest(location control.ComputationLocation) Option {
+	return newFuncOption(func(o *options) {
+		// Check if the default value digest is present
+		index := slices.IndexFunc(o.initialConfig.DigestUpdates, func(digestUpdate control.DigestUpdate) bool {
+			return digestUpdate.Digest.Type == control.DigestTypeValue && digestUpdate.Digest.Name == "value"
+		})
+
+		// If the default struct value is not present, add it
+		if index == -1 {
+
+			// If the default stream is not present, add it
+			if o.initialStream == nil {
+				initialStreamUID := control.SamplerStreamUID(uuid.NewString())
+				initialStreamUpdate := newDefaultStreamUpdate(initialStreamUID)
+
+				o.initialStream = &initialStreamUpdate.Stream
+				o.initialConfig.StreamUpdates = append(o.initialConfig.StreamUpdates, initialStreamUpdate)
+			}
+
+			// In case os computing the digest in the collector, we need to export the raw samples
+			if location == control.ComputationLocationCollector {
+				o.initialStream.ExportRawSamples = true
+			}
+
+			o.initialConfig.DigestUpdates = append(o.initialConfig.DigestUpdates, newDefaultValueDigestUpdate(o.initialStream.UID, location))
+		}
+	})
+}
+
 // WithoutDefaultInitialConfig avoids setting the default 'all' stream and digest. This configuration
 // is only used the first time a sampler is registered with a server, posterior executions
 // will use the configuration stored in the server and the provided configuration will be
 // ignored.
 func WithoutDefaultInitialConfig() Option {
 	return newFuncOption(func(o *options) {
+		o.initialStream = nil
 		o.initialConfig.StreamUpdates = []control.StreamUpdate{}
 		o.initialConfig.DigestUpdates = []control.DigestUpdate{}
 	})

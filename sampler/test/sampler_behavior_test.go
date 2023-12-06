@@ -1,5 +1,6 @@
 package test_test
 
+//revive:disable:dot-imports
 import (
 	"context"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/controlplane/server/mock"
 	"github.com/neblic/platform/logging"
@@ -447,12 +449,13 @@ var _ = Describe("Sampler", func() {
 			}
 		})
 
-		When("there is a structure digest configuration", func() {
-			It("should periodically export structure digest samples", func() {
+		When("there is a structure digest with sampler computation location", func() {
+			It("should export structure digest samples", func() {
 				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings,
 					sampler.WithInitialLimiterOutLimit(10),
 					sampler.WithLogger(logger),
 					sampler.WithoutDefaultInitialConfig(),
+					sampler.WithInitialStructDigest(control.ComputationLocationSampler),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -496,6 +499,45 @@ var _ = Describe("Sampler", func() {
 				sampleTypeVal, ok := logRecords.At(0).Attributes().Get("sample_type")
 				require.True(GinkgoT(), ok)
 				assert.Equal(GinkgoT(), sampleTypeVal.AsString(), "struct-digest")
+			})
+		})
+
+		When("there is a structure digest with collector computation location", func() {
+			It("should never export structure digest samples", func() {
+				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings,
+					sampler.WithInitialLimiterOutLimit(10),
+					sampler.WithLogger(logger),
+					sampler.WithoutDefaultInitialConfig(),
+					sampler.WithInitialStructDigest(control.ComputationLocationCollector),
+				)
+				Expect(err).ToNot(HaveOccurred())
+
+				// create a sampler
+				s, err := providerLimitedOut.Sampler("sampler1", defs.DynamicSchema{})
+				Expect(err).ToNot(HaveOccurred())
+
+				// Wait until sampler has received the initial configuration (empty) and the posterior update
+				require.Eventually(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						return s.(*internalSampler.Sampler).ConfigUpdates() == 2
+					},
+					time.Second, time.Millisecond*5,
+				)
+
+				// send sample
+				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				Expect(sampled).To(BeTrue())
+
+				// no digest has to be generated
+				require.Never(GinkgoT(),
+					func() bool {
+						defer GinkgoRecover()
+
+						return receiver.TotalItems.Load() == 1
+					},
+					time.Millisecond*500, time.Millisecond)
 			})
 		})
 	})
