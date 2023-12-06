@@ -221,7 +221,7 @@ func (p *Processor) UpdateConfig(resource string, sampler string, config *contro
 		settings := digest.Settings{
 			ResourceName:   resource,
 			SamplerName:    sampler,
-			EnabledDigests: config.Capabilities.NotCapableDigesters(),
+			EnabledDigests: config.DigestTypesByLocation(control.ComputationLocationCollector),
 			NotifyErr:      p.notifyErr,
 			Exporter:       p.exporter,
 		}

@@ -48,28 +48,50 @@ type options struct {
 	samplersErr chan error
 }
 
-func newDefaultStructDigest(streamUID control.SamplerStreamUID) control.Digest {
-	return control.Digest{
-		UID:         control.SamplerDigestUID(uuid.NewString()),
-		Name:        "struct",
-		StreamUID:   streamUID,
-		FlushPeriod: time.Second * time.Duration(60),
-		Type:        control.DigestTypeSt,
-		St: control.DigestSt{
-			MaxProcessedFields: int(100),
+func newDefaultStreamUpdate(uid control.SamplerStreamUID) control.StreamUpdate {
+	return control.StreamUpdate{
+		Op: control.StreamUpsert,
+		Stream: control.Stream{
+			UID:  uid,
+			Name: "all",
+			StreamRule: control.Rule{
+				Lang:       control.SrlCel,
+				Expression: "true",
+			},
 		},
 	}
 }
 
-func newDefaultValueDigest(streamUID control.SamplerStreamUID) control.Digest {
-	return control.Digest{
-		UID:         control.SamplerDigestUID(uuid.NewString()),
-		Name:        "value",
-		StreamUID:   control.SamplerStreamUID(streamUID),
-		FlushPeriod: time.Second * time.Duration(60),
-		Type:        control.DigestTypeValue,
-		Value: control.DigestValue{
-			MaxProcessedFields: int(100),
+func newDefaultStructDigestUpdate(streamUID control.SamplerStreamUID, location control.ComputationLocation) control.DigestUpdate {
+	return control.DigestUpdate{
+		Op: control.DigestUpsert,
+		Digest: control.Digest{
+			UID:                 control.SamplerDigestUID(uuid.NewString()),
+			Name:                "struct",
+			StreamUID:           streamUID,
+			FlushPeriod:         time.Second * time.Duration(60),
+			ComputationLocation: location,
+			Type:                control.DigestTypeSt,
+			St: control.DigestSt{
+				MaxProcessedFields: int(100),
+			},
+		},
+	}
+}
+
+func newDefaultValueDigestUpdate(streamUID control.SamplerStreamUID, location control.ComputationLocation) control.DigestUpdate {
+	return control.DigestUpdate{
+		Op: control.DigestUpsert,
+		Digest: control.Digest{
+			UID:                 control.SamplerDigestUID(uuid.NewString()),
+			Name:                "value",
+			StreamUID:           control.SamplerStreamUID(streamUID),
+			FlushPeriod:         time.Second * time.Duration(60),
+			ComputationLocation: location,
+			Type:                control.DigestTypeValue,
+			Value: control.DigestValue{
+				MaxProcessedFields: int(100),
+			},
 		},
 	}
 }
@@ -80,27 +102,10 @@ func newDefaultOptions() *options {
 	initialConfig.LimiterOut = &control.LimiterConfig{Limit: 10}
 	initialStreamUID := control.SamplerStreamUID(uuid.NewString())
 	initialConfig.StreamUpdates = []control.StreamUpdate{
-		{
-			Op: control.StreamUpsert,
-			Stream: control.Stream{
-				UID:  initialStreamUID,
-				Name: "all",
-				StreamRule: control.Rule{
-					Lang:       control.SrlCel,
-					Expression: "true",
-				},
-			},
-		},
+		newDefaultStreamUpdate(initialStreamUID),
 	}
 	initialConfig.DigestUpdates = []control.DigestUpdate{
-		{
-			Op:     control.DigestUpsert,
-			Digest: newDefaultStructDigest(initialStreamUID),
-		},
-	}
-	initialConfig.Capabilities = &control.CapabilitiesConfig{
-		StructDigests: true,
-		ValueDigests:  false,
+		newDefaultStructDigestUpdate(initialStreamUID, control.ComputationLocationSampler),
 	}
 
 	return &options{
@@ -216,56 +221,48 @@ func WithInitialLimiterOutLimit(l int32) Option {
 	})
 }
 
-// WithLocalStructDigests instructs the sampler to compute the struct digests, otherwise this work is
+// WithInitalStructDigest instructs the sampler to compute the struct digests, otherwise this work is
 // delegated to the otelcol server (but it needs the raw data to be able to do it).
-func WithLocalStructDigests(value bool) Option {
+func WithInitialStructDigest(location control.ComputationLocation) Option {
 	return newFuncOption(func(o *options) {
-		o.initialConfig.Capabilities.StructDigests = value
-
 		// Check if the default struct digest is present
 		index := slices.IndexFunc(o.initialConfig.DigestUpdates, func(digestUpdate control.DigestUpdate) bool {
 			return digestUpdate.Digest.Type == control.DigestTypeSt && digestUpdate.Digest.Name == "struct"
 		})
 
-		if value {
-			// The default struct digest is not present, add it
-			if index == -1 {
-				o.initialConfig.DigestUpdates = append(o.initialConfig.DigestUpdates, control.DigestUpdate{
-					Op:     control.DigestUpsert,
-					Digest: newDefaultStructDigest(o.initialStreamUID),
-				})
+		// If the default struct digest is not present, add it
+		if index == -1 {
+
+			// If the default stream is not present, add it
+			if o.initialStreamUID == "" {
+				o.initialStreamUID = control.SamplerStreamUID(uuid.NewString())
+				o.initialConfig.StreamUpdates = append(o.initialConfig.StreamUpdates, newDefaultStreamUpdate(o.initialStreamUID))
 			}
-		} else {
-			if index != -1 {
-				o.initialConfig.DigestUpdates = slices.Delete(o.initialConfig.DigestUpdates, index, index)
-			}
+
+			o.initialConfig.DigestUpdates = append(o.initialConfig.DigestUpdates, newDefaultStructDigestUpdate(o.initialStreamUID, location))
 		}
 	})
 }
 
-// WithLocalValueDigests instructs the sampler to compute the value digests, otherwise this work is
+// WithInitalValueDigest instructs the sampler to compute the value digests, otherwise this work is
 // delegated to the otelcol server (but it needs the raw data to be able to do it).
-func WithLocalValueDigests(value bool) Option {
+func WithInitalValueDigest(location control.ComputationLocation) Option {
 	return newFuncOption(func(o *options) {
-		o.initialConfig.Capabilities.ValueDigests = value
-
 		// Check if the default value digest is present
 		index := slices.IndexFunc(o.initialConfig.DigestUpdates, func(digestUpdate control.DigestUpdate) bool {
 			return digestUpdate.Digest.Type == control.DigestTypeValue && digestUpdate.Digest.Name == "value"
 		})
 
-		if value {
-			// The default struct value is not present, add it
-			if index == -1 {
-				o.initialConfig.DigestUpdates = append(o.initialConfig.DigestUpdates, control.DigestUpdate{
-					Op:     control.DigestUpsert,
-					Digest: newDefaultValueDigest(o.initialStreamUID),
-				})
+		// If the default struct value is not present, add it
+		if index == -1 {
+
+			// If the default stream is not present, add it
+			if o.initialStreamUID == "" {
+				o.initialStreamUID = control.SamplerStreamUID(uuid.NewString())
+				o.initialConfig.StreamUpdates = append(o.initialConfig.StreamUpdates, newDefaultStreamUpdate(o.initialStreamUID))
 			}
-		} else {
-			if index != -1 {
-				o.initialConfig.DigestUpdates = slices.Delete(o.initialConfig.DigestUpdates, index, index)
-			}
+
+			o.initialConfig.DigestUpdates = append(o.initialConfig.DigestUpdates, newDefaultValueDigestUpdate(o.initialStreamUID, location))
 		}
 	})
 }
@@ -276,6 +273,7 @@ func WithLocalValueDigests(value bool) Option {
 // ignored.
 func WithoutDefaultInitialConfig() Option {
 	return newFuncOption(func(o *options) {
+		o.initialStreamUID = ""
 		o.initialConfig.StreamUpdates = []control.StreamUpdate{}
 		o.initialConfig.DigestUpdates = []control.DigestUpdate{}
 	})

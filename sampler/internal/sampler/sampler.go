@@ -80,10 +80,13 @@ func New(
 		}
 	}
 
+	initialConfig := control.NewSamplerConfig()
+	initialConfig.Merge(settings.InitialConfig)
+
 	digesterSettings := digest.Settings{
 		ResourceName:   settings.Resource,
 		SamplerName:    settings.Name,
-		EnabledDigests: settings.InitialConfig.Capabilities.CapableDigesters(),
+		EnabledDigests: initialConfig.DigestTypesByLocation(control.ComputationLocationSampler),
 		NotifyErr:      forwardError,
 		Exporter:       settings.Exporter,
 	}

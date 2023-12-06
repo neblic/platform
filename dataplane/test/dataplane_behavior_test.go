@@ -42,7 +42,7 @@ var _ = Describe("DataPlane", func() {
 
 	Describe("Exporting digests", func() {
 
-		When("there is a structure digest configuration and the sampler enables local struct digests", func() {
+		When("there is a structure digest with sampler computation location", func() {
 			It("should not generate structure digest samples", func() {
 				streamUID := control.SamplerStreamUID(uuid.NewString())
 				digestUID := control.SamplerDigestUID(uuid.NewString())
@@ -58,18 +58,15 @@ var _ = Describe("DataPlane", func() {
 					},
 					Digests: map[control.SamplerDigestUID]control.Digest{
 						digestUID: {
-							UID:         digestUID,
-							StreamUID:   streamUID,
-							FlushPeriod: 200 * time.Millisecond,
-							Type:        control.DigestTypeSt,
+							UID:                 digestUID,
+							StreamUID:           streamUID,
+							FlushPeriod:         200 * time.Millisecond,
+							ComputationLocation: control.ComputationLocationSampler,
+							Type:                control.DigestTypeSt,
 							St: control.DigestSt{
 								MaxProcessedFields: 100,
 							},
 						},
-					},
-					Capabilities: &control.CapabilitiesConfig{
-						StructDigests: true,
-						ValueDigests:  true,
 					},
 				})
 
@@ -93,7 +90,7 @@ var _ = Describe("DataPlane", func() {
 			})
 		})
 
-		When("there is a structure digest configuration and the sampler disables local struct digests", func() {
+		When("there is a structure digest with sampler computation location", func() {
 			It("should export structure digest samples", func() {
 
 				streamUID := control.SamplerStreamUID(uuid.NewString())
@@ -110,18 +107,15 @@ var _ = Describe("DataPlane", func() {
 					},
 					Digests: map[control.SamplerDigestUID]control.Digest{
 						digestUID: {
-							UID:         digestUID,
-							StreamUID:   streamUID,
-							FlushPeriod: 200 * time.Millisecond,
-							Type:        control.DigestTypeSt,
+							UID:                 digestUID,
+							StreamUID:           streamUID,
+							FlushPeriod:         200 * time.Millisecond,
+							ComputationLocation: control.ComputationLocationCollector,
+							Type:                control.DigestTypeSt,
 							St: control.DigestSt{
 								MaxProcessedFields: 100,
 							},
 						},
-					},
-					Capabilities: &control.CapabilitiesConfig{
-						StructDigests: false,
-						ValueDigests:  true,
 					},
 				})
 

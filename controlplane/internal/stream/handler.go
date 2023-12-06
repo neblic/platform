@@ -113,6 +113,10 @@ func (ch SamplerHandler) regReqMsg(uid string) *protos.SamplerToServer {
 	toServerMsg.Message = &protos.SamplerToServer_RegisterReq{
 		RegisterReq: &protos.SamplerRegisterReq{
 			SamplerConfigUpdate: ch.initialConfig,
+			Capabilities: &protos.Capabilities{
+				StructDigest: true,
+				ValueDigest:  true,
+			},
 		},
 	}
 

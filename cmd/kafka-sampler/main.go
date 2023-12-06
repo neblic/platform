@@ -16,6 +16,7 @@ import (
 	"github.com/knadh/koanf/v2"
 	"github.com/mitchellh/mapstructure"
 	"github.com/neblic/platform/cmd/kafka-sampler/neblic"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler"
 	"github.com/neblic/platform/sampler/global"
@@ -98,8 +99,8 @@ func initNeblic(ctx context.Context, logger logging.Logger, config *neblic.Confi
 	// Propagate options
 	options := []sampler.Option{
 		sampler.WithLogger(logger),
-		sampler.WithLocalStructDigests(true),
-		sampler.WithLocalValueDigests(true),
+		sampler.WithInitialStructDigest(control.ComputationLocationSampler),
+		sampler.WithInitalValueDigest(control.ComputationLocationSampler),
 	}
 	if config.Bearer != "" {
 		options = append(options, sampler.WithBearerAuth(config.Bearer))

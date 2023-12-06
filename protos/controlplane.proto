@@ -64,9 +64,16 @@ message Digest {
   google.protobuf.Duration flush_period = 4;
   int32 buffer_size = 5;
 
+  enum Location {
+    UNKNOWN = 0;
+    SAMPLER = 1;
+    COLLECTOR = 2;
+  }
+  Location computation_location = 6;
+
   oneof Type {
-    St st = 6;
-    Value value = 7;
+    St st = 7;
+    Value value = 8;
   }
 }
 
@@ -87,8 +94,8 @@ message Event {
 }
 
 message Capabilities {
-  bool struct_digests = 1;
-  bool value_digests = 2;
+  bool struct_digest = 1;
+  bool value_digest = 2;
 }
 
 // Used to get and update the sampler configuration.
@@ -127,8 +134,6 @@ message SamplerConfig {
   repeated Digest digests = 5;
   // Configure the sampler events.
   repeated Event events = 6;
-  // Configure the capabilities of the sampler
-  Capabilities capabilities = 7;
 }
 
 message SamplerSamplingStats {
@@ -232,6 +237,7 @@ message SamplerStatsMsg { SamplerSamplingStats sampling_stats = 2; }
 
 message SamplerRegisterReq {
   ClientSamplerConfigUpdate sampler_config_update = 1;
+  Capabilities capabilities = 2;
   map<string, string> tags = 3;
 }
 
@@ -330,7 +336,6 @@ message ClientSamplerConfigUpdate {
   Limiter limiter_out = 5;
   repeated ClientDigestUpdate digest_updates = 6;
   repeated ClientEventUpdate event_updates = 7;
-  Capabilities capabilities = 8;
 }
 
 message ClientSamplerConfReq {

@@ -3,46 +3,24 @@ package control
 import "github.com/neblic/platform/controlplane/protos"
 
 type CapabilitiesConfig struct {
-	StructDigests bool
-	ValueDigests  bool
+	StructDigest bool
+	ValueDigest  bool
 }
 
-func (cc *CapabilitiesConfig) NotCapableDigesters() []DigestType {
-	digesters := []DigestType{}
-	if !cc.StructDigests {
-		digesters = append(digesters, DigestTypeSt)
-	}
-	if !cc.ValueDigests {
-		digesters = append(digesters, DigestTypeValue)
-	}
-	return digesters
-}
-
-func (cc *CapabilitiesConfig) CapableDigesters() []DigestType {
-	digesters := []DigestType{}
-	if cc.StructDigests {
-		digesters = append(digesters, DigestTypeSt)
-	}
-	if cc.ValueDigests {
-		digesters = append(digesters, DigestTypeValue)
-	}
-	return digesters
-}
-
-func NewCapabilitiesFromProto(sr *protos.Capabilities) CapabilitiesConfig {
-	if sr == nil {
+func NewCapabilitiesFromProto(c *protos.Capabilities) CapabilitiesConfig {
+	if c == nil {
 		return CapabilitiesConfig{}
 	}
 
 	return CapabilitiesConfig{
-		StructDigests: sr.StructDigests,
-		ValueDigests:  sr.ValueDigests,
+		StructDigest: c.StructDigest,
+		ValueDigest:  c.ValueDigest,
 	}
 }
 
 func (cc CapabilitiesConfig) ToProto() *protos.Capabilities {
 	return &protos.Capabilities{
-		StructDigests: cc.StructDigests,
-		ValueDigests:  cc.ValueDigests,
+		StructDigest: cc.StructDigest,
+		ValueDigest:  cc.ValueDigest,
 	}
 }

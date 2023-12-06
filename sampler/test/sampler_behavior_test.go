@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/controlplane/server/mock"
 	"github.com/neblic/platform/logging"
@@ -448,12 +449,13 @@ var _ = Describe("Sampler", func() {
 			}
 		})
 
-		When("there is a structure digest configuration and the provider enables local struct digests", func() {
+		When("there is a structure digest with sampler computation location", func() {
 			It("should export structure digest samples", func() {
 				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings,
 					sampler.WithInitialLimiterOutLimit(10),
 					sampler.WithLogger(logger),
 					sampler.WithoutDefaultInitialConfig(),
+					sampler.WithInitialStructDigest(control.ComputationLocationSampler),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -500,14 +502,13 @@ var _ = Describe("Sampler", func() {
 			})
 		})
 
-		When("there is a structure digest configuration and the provider disables local struct digests", func() {
+		When("there is a structure digest with collector computation location", func() {
 			It("should never export structure digest samples", func() {
 				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings,
 					sampler.WithInitialLimiterOutLimit(10),
 					sampler.WithLogger(logger),
 					sampler.WithoutDefaultInitialConfig(),
-					sampler.WithLocalStructDigests(false),
-					sampler.WithLocalValueDigests(false),
+					sampler.WithInitialStructDigest(control.ComputationLocationCollector),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
