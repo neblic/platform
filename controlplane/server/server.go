@@ -176,6 +176,11 @@ func (s *Server) Stop(timeout time.Duration) error {
 		s.grpcServer.Stop()
 	}
 
+	if s.samplerRegistry != nil {
+		s.samplerRegistry.Close()
+		s.samplerRegistry = nil
+	}
+
 	return nil
 }
 

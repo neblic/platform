@@ -359,3 +359,9 @@ func (sr *SamplerRegistry) Events() chan event.Event {
 
 	return sr.eventsChan
 }
+
+func (sr *SamplerRegistry) Close() {
+	if sr.eventsChan != nil {
+		close(sr.eventsChan)
+	}
+}

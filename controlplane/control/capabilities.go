@@ -7,6 +7,17 @@ type CapabilitiesConfig struct {
 	ValueDigests  bool
 }
 
+func (cc *CapabilitiesConfig) NotCapableDigesters() []DigestType {
+	digesters := []DigestType{}
+	if !cc.StructDigests {
+		digesters = append(digesters, DigestTypeSt)
+	}
+	if !cc.ValueDigests {
+		digesters = append(digesters, DigestTypeValue)
+	}
+	return digesters
+}
+
 func (cc *CapabilitiesConfig) CapableDigesters() []DigestType {
 	digesters := []DigestType{}
 	if cc.StructDigests {
