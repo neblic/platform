@@ -20,7 +20,7 @@ type bearerAuth struct {
 	bearerString string
 }
 
-func (ba *bearerAuth) serverStart(ctx context.Context, host component.Host) error {
+func (ba *bearerAuth) serverStart(_ context.Context, _ component.Host) error {
 	ba.bearerString = fmt.Sprintf("Bearer %s", ba.token)
 
 	return nil

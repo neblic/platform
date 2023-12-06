@@ -6,16 +6,16 @@ import (
 	sample "github.com/neblic/platform/dataplane/sample"
 )
 
-// MockExporter is a mock of Exporter interface.
-type MockExporter struct {
+// Exporter is a mock of Exporter interface.
+type Exporter struct {
 	Configs       []sample.ConfigOTLPLog
 	StructDigests []sample.StructDigestOTLPLog
 	ValueDigests  []sample.ValueDigestOTLPLog
 }
 
-// NewMockExporter creates a new mock instance.
-func NewMockExporter() *MockExporter {
-	return &MockExporter{
+// NewExporter creates a new mock instance.
+func NewExporter() *Exporter {
+	return &Exporter{
 		Configs:       []sample.ConfigOTLPLog{},
 		StructDigests: []sample.StructDigestOTLPLog{},
 		ValueDigests:  []sample.ValueDigestOTLPLog{},
@@ -23,7 +23,7 @@ func NewMockExporter() *MockExporter {
 }
 
 // Export mocks base method.
-func (m *MockExporter) Export(_ context.Context, logs sample.OTLPLogs) error {
+func (m *Exporter) Export(_ context.Context, logs sample.OTLPLogs) error {
 	sample.Range(logs, func(resourceName string, sampleName string, log any) {
 		switch v := log.(type) {
 		case sample.ConfigOTLPLog:
@@ -39,6 +39,6 @@ func (m *MockExporter) Export(_ context.Context, logs sample.OTLPLogs) error {
 }
 
 // Close mocks base method.
-func (m *MockExporter) Close(_ context.Context) error {
+func (m *Exporter) Close(_ context.Context) error {
 	return nil
 }

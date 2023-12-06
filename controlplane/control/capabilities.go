@@ -40,9 +40,9 @@ func NewCapabilitiesFromProto(sr *protos.Capabilities) CapabilitiesConfig {
 	}
 }
 
-func (sr CapabilitiesConfig) ToProto() *protos.Capabilities {
+func (cc CapabilitiesConfig) ToProto() *protos.Capabilities {
 	return &protos.Capabilities{
-		StructDigests: sr.StructDigests,
-		ValueDigests:  sr.ValueDigests,
+		StructDigests: cc.StructDigests,
+		ValueDigests:  cc.ValueDigests,
 	}
 }

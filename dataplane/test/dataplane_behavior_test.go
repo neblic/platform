@@ -1,5 +1,6 @@
 package test_test
 
+//revive:disable:dot-imports
 import (
 	"context"
 	"testing"
@@ -25,7 +26,7 @@ var _ = Describe("DataPlane", func() {
 	var (
 		logger *zap.Logger
 
-		exporter  *mock.MockExporter
+		exporter  *mock.Exporter
 		processor *dataplane.Processor
 	)
 
@@ -35,7 +36,7 @@ var _ = Describe("DataPlane", func() {
 		logger, err = zap.NewDevelopment()
 		Expect(err).ToNot(HaveOccurred())
 
-		exporter = mock.NewMockExporter()
+		exporter = mock.NewExporter()
 		processor = dataplane.NewProcessor(logger, nil, exporter)
 	})
 

@@ -34,8 +34,9 @@ func NewDeterministicSampler(sampleRate uint, sampleEmptyDeterminant bool) (*Det
 	// sample every value.
 	upperBound := math.MaxUint32 / uint32(sampleRate)
 	return &DeterministicSampler{
-		sampleRate: int(sampleRate),
-		upperBound: upperBound,
+		sampleRate:             int(sampleRate),
+		sampleEmptyDeterminant: sampleEmptyDeterminant,
+		upperBound:             upperBound,
 	}, nil
 }
 

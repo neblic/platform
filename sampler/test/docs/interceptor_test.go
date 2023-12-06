@@ -22,6 +22,6 @@ func initInterceptor() *grpc.ClientConn {
 
 // --8<-- [end:InterceptorInit]
 
-func TestInitInetrceptor(t *testing.T) {
+func TestInitInetrceptor(_ *testing.T) {
 	initInterceptor()
 }

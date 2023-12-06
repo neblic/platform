@@ -74,7 +74,7 @@ func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.
 	}, nil
 }
 
-func (n *neblic) Start(ctx context.Context, host component.Host) error {
+func (n *neblic) Start(_ context.Context, _ component.Host) error {
 	var err error
 	n.s, err = server.New(n.cfg.UID, n.serverOpts...)
 	if err != nil {
@@ -94,7 +94,7 @@ func (n *neblic) Start(ctx context.Context, host component.Host) error {
 	return nil
 }
 
-func (n *neblic) Shutdown(ctx context.Context) error {
+func (n *neblic) Shutdown(_ context.Context) error {
 	var errs error
 	if n.s != nil {
 		err := n.s.Stop(time.Second)

@@ -28,13 +28,13 @@ type mockExporter struct {
 	exportedOtlpLogs []dpsample.OTLPLogs
 }
 
-func (e *mockExporter) Export(ctx context.Context, otlpLogs dpsample.OTLPLogs) error {
+func (e *mockExporter) Export(_ context.Context, otlpLogs dpsample.OTLPLogs) error {
 	e.exportedOtlpLogs = append(e.exportedOtlpLogs, otlpLogs)
 
 	return nil
 }
 
-func (e *mockExporter) Close(context.Context) error {
+func (e *mockExporter) Close(_ context.Context) error {
 	return nil
 }
 

@@ -37,7 +37,7 @@ func sampleData(ctx context.Context) bool {
 
 // --8<-- [end:SampleData]
 
-func TestSampler(t *testing.T) {
+func TestSampler(_ *testing.T) {
 	someSampler = initSampler()
 	sampleData(context.Background())
 }

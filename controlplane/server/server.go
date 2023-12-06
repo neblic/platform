@@ -163,7 +163,7 @@ func (s *Server) ClientConn(stream protos.ControlPlane_ClientConnServer) error {
 	return h.HandleStream(stream)
 }
 
-func (s *Server) Stop(timeout time.Duration) error {
+func (s *Server) Stop(_ time.Duration) error {
 	if s.grpcServer != nil {
 		defer func() { s.grpcServer = nil }()
 

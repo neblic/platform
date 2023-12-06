@@ -1,5 +1,6 @@
 package test_test
 
+//revive:disable:dot-imports
 import (
 	"context"
 	"net"
