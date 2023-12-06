@@ -39,8 +39,8 @@ type options struct {
 	controlServerAuth authOption
 	dataServerAuth    authOption
 
-	initialStreamUID control.SamplerStreamUID
-	initialConfig    control.SamplerConfigUpdate
+	initialStream *control.Stream
+	initialConfig control.SamplerConfigUpdate
 
 	updateStatsPeriod time.Duration
 
@@ -101,8 +101,9 @@ func newDefaultOptions() *options {
 	initialConfig.LimiterIn = &control.LimiterConfig{Limit: 100}
 	initialConfig.LimiterOut = &control.LimiterConfig{Limit: 10}
 	initialStreamUID := control.SamplerStreamUID(uuid.NewString())
+	initialStreamUpdate := newDefaultStreamUpdate(initialStreamUID)
 	initialConfig.StreamUpdates = []control.StreamUpdate{
-		newDefaultStreamUpdate(initialStreamUID),
+		initialStreamUpdate,
 	}
 	initialConfig.DigestUpdates = []control.DigestUpdate{
 		newDefaultStructDigestUpdate(initialStreamUID, control.ComputationLocationSampler),
@@ -112,8 +113,8 @@ func newDefaultOptions() *options {
 		controlServerTLSEnable: false,
 		dataServerTLSEnable:    false,
 
-		initialStreamUID: initialStreamUID,
-		initialConfig:    initialConfig,
+		initialStream: &initialStreamUpdate.Stream,
+		initialConfig: initialConfig,
 
 		updateStatsPeriod: time.Second * time.Duration(5),
 	}
@@ -221,8 +222,9 @@ func WithInitialLimiterOutLimit(l int32) Option {
 	})
 }
 
-// WithInitalStructDigest instructs the sampler to compute the struct digests, otherwise this work is
-// delegated to the otelcol server (but it needs the raw data to be able to do it).
+// WithInitalStructDigest enables the computation of struct digest. Location defines where this computation
+// must take place (in the sampler of in the collector). In case of computing the digest in the collector,
+// the raw samples are exported (that can have an impact in the sampler performance)
 func WithInitialStructDigest(location control.ComputationLocation) Option {
 	return newFuncOption(func(o *options) {
 		// Check if the default struct digest is present
@@ -234,18 +236,27 @@ func WithInitialStructDigest(location control.ComputationLocation) Option {
 		if index == -1 {
 
 			// If the default stream is not present, add it
-			if o.initialStreamUID == "" {
-				o.initialStreamUID = control.SamplerStreamUID(uuid.NewString())
-				o.initialConfig.StreamUpdates = append(o.initialConfig.StreamUpdates, newDefaultStreamUpdate(o.initialStreamUID))
+			if o.initialStream == nil {
+				initialStreamUID := control.SamplerStreamUID(uuid.NewString())
+				initialStreamUpdate := newDefaultStreamUpdate(initialStreamUID)
+
+				o.initialStream = &initialStreamUpdate.Stream
+				o.initialConfig.StreamUpdates = append(o.initialConfig.StreamUpdates, initialStreamUpdate)
 			}
 
-			o.initialConfig.DigestUpdates = append(o.initialConfig.DigestUpdates, newDefaultStructDigestUpdate(o.initialStreamUID, location))
+			// In case os computing the digest in the collector, we need to export the raw samples
+			if location == control.ComputationLocationCollector {
+				o.initialStream.ExportRawSamples = true
+			}
+
+			o.initialConfig.DigestUpdates = append(o.initialConfig.DigestUpdates, newDefaultStructDigestUpdate(o.initialStream.UID, location))
 		}
 	})
 }
 
-// WithInitalValueDigest instructs the sampler to compute the value digests, otherwise this work is
-// delegated to the otelcol server (but it needs the raw data to be able to do it).
+// WithInitalValueDigest enables the computation of value digest. Location defines where this computation
+// must take place (in the sampler of in the collector). In case of computing the digest in the collector,
+// the raw samples are exported (that can have an impact in the sampler performance)
 func WithInitalValueDigest(location control.ComputationLocation) Option {
 	return newFuncOption(func(o *options) {
 		// Check if the default value digest is present
@@ -257,12 +268,20 @@ func WithInitalValueDigest(location control.ComputationLocation) Option {
 		if index == -1 {
 
 			// If the default stream is not present, add it
-			if o.initialStreamUID == "" {
-				o.initialStreamUID = control.SamplerStreamUID(uuid.NewString())
-				o.initialConfig.StreamUpdates = append(o.initialConfig.StreamUpdates, newDefaultStreamUpdate(o.initialStreamUID))
+			if o.initialStream == nil {
+				initialStreamUID := control.SamplerStreamUID(uuid.NewString())
+				initialStreamUpdate := newDefaultStreamUpdate(initialStreamUID)
+
+				o.initialStream = &initialStreamUpdate.Stream
+				o.initialConfig.StreamUpdates = append(o.initialConfig.StreamUpdates, initialStreamUpdate)
 			}
 
-			o.initialConfig.DigestUpdates = append(o.initialConfig.DigestUpdates, newDefaultValueDigestUpdate(o.initialStreamUID, location))
+			// In case os computing the digest in the collector, we need to export the raw samples
+			if location == control.ComputationLocationCollector {
+				o.initialStream.ExportRawSamples = true
+			}
+
+			o.initialConfig.DigestUpdates = append(o.initialConfig.DigestUpdates, newDefaultValueDigestUpdate(o.initialStream.UID, location))
 		}
 	})
 }
@@ -273,7 +292,7 @@ func WithInitalValueDigest(location control.ComputationLocation) Option {
 // ignored.
 func WithoutDefaultInitialConfig() Option {
 	return newFuncOption(func(o *options) {
-		o.initialStreamUID = ""
+		o.initialStream = nil
 		o.initialConfig.StreamUpdates = []control.StreamUpdate{}
 		o.initialConfig.DigestUpdates = []control.DigestUpdate{}
 	})
