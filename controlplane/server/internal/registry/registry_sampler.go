@@ -342,20 +342,20 @@ func (sr *SamplerRegistry) UpdateStats(resource string, name string, uid control
 func (sr *SamplerRegistry) Events() chan event.Event {
 	if sr.eventsChan == nil {
 		sr.eventsChan = make(chan event.Event)
+
+		// Send config state to the created channel. That blocks the full registry until the goroutine finishes
+		go func() {
+			sr.RangeSamplers(func(sampler *defs.Sampler) (carryon bool) {
+				sr.eventsChan <- event.ConfigUpdate{
+					Resource: sampler.Resource,
+					Sampler:  sampler.Name,
+					Config:   sampler.Config,
+				}
+
+				return true
+			})
+		}()
 	}
-
-	// Send config state to the created channel. That blocks the full registry until the goroutine finishes
-	go func() {
-		sr.RangeSamplers(func(sampler *defs.Sampler) (carryon bool) {
-			sr.eventsChan <- event.ConfigUpdate{
-				Resource: sampler.Resource,
-				Sampler:  sampler.Name,
-				Config:   sampler.Config,
-			}
-
-			return true
-		})
-	}()
 
 	return sr.eventsChan
 }
