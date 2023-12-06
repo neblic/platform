@@ -24,6 +24,32 @@ const (
 	ComputationLocationCollector
 )
 
+func (s ComputationLocation) String() string {
+	switch s {
+	case ComputationLocationUnknown:
+		return "unknown"
+	case ComputationLocationSampler:
+		return "sampler"
+	case ComputationLocationCollector:
+		return "collector"
+	default:
+		return "unknown"
+	}
+}
+
+func ParseComputationLocation(t string) ComputationLocation {
+	switch t {
+	case "unknown":
+		return ComputationLocationUnknown
+	case "sampler":
+		return ComputationLocationSampler
+	case "collector":
+		return ComputationLocationCollector
+	default:
+		return ComputationLocationUnknown
+	}
+}
+
 type SamplerDigestUID string
 
 type DigestSt struct {

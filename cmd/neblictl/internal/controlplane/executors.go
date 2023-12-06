@@ -467,6 +467,12 @@ func (e *Executors) DigestsStructureCreate(ctx context.Context, parameters inter
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
+	computationLocationParameter, _ := parameters.Get("computation-location")
+	computationLocation := control.ParseComputationLocation(computationLocationParameter.Value)
+	if computationLocation == control.ComputationLocationUnknown {
+		return fmt.Errorf("computation-location not supported")
+	}
+
 	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
 
 		_, ok := getEntryByName(samplerControl.Config.Digests, digestNameParameter.Value)
@@ -479,16 +485,21 @@ func (e *Executors) DigestsStructureCreate(ctx context.Context, parameters inter
 			return nil, fmt.Errorf("Stream does not exist")
 		}
 
+		if computationLocation == control.ComputationLocationCollector && !stream.ExportRawSamples {
+			return nil, fmt.Errorf("Stream must export raw samples to use collector computation location")
+		}
+
 		return &control.SamplerConfigUpdate{
 			DigestUpdates: []control.DigestUpdate{
 				{
 					Op: control.DigestUpsert,
 					Digest: control.Digest{
-						UID:         control.SamplerDigestUID(uuid.New().String()),
-						Name:        digestNameParameter.Value,
-						StreamUID:   stream.UID,
-						FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
-						Type:        control.DigestTypeSt,
+						UID:                 control.SamplerDigestUID(uuid.New().String()),
+						Name:                digestNameParameter.Value,
+						StreamUID:           stream.UID,
+						FlushPeriod:         time.Second * time.Duration(flushPeriodInt32),
+						ComputationLocation: computationLocation,
+						Type:                control.DigestTypeSt,
 						St: control.DigestSt{
 							MaxProcessedFields: int(maxProcessedFieldsInt32),
 						},
@@ -517,6 +528,12 @@ func (e *Executors) DigestsStructureUpdate(ctx context.Context, parameters inter
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
+	computationLocationParameter, _ := parameters.Get("computation-location")
+	computationLocation := control.ParseComputationLocation(computationLocationParameter.Value)
+	if computationLocation == control.ComputationLocationUnknown {
+		return fmt.Errorf("computation-location not supported")
+	}
+
 	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
 
 		digest, ok := getEntryByName(samplerControl.Config.Digests, digestNameParameter.Value)
@@ -529,16 +546,21 @@ func (e *Executors) DigestsStructureUpdate(ctx context.Context, parameters inter
 			return nil, fmt.Errorf("Stream does not exist")
 		}
 
+		if computationLocation == control.ComputationLocationCollector && !stream.ExportRawSamples {
+			return nil, fmt.Errorf("Stream must export raw samples to use collector computation location")
+		}
+
 		return &control.SamplerConfigUpdate{
 			DigestUpdates: []control.DigestUpdate{
 				{
 					Op: control.DigestUpsert,
 					Digest: control.Digest{
-						UID:         digest.UID,
-						Name:        digestNameParameter.Value,
-						StreamUID:   stream.UID,
-						FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
-						Type:        control.DigestTypeSt,
+						UID:                 digest.UID,
+						Name:                digestNameParameter.Value,
+						StreamUID:           stream.UID,
+						FlushPeriod:         time.Second * time.Duration(flushPeriodInt32),
+						ComputationLocation: computationLocation,
+						Type:                control.DigestTypeSt,
 						St: control.DigestSt{
 							MaxProcessedFields: int(maxProcessedFieldsInt32),
 						},
@@ -568,6 +590,12 @@ func (e *Executors) DigestsValueCreate(ctx context.Context, parameters interpole
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
+	computationLocationParameter, _ := parameters.Get("computation-location")
+	computationLocation := control.ParseComputationLocation(computationLocationParameter.Value)
+	if computationLocation == control.ComputationLocationUnknown {
+		return fmt.Errorf("computation-location not supported")
+	}
+
 	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
 
 		_, ok := getEntryByName(samplerControl.Config.Digests, digestNameParameter.Value)
@@ -580,16 +608,21 @@ func (e *Executors) DigestsValueCreate(ctx context.Context, parameters interpole
 			return nil, fmt.Errorf("Stream does not exist")
 		}
 
+		if computationLocation == control.ComputationLocationCollector && !stream.ExportRawSamples {
+			return nil, fmt.Errorf("Stream must export raw samples to use collector computation location")
+		}
+
 		return &control.SamplerConfigUpdate{
 			DigestUpdates: []control.DigestUpdate{
 				{
 					Op: control.DigestUpsert,
 					Digest: control.Digest{
-						UID:         control.SamplerDigestUID(uuid.New().String()),
-						Name:        digestNameParameter.Value,
-						StreamUID:   stream.UID,
-						FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
-						Type:        control.DigestTypeValue,
+						UID:                 control.SamplerDigestUID(uuid.New().String()),
+						Name:                digestNameParameter.Value,
+						StreamUID:           stream.UID,
+						FlushPeriod:         time.Second * time.Duration(flushPeriodInt32),
+						ComputationLocation: computationLocation,
+						Type:                control.DigestTypeValue,
 						Value: control.DigestValue{
 							MaxProcessedFields: int(maxProcessedFieldsInt32),
 						},
@@ -618,6 +651,12 @@ func (e *Executors) DigestsValueUpdate(ctx context.Context, parameters interpole
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
+	computationLocationParameter, _ := parameters.Get("computation-location")
+	computationLocation := control.ParseComputationLocation(computationLocationParameter.Value)
+	if computationLocation == control.ComputationLocationUnknown {
+		return fmt.Errorf("computation-location not supported")
+	}
+
 	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
 
 		digest, ok := getEntryByName(samplerControl.Config.Digests, digestNameParameter.Value)
@@ -630,16 +669,21 @@ func (e *Executors) DigestsValueUpdate(ctx context.Context, parameters interpole
 			return nil, fmt.Errorf("Stream does not exist")
 		}
 
+		if computationLocation == control.ComputationLocationCollector && !stream.ExportRawSamples {
+			return nil, fmt.Errorf("Stream must export raw samples to use collector computation location")
+		}
+
 		return &control.SamplerConfigUpdate{
 			DigestUpdates: []control.DigestUpdate{
 				{
 					Op: control.DigestUpsert,
 					Digest: control.Digest{
-						UID:         digest.UID,
-						Name:        digestNameParameter.Value,
-						StreamUID:   stream.UID,
-						FlushPeriod: time.Second * time.Duration(flushPeriodInt32),
-						Type:        control.DigestTypeValue,
+						UID:                 digest.UID,
+						Name:                digestNameParameter.Value,
+						StreamUID:           stream.UID,
+						FlushPeriod:         time.Second * time.Duration(flushPeriodInt32),
+						ComputationLocation: computationLocation,
+						Type:                control.DigestTypeValue,
 						Value: control.DigestValue{
 							MaxProcessedFields: int(maxProcessedFieldsInt32),
 						},
