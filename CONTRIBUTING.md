@@ -66,6 +66,7 @@ Type must be one of the following (based on [Angular type definitions](https://g
 
 Accepted scopes are:
 * controlplane: Internal control plane definition and implementation
+* dataplane: Data collection pipeline and transformations
 * collector: Collector setup and builds
 * neblictl: CLI client
 * sampler: Go sampler library

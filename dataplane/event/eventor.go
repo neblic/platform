@@ -50,7 +50,6 @@ func NewEventor(settings Settings) (*Eventor, error) {
 
 func (e *Eventor) SetEventsConfig(eventsCfgs map[control.SamplerEventUID]control.Event) error {
 	var errs error
-
 	e.events = make(map[control.SamplerEventUID]*event)
 
 	for eventUID, eventCfg := range eventsCfgs {
@@ -75,10 +74,9 @@ func (e *Eventor) SetEventsConfig(eventsCfgs map[control.SamplerEventUID]control
 // ProessSample iterates over all the raw flows in the sampler logs and creates events when necessary.
 // Generated events are appended to the provided sampler logs
 func (e *Eventor) ProcessSample(samplerLogs sample.SamplerOTLPLogs) error {
-	// List of computed events
 	var errs error
 
-	// Iterate and append events inplace. As range function does not iterate over appended elements after
+	// Iterate and append events in-place. As range function does not iterate over appended elements after
 	// it's call, new events will not be visited.
 	sample.RangeSamplerLogsWithType[sample.RawSampleOTLPLog](samplerLogs, func(rawSample sample.RawSampleOTLPLog) {
 		for _, event := range e.events {

@@ -11,10 +11,10 @@ import (
 	"github.com/neblic/platform/dataplane"
 	"github.com/neblic/platform/dataplane/mock"
 	"github.com/neblic/platform/dataplane/sample"
+	"github.com/neblic/platform/logging"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestDataplane(t *testing.T) {
@@ -24,7 +24,7 @@ func TestDataplane(t *testing.T) {
 
 var _ = Describe("DataPlane", func() {
 	var (
-		logger *zap.Logger
+		logger logging.Logger
 
 		exporter  *mock.Exporter
 		processor *dataplane.Processor
@@ -33,7 +33,7 @@ var _ = Describe("DataPlane", func() {
 	BeforeEach(func() {
 		var err error
 
-		logger, err = zap.NewDevelopment()
+		logger, err = logging.NewZapDev()
 		Expect(err).ToNot(HaveOccurred())
 
 		exporter = mock.NewExporter()
@@ -68,7 +68,7 @@ var _ = Describe("DataPlane", func() {
 							},
 						},
 					},
-				})
+				}, logger)
 
 				// Process log
 				logs := sample.NewOTLPLogs()
@@ -76,6 +76,7 @@ var _ = Describe("DataPlane", func() {
 				rawSampleLog := samplerLogs.AppendRawSampleOTLPLog()
 				rawSampleLog.SetStreams([]control.SamplerStreamUID{streamUID})
 				rawSampleLog.SetSampleRawData(sample.JSONEncoding, []byte(`{"id": 1}`))
+
 				err := processor.Process(context.Background(), logs)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -117,7 +118,7 @@ var _ = Describe("DataPlane", func() {
 							},
 						},
 					},
-				})
+				}, logger)
 
 				// Process log
 				logs := sample.NewOTLPLogs()
