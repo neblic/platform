@@ -60,7 +60,7 @@ func NewProvider(ctx context.Context, settings Settings, opts ...Option) (defs.P
 
 	sampleExporter, err := exporterotlp.New(ctx, setOpts.logger, settings.DataServerAddr, exporterOpts)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't initialize the OTLP samples exporter")
+		return nil, fmt.Errorf("couldn't initialize the OTLP samples exporter: %v", err)
 	}
 
 	return &Provider{

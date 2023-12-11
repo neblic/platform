@@ -139,9 +139,9 @@ loop:
 		case csampler.StateUpdate:
 			switch ev.State {
 			case csampler.Registered:
-				p.logger.Debug("Sampler registered with server")
+				p.logger.Info("Sampler registered with server")
 			case csampler.Unregistered:
-				p.logger.Debug("Sampler deregistered from server")
+				p.logger.Info("Sampler deregistered from server")
 			}
 		default:
 			p.logger.Info(fmt.Sprintf("Received unknown event type %T", ev))
@@ -162,7 +162,10 @@ func (p *Sampler) updateStats(period time.Duration) {
 		select {
 		case <-ticker.C:
 			if err := p.controlPlaneClient.UpdateStats(context.Background(), p.samplingStats); err != nil {
-				p.logger.Error(fmt.Sprintf("Error updating stats: %s", err))
+				// TODO: use custom errors
+				if p.controlPlaneClient.State() != csampler.Unregistered {
+					p.logger.Error(fmt.Sprintf("Error updating stats: %s", err))
+				}
 			}
 		}
 	}
