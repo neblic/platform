@@ -41,7 +41,7 @@ func (r *KafkaSampler) Run() error {
 
 	// In case of having a reconcile period of 0 nanoseconds, disable it
 	if r.config.Kafka.TopicFilter.RefreshPeriod == 0 {
-		r.logger.Info("Reconciliation period is 0, disabling reconciliation. Added/deleted topics won't be detected.")
+		r.logger.Warn("Topic refresh period is 0. Added/deleted topics won't be detected.")
 
 		<-r.ctx.Done()
 		return nil
