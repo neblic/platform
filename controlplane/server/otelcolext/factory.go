@@ -25,7 +25,6 @@ func createDefaultConfig() component.Config {
 	return newDefaultSettings()
 }
 
-// func(context.Context, CreateSettings, component.Config, consumer.Logs) (Logs, error)
 func createLogsProcessor(_ context.Context, set processor.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (processor.Logs, error) {
 	return newLogsProcessor(cfg.(*Config), set.Logger, nextConsumer)
 }

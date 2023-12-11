@@ -21,13 +21,13 @@ type neblic struct {
 	cfg      *Config
 	exporter *Exporter
 
-	logger     *zap.Logger
+	logger     logging.Logger
 	s          *server.Server
 	serverOpts []server.Option
 	processor  *dataplane.Processor
 }
 
-func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.Logs) (*neblic, error) {
+func newLogsProcessor(cfg *Config, logger *zap.Logger, nextConsumer consumer.Logs) (*neblic, error) {
 	serverOpts := []server.Option{}
 
 	if cfg.UID == "" {
@@ -60,7 +60,7 @@ func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.
 		}
 	}
 
-	serverOpts = append(serverOpts, server.WithLogger(logging.FromZapLogger(zapLogger)))
+	serverOpts = append(serverOpts, server.WithLogger(logging.FromZapLogger(logger)))
 
 	if nextConsumer == nil {
 		return nil, component.ErrNilNextConsumer
@@ -68,7 +68,7 @@ func newLogsProcessor(cfg *Config, zapLogger *zap.Logger, nextConsumer consumer.
 
 	return &neblic{
 		cfg:        cfg,
-		logger:     zapLogger,
+		logger:     logging.FromZapLogger(logger),
 		exporter:   NewExporter(nextConsumer),
 		serverOpts: serverOpts,
 	}, nil
