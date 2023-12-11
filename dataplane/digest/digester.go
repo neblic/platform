@@ -127,13 +127,6 @@ func (d *Digester) SetDigestsConfig(digestCfgs map[control.SamplerDigestUID]cont
 	d.digestsConfig = digestCfgs
 }
 
-func (d *Digester) DeleteDigestsConfig() {
-	for uid, worker := range d.workers {
-		worker.stop()
-		delete(d.workers, uid)
-	}
-}
-
 func (d *Digester) ProcessSample(streams []control.SamplerStreamUID, sampleData *data.Data) bool {
 	processed := false
 	for _, stream := range streams {

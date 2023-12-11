@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/neblic/platform/controlplane/control"
@@ -13,7 +12,9 @@ import (
 	"github.com/neblic/platform/dataplane/digest"
 	"github.com/neblic/platform/dataplane/event"
 	"github.com/neblic/platform/dataplane/sample"
+	"github.com/neblic/platform/logging"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type samplerIdentifier struct {
@@ -24,36 +25,37 @@ type samplerIdentifier struct {
 type transformer struct {
 	eventor  *event.Eventor
 	digester *digest.Digester
+
+	logger logging.Logger
 }
 
 type Processor struct {
 	ctx          context.Context
 	ctxCancel    context.CancelFunc
-	logger       *zap.Logger
-	notifyErr    func(err error)
+	logger       logging.Logger
 	exporter     Exporter
-	controlplane *server.Server
+	cpServer     *server.Server
 	transformers map[samplerIdentifier]*transformer
 }
 
-func NewProcessor(logger *zap.Logger, controlplane *server.Server, exporter Exporter) *Processor {
+func NewProcessor(logger logging.Logger, cpServer *server.Server, exporter Exporter) *Processor {
 	return &Processor{
 		ctx:          nil,
 		logger:       logger,
-		notifyErr:    func(err error) { logger.Error("error digesting sample", zap.Error(err)) },
 		exporter:     exporter,
-		controlplane: controlplane,
+		cpServer:     cpServer,
 		transformers: make(map[samplerIdentifier]*transformer),
 	}
 }
 
 func (p *Processor) configUpdater() {
-	eventsChan := p.controlplane.GetEvents()
+	p.logger.Debug("Starting configuration updater routine")
 
-	for serverEvent := range eventsChan {
+	for serverEvent := range p.cpServer.Events() {
+		var logger logging.Logger
+
 		// Get config from event
-		var resource string
-		var sampler string
+		var resource, sampler string
 		var config *control.SamplerConfig
 		switch v := serverEvent.(type) {
 		case controlEvent.ConfigUpdate:
@@ -66,13 +68,14 @@ func (p *Processor) configUpdater() {
 		default:
 			continue
 		}
+		logger = p.logger.With("resource", resource, "sampler", sampler)
+		logger.Debug("Received new event", "event", serverEvent)
 
-		p.UpdateConfig(resource, sampler, config)
-
+		p.UpdateConfig(resource, sampler, config, logger)
 	}
 }
 
-func (p *Processor) getRuntime(resource string, sampler string) (*transformer, bool) {
+func (p *Processor) getTransformer(resource string, sampler string) (*transformer, bool) {
 	samplerIdentifier := samplerIdentifier{
 		resource: resource,
 		name:     sampler,
@@ -85,16 +88,16 @@ func (p *Processor) getRuntime(resource string, sampler string) (*transformer, b
 // computeDigests asynchronous computes the digests for the input samples, generated digests are exported
 // in the background
 func (p *Processor) computeDigests(otlpLogs sample.OTLPLogs) {
-
-	sample.RangeWithType[sample.RawSampleOTLPLog](otlpLogs, func(resource, sample string, log sample.RawSampleOTLPLog) {
-		transformer, ok := p.getRuntime(resource, sample)
+	sample.RangeWithType[sample.RawSampleOTLPLog](otlpLogs, func(resource, sampler string, log sample.RawSampleOTLPLog) {
+		transformer, ok := p.getTransformer(resource, sampler)
 		if !ok || transformer.digester == nil {
 			return
 		}
 
 		data, err := log.SampleData()
 		if err != nil {
-			p.logger.Error(err.Error())
+			// we use the transformer logger here because it is rate limited and has context keys
+			transformer.logger.Error("Error getting sample data", "error", err)
 			return
 		}
 
@@ -102,33 +105,21 @@ func (p *Processor) computeDigests(otlpLogs sample.OTLPLogs) {
 	})
 }
 
-// computeEvents returns a list of generated events based on the provided samples (including digests)
-func (p *Processor) computeEvents(otlpLogs sample.OTLPLogs) (sample.OTLPLogs, error) {
-	// List of computed events
-	events := sample.NewOTLPLogs()
-	var errs error
-
+// computeEvents appends generated events to the provided otlpLogs structure
+func (p *Processor) computeEvents(otlpLogs sample.OTLPLogs) {
+	// TODO: append to the events information about the sampler that matched it
 	sample.RangeSamplers(otlpLogs, func(resource, sampler string, samplerLogs sample.SamplerOTLPLogs) {
-		transformer, ok := p.getRuntime(resource, sampler)
-		if !ok {
-			p.logger.Error("Transformer not found. That should not happen. Skipping event evaluation",
-				zap.String("resource", resource),
-				zap.String("name", sampler),
-			)
-			return
-		}
-		if transformer.eventor == nil {
-			// No event rules to evaluate. Nothing to do
+		transformer, ok := p.getTransformer(resource, sampler)
+		if !ok || transformer.eventor == nil {
 			return
 		}
 
 		err := transformer.eventor.ProcessSample(samplerLogs)
 		if err != nil {
-			errs = errors.Join(errs, fmt.Errorf("resource %s, sampler%s -> %w", resource, sampler, err))
+			// we use the transformer logger here because it is rate limited and has context keys
+			transformer.logger.Error("Error processing sample", "error", err)
 		}
 	})
-
-	return events, errs
 }
 
 func (p *Processor) Start() error {
@@ -159,8 +150,29 @@ func (p *Processor) Stop() error {
 	return nil
 }
 
-func (p *Processor) UpdateConfig(resource string, sampler string, config *control.SamplerConfig) {
-	// Forward configuration
+func (p *Processor) newEventor(resource, sampler string) (*event.Eventor, error) {
+	settings := event.Settings{
+		ResourceName: resource,
+		SamplerName:  sampler,
+	}
+	return event.NewEventor(settings)
+}
+
+func (p *Processor) newDigester(resource, sampler string, digestTypes []control.DigestType, logger logging.Logger) *digest.Digester {
+	// the digester performs async operations, so we need to make sure that errors are logged
+	notifyErr := func(err error) { logger.Error("error digesting sample", "error", err) }
+
+	return digest.NewDigester(digest.Settings{
+		ResourceName:   resource,
+		SamplerName:    sampler,
+		EnabledDigests: digestTypes,
+		NotifyErr:      notifyErr,
+		Exporter:       p.exporter,
+	})
+}
+
+func (p *Processor) UpdateConfig(resource, sampler string, config *control.SamplerConfig, logger logging.Logger) {
+	// Forward configuration through data plane
 	// In case of having deleted the configuration, send an empty byte array
 	var configData []byte
 	var err error
@@ -168,9 +180,8 @@ func (p *Processor) UpdateConfig(resource string, sampler string, config *contro
 		configData, err = json.Marshal(config)
 	}
 	if err != nil {
-		p.logger.Error("Could not marshal config to JSON. Config will not be forwarded downstream")
+		logger.Error("Could not marshal config to JSON. Config will not be forwarded downstream", "error", err)
 	} else {
-
 		otlpLogs := sample.NewOTLPLogs()
 		samplerOtlpLogs := otlpLogs.AppendSamplerOTLPLogs(resource, sampler)
 		configOtlpLog := samplerOtlpLogs.AppendConfigOTLPLog()
@@ -179,7 +190,9 @@ func (p *Processor) UpdateConfig(resource string, sampler string, config *contro
 
 		err := p.exporter.Export(context.Background(), otlpLogs)
 		if err != nil {
-			p.logger.Error("Could not export configuration", zap.Error(err))
+			logger.Error("Could not export configuration", "error", err)
+		} else {
+			logger.Debug("Configuration forwarded downstream", "config", config)
 		}
 	}
 
@@ -188,76 +201,80 @@ func (p *Processor) UpdateConfig(resource string, sampler string, config *contro
 		resource: resource,
 		name:     sampler,
 	}
-	transformerInstance, ok := p.transformers[samplerIdentifier]
+
+	tr, ok := p.transformers[samplerIdentifier]
 	if !ok {
-		transformerInstance = new(transformer)
+		tr = &transformer{
+			// each transformer has its own rate limited logger to avoid spamming the logs
+			logger: logging.FromZapLogger(
+				zap.New(
+					zapcore.NewSamplerWithOptions(
+						logger.ZapLogger().Core(),
+						time.Minute, 1, 0,
+					),
+				),
+			),
+		}
 	}
 
-	// Update event rules
+	// Update eventor
 	if config != nil && len(config.Events) > 0 {
-		if transformerInstance.eventor == nil {
-			settings := event.Settings{
-				ResourceName: resource,
-				SamplerName:  sampler,
-			}
-			eventor, err := event.NewEventor(settings)
+		var eventor *event.Eventor
+
+		if tr.eventor == nil {
+			logger.Debug("Setting event configuration", "config", config.Events)
+			eventor, err = p.newEventor(resource, sampler)
 			if err != nil {
-				p.logger.Error("Could not create eventor", zap.Error(err))
-				return
+				logger.Error("Could not create eventor", "error", err)
 			}
-			transformerInstance.eventor = eventor
 		}
-		transformerInstance.eventor.SetEventsConfig(config.Events)
+		if eventor != nil {
+			eventor.SetEventsConfig(config.Events)
+			tr.eventor = eventor
+		}
 	} else {
-		transformerInstance.eventor = nil
+		logger.Debug("No events configuration found. Disabling eventor")
+		tr.eventor = nil
 	}
 
 	// Update digester
 	if config != nil && len(config.Digests) > 0 {
-		if transformerInstance.digester != nil {
-			transformerInstance.digester.DeleteDigestsConfig()
-			transformerInstance.digester.Close()
+		logger.Debug("Setting digest configuration", "config", config.Digests)
+
+		if tr.digester == nil {
+			tr.digester = p.newDigester(
+				resource,
+				sampler,
+				config.DigestTypesByLocation(control.ComputationLocationCollector),
+				tr.logger,
+			)
 		}
-		settings := digest.Settings{
-			ResourceName:   resource,
-			SamplerName:    sampler,
-			EnabledDigests: config.DigestTypesByLocation(control.ComputationLocationCollector),
-			NotifyErr:      p.notifyErr,
-			Exporter:       p.exporter,
-		}
-		transformerInstance.digester = digest.NewDigester(settings)
-		transformerInstance.digester.SetDigestsConfig(config.Digests)
+		tr.digester.SetDigestsConfig(config.Digests)
 	} else {
-		if transformerInstance.digester != nil {
-			transformerInstance.digester.DeleteDigestsConfig()
-			transformerInstance.digester.Close()
+		logger.Debug("No digests configuration found. Disabling digester")
+
+		if tr.digester != nil {
+			if err := tr.digester.Close(); err != nil {
+				logger.Error("Error closing digester", "error", err)
+			}
 		}
-		transformerInstance.digester = nil
+		tr.digester = nil
 	}
 
 	// Update transformers
-	if transformerInstance.digester != nil || transformerInstance.eventor != nil {
-		p.transformers[samplerIdentifier] = transformerInstance
+	if tr.digester != nil || tr.eventor != nil {
+		p.transformers[samplerIdentifier] = tr
 	} else {
 		delete(p.transformers, samplerIdentifier)
 	}
 }
 
 func (p *Processor) Process(ctx context.Context, logs sample.OTLPLogs) error {
-
-	// Compute digests and append them to the sampler samples
 	p.computeDigests(logs)
-
-	// Compute events and append them to the sampler samples
-	eventOtlpLogs, err := p.computeEvents(logs)
-	if err != nil {
-		p.logger.Error("Event evaluation finished with errors", zap.Error(err))
-	}
-
-	// Move generated events to the original OTLP logs
-	eventOtlpLogs.MoveAndAppendTo(logs)
+	p.computeEvents(logs)
 
 	// Delete raw samples from exported data
+	// TODO: allow the user to configure where the raw samples should be forwarded to
 	logs.RemoveOTLPLogIf(func(otlpLog any) bool {
 		if _, ok := otlpLog.(sample.RawSampleOTLPLog); ok {
 			return true
