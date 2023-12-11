@@ -45,11 +45,14 @@ func (p *Sampler) HandleStream(stream protos.ControlPlane_SamplerConnServer) err
 func (p *Sampler) recvToServerReqCb(clientToServerMsg *protos.SamplerToServer) (bool, *protos.ServerToSampler, error) {
 	switch msg := clientToServerMsg.GetMessage().(type) {
 	case *protos.SamplerToServer_SamplerStatsMsg:
+		stats := control.NewSamplerSamplingStatsFromProto(msg.SamplerStatsMsg.GetSamplingStats())
+		p.logger.Debug("Received sampler stats", "stats", stats)
+
 		err := p.samplerRegistry.UpdateStats(
 			clientToServerMsg.Resouce,
 			clientToServerMsg.Name,
 			control.SamplerUID(clientToServerMsg.GetSamplerUid()),
-			control.NewSamplerSamplingStatsFromProto(msg.SamplerStatsMsg.GetSamplingStats()),
+			stats,
 		)
 
 		return true, nil, err
@@ -71,7 +74,7 @@ func (p *Sampler) streamStateChangeCb(state defs.Status, uid control.SamplerUID,
 			p.logger = p.logger.With("sampler_uid", uid, "sampler_name", req.Name, "sampler_resource", req.Resouce)
 		}
 
-		p.logger.Debug("sampler registered")
+		p.logger.Info("Sampler registered")
 
 		p.registeredOnce = true
 	case defs.UnregisteredStatus:
@@ -81,7 +84,7 @@ func (p *Sampler) streamStateChangeCb(state defs.Status, uid control.SamplerUID,
 			return fmt.Errorf("error deregistering client, uid: %s: %w", uid, err)
 		}
 
-		p.logger.Debug("sampler unregistered")
+		p.logger.Info("Sampler unregistered")
 	}
 
 	return nil

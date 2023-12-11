@@ -154,6 +154,8 @@ func (p *Sampler) UpdateStats(ctx context.Context, stats control.SamplerSampling
 		return fmt.Errorf("error sending updated stats to server: %s", err)
 	}
 
+	p.logger.Debug("Stats sent to server", "stats", stats)
+
 	return nil
 }
 

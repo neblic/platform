@@ -147,7 +147,7 @@ func (s *Server) GetSamplerConfig(resourceName string, samplerName string) (cont
 	return sampler.Config, nil
 }
 
-func (s *Server) GetEvents() chan event.Event {
+func (s *Server) Events() chan event.Event {
 	return s.samplerRegistry.Events()
 }
 
@@ -186,21 +186,20 @@ func (s *Server) Stop(_ time.Duration) error {
 
 func (s *Server) reconcileSamplerConfigs() {
 	start := time.Now()
-	numReconciliations := 0
+	configsUpdated := 0
 
 	instances := s.samplerRegistry.GetRegisteredInstances()
 	for _, instance := range instances {
 		if instance.Dirty {
 			if err := instance.Conn.Configure(&instance.Sampler.Config); err != nil {
-				s.logger.Error(fmt.Sprintf("Error configuring sampler: %s", err))
+				s.logger.Error("Error configuring sampler", "error", err)
 			}
 			instance.Dirty = false
-
-			numReconciliations++
+			configsUpdated++
 		}
 	}
 
-	s.logger.Info("reconciliation performed", "elapsed", time.Since(start).String(), "num_reconciliations", numReconciliations)
+	s.logger.Debug("Configuration reconciliation performed", "elapsed", time.Since(start).String(), "configs_updated", configsUpdated)
 }
 
 func (s *Server) reconcileConfigLoop() {
