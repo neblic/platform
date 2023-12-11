@@ -40,7 +40,7 @@ func (r *KafkaSampler) Run() error {
 	}
 
 	// In case of having a reconcile period of 0 nanoseconds, disable it
-	if r.config.Kafka.TopicFilter.RefreshPeriod == 0 {
+	if r.config.Kafka.Topics.RefreshPeriod == 0 {
 		r.logger.Warn("Topic refresh period is 0. Added/deleted topics won't be detected.")
 
 		<-r.ctx.Done()
@@ -48,7 +48,7 @@ func (r *KafkaSampler) Run() error {
 	}
 
 	// Execute periodic reconciliations
-	ticker := time.NewTicker(r.config.Kafka.TopicFilter.RefreshPeriod)
+	ticker := time.NewTicker(r.config.Kafka.Topics.RefreshPeriod)
 	for {
 		select {
 		case <-r.ctx.Done():
