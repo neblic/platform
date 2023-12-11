@@ -467,11 +467,7 @@ func (e *Executors) DigestsStructureCreate(ctx context.Context, parameters inter
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
-	computationLocationParameter, _ := parameters.Get("computation-location")
-	computationLocation := control.ParseComputationLocation(computationLocationParameter.Value)
-	if computationLocation == control.ComputationLocationUnknown {
-		return fmt.Errorf("computation-location not supported")
-	}
+	computationLocation := control.ComputationLocationSampler
 
 	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
 
@@ -486,7 +482,7 @@ func (e *Executors) DigestsStructureCreate(ctx context.Context, parameters inter
 		}
 
 		if computationLocation == control.ComputationLocationCollector && !stream.ExportRawSamples {
-			return nil, fmt.Errorf("Stream must export raw samples to use collector computation location")
+			return nil, fmt.Errorf("Stream must export raw samples to be able to compute struct digests")
 		}
 
 		return &control.SamplerConfigUpdate{
@@ -528,11 +524,7 @@ func (e *Executors) DigestsStructureUpdate(ctx context.Context, parameters inter
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
-	computationLocationParameter, _ := parameters.Get("computation-location")
-	computationLocation := control.ParseComputationLocation(computationLocationParameter.Value)
-	if computationLocation == control.ComputationLocationUnknown {
-		return fmt.Errorf("computation-location not supported")
-	}
+	computationLocation := control.ComputationLocationSampler
 
 	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
 
@@ -547,7 +539,7 @@ func (e *Executors) DigestsStructureUpdate(ctx context.Context, parameters inter
 		}
 
 		if computationLocation == control.ComputationLocationCollector && !stream.ExportRawSamples {
-			return nil, fmt.Errorf("Stream must export raw samples to use collector computation location")
+			return nil, fmt.Errorf("Stream must export raw samples to be able to compute struct digests")
 		}
 
 		return &control.SamplerConfigUpdate{
@@ -590,11 +582,7 @@ func (e *Executors) DigestsValueCreate(ctx context.Context, parameters interpole
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
-	computationLocationParameter, _ := parameters.Get("computation-location")
-	computationLocation := control.ParseComputationLocation(computationLocationParameter.Value)
-	if computationLocation == control.ComputationLocationUnknown {
-		return fmt.Errorf("computation-location not supported")
-	}
+	computationLocation := control.ComputationLocationCollector
 
 	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
 
@@ -609,7 +597,7 @@ func (e *Executors) DigestsValueCreate(ctx context.Context, parameters interpole
 		}
 
 		if computationLocation == control.ComputationLocationCollector && !stream.ExportRawSamples {
-			return nil, fmt.Errorf("Stream must export raw samples to use collector computation location")
+			return nil, fmt.Errorf("Stream must export raw samples to be able to compute value digests")
 		}
 
 		return &control.SamplerConfigUpdate{
@@ -651,11 +639,7 @@ func (e *Executors) DigestsValueUpdate(ctx context.Context, parameters interpole
 		return fmt.Errorf("flush-period must be an integer")
 	}
 
-	computationLocationParameter, _ := parameters.Get("computation-location")
-	computationLocation := control.ParseComputationLocation(computationLocationParameter.Value)
-	if computationLocation == control.ComputationLocationUnknown {
-		return fmt.Errorf("computation-location not supported")
-	}
+	computationLocation := control.ComputationLocationCollector
 
 	updateGen := func(samplerControl *control.Sampler) (*control.SamplerConfigUpdate, error) {
 
@@ -670,7 +654,7 @@ func (e *Executors) DigestsValueUpdate(ctx context.Context, parameters interpole
 		}
 
 		if computationLocation == control.ComputationLocationCollector && !stream.ExportRawSamples {
-			return nil, fmt.Errorf("Stream must export raw samples to use collector computation location")
+			return nil, fmt.Errorf("Stream must export raw samples to be able to compute value digests")
 		}
 
 		return &control.SamplerConfigUpdate{
