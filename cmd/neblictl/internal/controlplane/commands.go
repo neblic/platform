@@ -450,13 +450,6 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Default:     "100",
 					},
 					{
-						Name:        "computation-location",
-						Description: "Where the computation of the struct digest must take place. Possible values are: sampler and collector",
-						Completer:   controlPlaneCompleters.ListComputationLocation,
-						Optional:    true,
-						Default:     "sampler",
-					},
-					{
 						Name:        "resource-name",
 						Description: "Filter by resource",
 						Completer:   controlPlaneCompleters.ListResourcesUID,
@@ -503,13 +496,6 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Default:     "100",
 					},
 					{
-						Name:        "computation-location",
-						Description: "Where the computation of the struct digest must take place. Possible values are: sampler and collector",
-						Completer:   controlPlaneCompleters.ListComputationLocation,
-						Optional:    true,
-						Default:     "sampler",
-					},
-					{
 						Name:        "resource-name",
 						Description: "Filter by resource",
 						Filter:      true,
@@ -554,13 +540,6 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Default:     "100",
 					},
 					{
-						Name:        "computation-location",
-						Description: "Where the computation of the value digest must take place. Possible values are: sampler and collector",
-						Completer:   controlPlaneCompleters.ListComputationLocation,
-						Optional:    true,
-						Default:     "sampler",
-					},
-					{
 						Name:        "resource-name",
 						Description: "Filter by resource",
 						Completer:   controlPlaneCompleters.ListResourcesUID,
@@ -602,13 +581,6 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Description: "Maximum number of fields to process when processing a sample",
 						Optional:    true,
 						Default:     "100",
-					},
-					{
-						Name:        "computation-location",
-						Description: "Where the computation of the value digest must take place. Possible values are: sampler and collector",
-						Completer:   controlPlaneCompleters.ListComputationLocation,
-						Optional:    true,
-						Default:     "sampler",
 					},
 					{
 						Name:        "resource-name",

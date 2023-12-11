@@ -170,7 +170,3 @@ func (c *Completers) ListEventsName(ctx context.Context, parameters interpoler.P
 
 	return eventsName
 }
-
-func (c *Completers) ListComputationLocation(ctx context.Context, parameters interpoler.ParametersWithValue) []string {
-	return []string{control.ComputationLocationSampler.String(), control.ComputationLocationCollector.String()}
-}
