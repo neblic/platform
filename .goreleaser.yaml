@@ -70,7 +70,7 @@ dockers:
     use: buildx
     extra_files:
       - ./dist/otelcol/entrypoint.sh
-      - ./dist/otelcol/otelcol.yaml
+      - ./dist/otelcol/config.yaml
   - id: kafka-sampler
     goos: linux
     goarch: amd64
