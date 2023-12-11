@@ -314,7 +314,7 @@ loop:
 		default:
 			if !initialConnection {
 				backoffDuration := backOff.NextBackOff()
-				s.logger.Debug(fmt.Sprintf("Reconnecting in %s", backoffDuration))
+				s.logger.Info(fmt.Sprintf("Reconnecting in %s", backoffDuration))
 
 				sleepTicker := time.NewTicker(backoffDuration)
 				select {
@@ -433,8 +433,6 @@ loop:
 			err = fmt.Errorf("time out while waiting for server response")
 			break loop
 		case req := <-s.sendToSCh:
-			// s.logger.Debug("Sending request to server")
-
 			if streamErr := stream.Send(req.toSReq); err != nil {
 				err = fmt.Errorf("error sending request: %s", streamErr)
 				break loop
@@ -472,7 +470,6 @@ loop:
 						err = errors.New("Received response when there are no pending responses")
 						break loop
 					}
-					// s.logger.Debug("Received server response")
 
 					reqs[0].timeout.Stop()
 					reqs[0].serverRes <- fromSMsgOrErr.fromS

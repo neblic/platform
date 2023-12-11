@@ -92,7 +92,7 @@ func (c *Client) streamStateChangeCb(state defs.Status, uid control.ClientUID) e
 			c.logger = c.logger.With("client_uid", uid)
 		}
 
-		c.logger.Debug("Client registered")
+		c.logger.Info("Client registered")
 
 		c.registeredOnce = true
 	case defs.UnregisteredStatus:
@@ -100,7 +100,7 @@ func (c *Client) streamStateChangeCb(state defs.Status, uid control.ClientUID) e
 			return fmt.Errorf("error deregistering client, uid: %s: %w", uid, err)
 		}
 
-		c.logger.Debug("Client deregistered")
+		c.logger.Info("Client deregistered")
 	default:
 		c.logger.Error(fmt.Sprintf("Received unknown state change %s", state))
 	}
