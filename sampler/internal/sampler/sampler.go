@@ -150,6 +150,11 @@ loop:
 }
 
 func (p *Sampler) updateStats(period time.Duration) {
+	if period == 0 {
+		p.logger.Warn("Sampler stats update period is 0, stats won't be sent to server")
+		return
+	}
+
 	ticker := time.NewTicker(period)
 	defer ticker.Stop()
 
