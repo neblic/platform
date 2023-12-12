@@ -27,8 +27,8 @@ kafka:
   #   filter:
   #     # Topics matching `allowlist` will be monitored, and topics matching `denylist` will be ignored.
   #     # `allowlist` and `denylist` can't be set at the same time.
-  #     allowlist:
-  #     denylist:
+  #     allow: ^(topic1|topic2)$
+  #     deny: ^topic3$
 
 neblic:
   # `Sampler` resource name set to created `Samplers`

@@ -16,11 +16,11 @@ func TestNew(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Fail when allowlist and errodenylistrlist are provided",
+			name: "Fail when allow and deny are provided",
 			args: args{
 				config: &Config{
-					Allowlist: Predicates{NewString("string1")},
-					Denylist:  Predicates{NewString("string2")},
+					Allow: NewString("string1"),
+					Deny:  NewString("string2"),
 				},
 			},
 			want:    nil,
@@ -43,8 +43,8 @@ func TestNew(t *testing.T) {
 
 func TestFilter_Evaluate(t *testing.T) {
 	type fields struct {
-		predicates []Predicate
-		evalFunc   func(predicates []Predicate, element string) bool
+		predicate Predicate
+		evalFunc  func(predicate Predicate, element string) bool
 	}
 	type args struct {
 		element string
@@ -56,10 +56,10 @@ func TestFilter_Evaluate(t *testing.T) {
 		want   bool
 	}{
 		{
-			name: "Evaluate element matching allowlist",
+			name: "Evaluate element matching allow",
 			fields: fields{
-				predicates: Predicates{NewString("string1")},
-				evalFunc:   allowlistEvalFunc,
+				predicate: NewString("string1"),
+				evalFunc:  allowEvalFunc,
 			},
 			args: args{
 				element: "string1",
@@ -67,10 +67,10 @@ func TestFilter_Evaluate(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "Evaluate element NOT matching allowlist",
+			name: "Evaluate element NOT matching allow",
 			fields: fields{
-				predicates: Predicates{NewString("string1")},
-				evalFunc:   allowlistEvalFunc,
+				predicate: NewString("string1"),
+				evalFunc:  allowEvalFunc,
 			},
 			args: args{
 				element: "string2",
@@ -78,10 +78,10 @@ func TestFilter_Evaluate(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "Evaluate element matching denylist",
+			name: "Evaluate element matching deny",
 			fields: fields{
-				predicates: Predicates{NewString("string1")},
-				evalFunc:   denylistEvalFunc,
+				predicate: NewString("string1"),
+				evalFunc:  denyEvalFunc,
 			},
 			args: args{
 				element: "string1",
@@ -89,10 +89,10 @@ func TestFilter_Evaluate(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "Evaluate element NOT matching denylist",
+			name: "Evaluate element NOT matching deny",
 			fields: fields{
-				predicates: Predicates{NewString("string1")},
-				evalFunc:   denylistEvalFunc,
+				predicate: NewString("string1"),
+				evalFunc:  denyEvalFunc,
 			},
 			args: args{
 				element: "string2",
@@ -100,7 +100,7 @@ func TestFilter_Evaluate(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "Evaluate element without allowlist neither denylist",
+			name: "Evaluate element without allow neither deny",
 			fields: fields{
 				evalFunc: trueEvalFunc,
 			},
@@ -113,8 +113,8 @@ func TestFilter_Evaluate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &Filter{
-				predicates: tt.fields.predicates,
-				evalFunc:   tt.fields.evalFunc,
+				predicate: tt.fields.predicate,
+				evalFunc:  tt.fields.evalFunc,
 			}
 			if got := f.Evaluate(tt.args.element); got != tt.want {
 				t.Errorf("Filter.Evaluate() = %v, want %v", got, tt.want)
@@ -125,8 +125,8 @@ func TestFilter_Evaluate(t *testing.T) {
 
 func TestFilter_EvaluateList(t *testing.T) {
 	type fields struct {
-		predicates []Predicate
-		evalFunc   func(predicates []Predicate, element string) bool
+		predicate Predicate
+		evalFunc  func(predicate Predicate, element string) bool
 	}
 	type args struct {
 		elements []string
@@ -138,10 +138,10 @@ func TestFilter_EvaluateList(t *testing.T) {
 		want   []string
 	}{
 		{
-			name: "Evaluate list using allowlist",
+			name: "Evaluate list using allow",
 			fields: fields{
-				predicates: Predicates{NewString("string1")},
-				evalFunc:   allowlistEvalFunc,
+				predicate: NewString("string1"),
+				evalFunc:  allowEvalFunc,
 			},
 			args: args{
 				elements: []string{"string0", "string1", "string2"},
@@ -149,10 +149,10 @@ func TestFilter_EvaluateList(t *testing.T) {
 			want: []string{"string1"},
 		},
 		{
-			name: "Evaluate list using denylist",
+			name: "Evaluate list using deny",
 			fields: fields{
-				predicates: Predicates{NewString("string1")},
-				evalFunc:   denylistEvalFunc,
+				predicate: NewString("string1"),
+				evalFunc:  denyEvalFunc,
 			},
 			args: args{
 				elements: []string{"string0", "string1", "string2"},
@@ -160,10 +160,10 @@ func TestFilter_EvaluateList(t *testing.T) {
 			want: []string{"string0", "string2"},
 		},
 		{
-			name: "Evaluate list without allowlist neither denylist",
+			name: "Evaluate list without allow neither deny",
 			fields: fields{
-				predicates: Predicates{NewString("string1")},
-				evalFunc:   trueEvalFunc,
+				predicate: NewString("string1"),
+				evalFunc:  trueEvalFunc,
 			},
 			args: args{
 				elements: []string{"string0", "string1", "string2"},
@@ -174,8 +174,8 @@ func TestFilter_EvaluateList(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &Filter{
-				predicates: tt.fields.predicates,
-				evalFunc:   tt.fields.evalFunc,
+				predicate: tt.fields.predicate,
+				evalFunc:  tt.fields.evalFunc,
 			}
 			if got := f.EvaluateList(tt.args.elements); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Filter.EvaluateList() = %v, want %v", got, tt.want)
