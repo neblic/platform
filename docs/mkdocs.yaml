@@ -40,6 +40,14 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/neblic
+    - icon: fontawesome/brands/instagram
+      link: https://www.instagram.com/neblic/
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/neblic-data
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/neblichq
+    - icon: fontawesome/brands/youtube
+      link: https://www.youtube.com/@NeblicHQ
   version:
     provider: mike
 extra_css:
