@@ -1,13 +1,13 @@
 package filter
 
 type Config struct {
-	Allowlist Predicates
-	Denylist  Predicates
+	Allow Predicate
+	Deny  Predicate
 }
 
 func NewConfig() *Config {
 	return &Config{
-		Allowlist: Predicates{},
-		Denylist:  Predicates{},
+		Allow: nil,
+		Deny:  nil,
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"reflect"
 	"strings"
 
 	"github.com/IBM/sarama"
@@ -16,6 +17,7 @@ import (
 	"github.com/knadh/koanf/providers/rawbytes"
 	"github.com/knadh/koanf/v2"
 	"github.com/mitchellh/mapstructure"
+	"github.com/neblic/platform/cmd/kafka-sampler/filter"
 	"github.com/neblic/platform/cmd/kafka-sampler/neblic"
 	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/logging"
@@ -30,6 +32,29 @@ func decodeToStruct(i, o interface{}) error {
 	decoderConfig := &mapstructure.DecoderConfig{
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			mapstructure.StringToTimeDurationHookFunc(),
+			func(
+				f reflect.Type,
+				t reflect.Type,
+				data interface{},
+			) (interface{}, error) {
+				// Check that the data is string. Standard hook logic
+				if f.Kind() != reflect.String {
+					return data, nil
+				}
+
+				// Check that the target type is a filter.Predicate interface.
+				predicateType := reflect.TypeOf((*filter.Predicate)(nil)).Elem()
+				if !t.Implements(predicateType) {
+					return data, nil
+				}
+
+				predicate, err := filter.NewRegex(data.(string))
+				if err != nil {
+					return nil, fmt.Errorf("error parsing the regex predicate %s: %v", data.(string), err)
+				}
+
+				return predicate, nil
+			},
 		),
 		TagName:              "",
 		IgnoreUntaggedFields: false,

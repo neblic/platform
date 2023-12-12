@@ -3,63 +3,47 @@ package filter
 import "errors"
 
 type Filter struct {
-	predicates []Predicate
-	evalFunc   func(predicates []Predicate, element string) bool
+	predicate Predicate
+	evalFunc  func(predicate Predicate, element string) bool
 }
 
-func trueEvalFunc(predicates []Predicate, element string) bool {
+func trueEvalFunc(predicate Predicate, element string) bool {
 	return true
 }
 
-func allowlistEvalFunc(predicates []Predicate, element string) bool {
-	for _, predicate := range predicates {
-		if predicate.Match(element) {
-			// A matching allow predicate was found, accept element
-			return true
-		}
-	}
-
-	// No matching allow predicate, reject element.
-	return false
+func allowEvalFunc(predicate Predicate, element string) bool {
+	return predicate.Match(element)
 }
 
-func denylistEvalFunc(predicates []Predicate, element string) bool {
-	for _, predicate := range predicates {
-		if predicate.Match(element) {
-			// A matching deny predicate was found, reject element
-			return false
-		}
-	}
-
-	// No matching deny predicate, accept element.
-	return true
+func denyEvalFunc(predicate Predicate, element string) bool {
+	return !predicate.Match(element)
 }
 
 func New(config *Config) (*Filter, error) {
-	if len(config.Allowlist) > 0 && len(config.Denylist) > 0 {
-		return nil, errors.New("allowlist and denylist at the same time is not supported. Specify one of the two")
+	if config.Allow != nil && config.Deny != nil {
+		return nil, errors.New("allow and deny at the same time is not supported. Specify one of the two")
 	}
 
-	var predicates []Predicate
-	var evalFunc func(predicates []Predicate, element string) bool
-	if len(config.Allowlist) > 0 {
-		predicates = config.Allowlist
-		evalFunc = allowlistEvalFunc
-	} else if len(config.Denylist) > 0 {
-		predicates = config.Denylist
-		evalFunc = denylistEvalFunc
+	var predicate Predicate
+	var evalFunc func(predicate Predicate, element string) bool
+	if config.Allow != nil {
+		predicate = config.Allow
+		evalFunc = allowEvalFunc
+	} else if config.Deny != nil {
+		predicate = config.Deny
+		evalFunc = denyEvalFunc
 	} else {
 		evalFunc = trueEvalFunc
 	}
 
 	return &Filter{
-		predicates: predicates,
-		evalFunc:   evalFunc,
+		predicate: predicate,
+		evalFunc:  evalFunc,
 	}, nil
 }
 
 func (f *Filter) Evaluate(element string) bool {
-	return f.evalFunc(f.predicates, element)
+	return f.evalFunc(f.predicate, element)
 }
 
 func (f *Filter) EvaluateList(elements []string) []string {
