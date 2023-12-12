@@ -42,7 +42,7 @@ func NewConsumerManager(ctx context.Context, logger logging.Logger, config *Conf
 		return nil, err
 	}
 
-	filter, err := filter.New(&config.TopicFilter)
+	filter, err := filter.New(&config.Topics.Filter)
 	if err != nil {
 		return nil, err
 	}
@@ -106,10 +106,34 @@ func (m *ConsumerManager) reconcile(topics []string) error {
 		topicsMap[topic] = struct{}{}
 	}
 
-	var errors error
+	// Remove old topics
+	for topic, consumer := range m.consumers {
+
+		// If the topic no longer exists, stop the consumer group
+		if _, ok := topicsMap[topic]; !ok {
+			m.logger.Info("Stopping consumer", "topic", topic)
+
+			// Cancel the consumer and wait until it finishes
+			consumer.cancel()
+			consumer.wg.Wait()
+
+			if err := consumer.group.Close(); err != nil {
+				m.logger.Error("Error closing consumer group", "topic", topic, "error", err)
+			}
+			delete(m.consumers, topic)
+		}
+	}
+
 	// Add new topics
+	var errors error
 	for topic := range topicsMap {
 		if _, ok := m.consumers[topic]; !ok {
+
+			if len(m.consumers) >= m.config.Topics.Max {
+				m.logger.Warn("Ignoring topic because the maximum number has been reached", "topic", topic)
+				continue
+			}
+
 			m.logger.Info("Starting consumer", "topic", topic)
 
 			// Create consumer group
@@ -132,24 +156,6 @@ func (m *ConsumerManager) reconcile(topics []string) error {
 			}
 			go m.runConsumerInstance(consumerInstance)
 			m.consumers[topic] = consumerInstance
-		}
-	}
-
-	// Remove old topics
-	for topic, consumer := range m.consumers {
-
-		// If the topic no longer exists, stop the consumer group
-		if _, ok := topicsMap[topic]; !ok {
-			m.logger.Info("Stopping consumer", "topic", topic)
-
-			// Cancel the consumer and wait until it finishes
-			consumer.cancel()
-			consumer.wg.Wait()
-
-			if err := consumer.group.Close(); err != nil {
-				m.logger.Error("Error closing consumer group", "topic", topic, "error", err)
-			}
-			delete(m.consumers, topic)
 		}
 	}
 

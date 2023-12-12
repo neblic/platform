@@ -13,16 +13,22 @@ kafka:
   # Convert field names to all lowercase and divide nested structs with `_`
   # sarama:  (...)
 
-  # If unset, it will create a `Sampler` per each topic found in the Kafka cluster,
-  # supports regex RE2 syntax as described at https://github.com/google/re2/wiki/Syntax, except for `\C`.
-  # It always ignores internal topics like: `__consumer_offsets` and `__transaction_state`.
-  # topicfilter: 
+  # topics:
+  #   # Safeguard to avoid consuming an unexpectedly large number of topics.
+  #   # The first max number of topics that match the filter rules (in no particular order) will be monitored, the rest will be ignored.
+  #   max: 25
+  #
   #   # Topic list refresh period. In each refresh it will create/delete `Samplers` based on the cluster existing topics
   #   refreshperiod: 1m
-  #   # Topics matching `allowlist` will be monitored, and topics matching `denylist` will be ignored.
-  #   # `allowlist` and `denylist` can't be set at the same time.
-  #   allowlist:
-  #   denylist:
+  #
+  #   # If unset, it will create a `Sampler` per each topic found in the Kafka cluster,
+  #   # supports regex RE2 syntax as described at https://github.com/google/re2/wiki/Syntax, except for `\C`.
+  #   # It always ignores internal topics like: `__consumer_offsets` and `__transaction_state`.
+  #   filter:
+  #     # Topics matching `allowlist` will be monitored, and topics matching `denylist` will be ignored.
+  #     # `allowlist` and `denylist` can't be set at the same time.
+  #     allowlist:
+  #     denylist:
 
 neblic:
   # `Sampler` resource name set to created `Samplers`
