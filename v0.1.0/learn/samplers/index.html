@@ -5,7 +5,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<link href="../stores/" rel="prev"/>
+<link href="../collector/" rel="prev"/>
 <link href="../protocol/" rel="next"/>
 <link href="../../assets/neblic-favicon.png" rel="icon"/>
 <meta content="mkdocs-1.4.2, mkdocs-material-9.0.11" name="generator"/>
@@ -149,11 +149,6 @@
         Collector
       </a>
 </li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../stores/">
-        Stores
-      </a>
-</li>
 <li class="md-nav__item md-nav__item--active">
 <input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
 <label class="md-nav__link md-nav__link--active" for="__toc">
@@ -181,8 +176,8 @@
 <nav aria-label="Configuration" class="md-nav">
 <ul class="md-nav__list">
 <li class="md-nav__item">
-<a class="md-nav__link" href="#sampling-rules">
-    Sampling rules
+<a class="md-nav__link" href="#streams">
+    Streams
   </a>
 </li>
 </ul>
@@ -289,8 +284,8 @@
         </label>
 <ul class="md-nav__list" data-md-scrollfix="">
 <li class="md-nav__item">
-<a class="md-nav__link" href="../../reference/sampling-rules/">
-        Sampling rules
+<a class="md-nav__link" href="../../reference/rules/">
+        Rules
       </a>
 </li>
 <li class="md-nav__item">
@@ -342,8 +337,8 @@
 <nav aria-label="Configuration" class="md-nav">
 <ul class="md-nav__list">
 <li class="md-nav__item">
-<a class="md-nav__link" href="#sampling-rules">
-    Sampling rules
+<a class="md-nav__link" href="#streams">
+    Streams
   </a>
 </li>
 </ul>
@@ -399,15 +394,16 @@
 <div class="md-content" data-md-component="content">
 <article class="md-content__inner md-typeset">
 <h1 id="samplers">Samplers<a class="headerlink" href="#samplers" title="Permanent link">¶</a></h1>
-<p><code>Samplers</code> are available as libraries to be imported into your services or are created by standalone components that retrieve <code>Data Samples</code> from a system (such as a data broker or a database) by themselves.</p>
-<p>They are designed to not interfere with the normal operation of your systems and to have a negligible impact on performace. <code>Sampling Rules</code> are defined using <a href="https://opensource.google.com/projects/cel">Google's CEL language</a>, which, quoting their documentation id <code>designed for simplicity, speed, safety, and portability</code>.</p>
-<p><code>Samplers</code> need to be able to decode the data that they intercept so that it can be evaluated by their configured <code>Sampling rules</code>, which decide whether or not that <code>Data Sample</code> needs to be exported. Therefore, you need to choose a <code>Sampler</code> that is compatible with the message encoding (e.g. Protocol Buffers, JSON...) that your service works with.</p>
+<p><code>Samplers</code> are available as libraries to be imported into your services or are created by standalone components that retrieve <code>Data Samples</code> from a system (such as a data broker or a database) by themselves such as the <a href="../../how-to/data-from-kafka/"><code>kafka-sampler</code></a>.</p>
+<p>They are designed to not interfere with the normal operation of your systems and to have a negligible impact on performace. <code>Streams</code> of <code>Data Samples</code> are created using rules defined with the <a href="https://opensource.google.com/projects/cel">Google's CEL language</a>, which, quoting their documentation is <code>designed for simplicity, speed, safety, and portability</code>.</p>
+<p><code>Samplers</code> need to be able to decode the data that they intercept so that it can be evaluated by their configured <code>Streams</code>, which decide whether or not that <code>Data Sample</code> needs to be processed. Therefore, you need to choose a <code>Sampler</code> that is compatible with the message encoding (e.g. Protocol Buffers, JSON...) that your service works with.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>All <code>Samplers</code> are able to process <code>JSON</code> messages. Since it is a self-describing language, it is enough with the message itself (no external schema required) is sufficient to decode its contents. And since, at least when using <code>Samplers</code> within your services, it is usually possible to convert any object to <code>JSON</code>, this option works as a fallback in case the encoding your service uses is not supported. Of course, there is a performance penalty to consider when converting messages to <code>JSON</code>. </p>
+<p>All <code>Samplers</code> are able to process <code>JSON</code> messages. Since it is a self-describing language, it is enough with the message itself (no external schema required) to be able to decode its contents. And since, at least when using <code>Samplers</code> within your services, it is usually possible to convert any object to <code>JSON</code>, this option works as a fallback in case the encoding your service uses is not supported. Of course, there is a performance penalty to consider when converting messages to <code>JSON</code>. </p>
 </div>
+<p>The <code>Data Samples</code> selected to be processed are then parsed so they can be incorporated to the <code>Sampler</code> enabled <code>Digests</code> or forwarded to the <code>Collector</code> as-is so they can be processed there. This depends on how are they configured.</p>
 <h2 id="best-practices">Best practices<a class="headerlink" href="#best-practices" title="Permanent link">¶</a></h2>
-<p>Because their performance impact is negligible when no <code>Sampling Rules</code> are configured, it is recommended to add them wherever data is transformed or exchanged. This will allow you to track how your data evolves throughout your system. </p>
+<p>Because their performance impact is negligible when no <code>Streams</code> are configured, it is recommended to add them wherever data is transformed or exchanged. This will allow you to track how your data evolves throughout your system. </p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Unlike logs, where it is usually recommended to not add logging in the critical path to avoid too much noise and increased costs, <code>Samplers</code> can be dynamically configured so you can add them anywhere without worrying about impacting your application or costs. </p>
@@ -427,9 +423,9 @@
 <p>To make it easier to get <code>Data Samples</code> from multiple places, Neblic provides helpers, wrappers, and components that can automatically add <code>Samplers</code> in multiple places in your system e.g. in all gRPC requests/responses or in multiple Kafka topics. Check out the next sections to see what <code>Samplers</code> Neblic provides.</p>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">¶</a></h2>
 <p>The pair <code>Sampler</code> name and resource id is what identifies a particular set of <code>Samplers</code>. For example, if you have multiple replicas of the same service, each replica will register a <code>Sampler</code> with the same name and resource id. All of these <code>Samplers</code> are treated as a group and you can configure them all together. However, each <code>Sampler</code> has a unique id in case you want to send a configuration to only one of the <code>Samplers</code>.</p>
-<h3 id="sampling-rules">Sampling rules<a class="headerlink" href="#sampling-rules" title="Permanent link">¶</a></h3>
-<p><code>Sampling Rules</code> are the main configuration that <code>Samplers</code> need to be able to start exporting <code>Data Samples</code>. Clients (such as the CLI client <code>neblictl</code>) connect to the <code>Control Plane</code> server, usually running in your collector, and send <code>Sampling Rules</code> to <code>Samplers</code> using their name and resource id.</p>
-<p>See this <a href="../../how-to/configure-samplers-using-neblictl/">how-to</a> page to learn how to configure <code>Samplers</code> using <code>neblictl</code> and the <a href="../../reference/sampling-rules/">sampling rules reference</a> to learn what expressions you can use in your <code>Sampling Rules</code>.</p>
+<h3 id="streams">Streams<a class="headerlink" href="#streams" title="Permanent link">¶</a></h3>
+<p><code>Streams</code> are the initial configuration that <code>Samplers</code> need to be able to start exporting <code>Data Samples</code>, generating <code>Digests</code> or <code>Events</code>. Clients (such as the CLI client <code>neblictl</code>) connect to the <code>Control Plane</code> server, usually running in your collector, and create <code>Streams</code> in the registered <code>Samplers</code>.</p>
+<p>See this <a href="../../how-to/configure-samplers-using-neblictl/">how-to</a> page to learn how to configure <code>Samplers</code> using <code>neblictl</code> and the <a href="../../reference/rules/">rules reference</a> to learn what expressions you can use.</p>
 <h2 id="available-samplers">Available Samplers<a class="headerlink" href="#available-samplers" title="Permanent link">¶</a></h2>
 <h3 id="go">Go<a class="headerlink" href="#go" title="Permanent link">¶</a></h3>
 <!-- BEGIN INCLUDE ../../../sampler/README.md '&lt;!--learn-start--&gt;' '&lt;!--learn-end--&gt;' -->
@@ -489,7 +485,7 @@
 </main>
 <footer class="md-footer">
 <nav aria-label="Footer" class="md-footer__inner md-grid">
-<a aria-label="Previous: Stores" class="md-footer__link md-footer__link--prev" href="../stores/" rel="prev">
+<a aria-label="Previous: Collector" class="md-footer__link md-footer__link--prev" href="../collector/" rel="prev">
 <div class="md-footer__button md-icon">
 <svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"></path></svg>
 </div>
@@ -498,7 +494,7 @@
 <span class="md-footer__direction">
                   Previous
                 </span>
-                Stores
+                Collector
               </div>
 </div>
 </a>

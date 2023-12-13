@@ -151,8 +151,13 @@
   </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#sampling-rule">
-    Sampling Rule
+<a class="md-nav__link" href="#event">
+    Event
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#stream">
+    Stream
   </a>
 </li>
 </ul>
@@ -199,11 +204,6 @@
 <li class="md-nav__item">
 <a class="md-nav__link" href="../../learn/collector/">
         Collector
-      </a>
-</li>
-<li class="md-nav__item">
-<a class="md-nav__link" href="../../learn/stores/">
-        Stores
       </a>
 </li>
 <li class="md-nav__item">
@@ -267,8 +267,8 @@
         </label>
 <ul class="md-nav__list" data-md-scrollfix="">
 <li class="md-nav__item">
-<a class="md-nav__link" href="../../reference/sampling-rules/">
-        Sampling rules
+<a class="md-nav__link" href="../../reference/rules/">
+        Rules
       </a>
 </li>
 <li class="md-nav__item">
@@ -325,8 +325,13 @@
   </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#sampling-rule">
-    Sampling Rule
+<a class="md-nav__link" href="#event">
+    Event
+  </a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#stream">
+    Stream
   </a>
 </li>
 </ul>
@@ -372,11 +377,15 @@
 <p>A summary of a collection of <code>Data Samples</code>. These can be generated at different points of the platform depending of your preferences and requirements. There are two main types of digests: strucutre digests and value digests.</p>
 <p>A structure digest encodes information about the <code>Data Samples</code> schemas i.e. the fields and their types. For example, it registers how many times a particular field iis present over the total of <code>Data Samples</code> processed.</p>
 <p>A value digest aggregates the values seen in each field. This allows, for example, to show value metrics and statistics about the contents of your <code>Data Samples</code>.</p>
-<h3 id="sampling-rule">Sampling Rule<a class="headerlink" href="#sampling-rule" title="Permanent link">¶</a></h3>
-<p>An expression that determines whether a <code>Data Sample</code> should be exported. Usually based on the contents of the <code>Data Sample</code>, but this is not necessarily the only condition that can take part n determining whether a <code>Data Sample</code> should be captured. <code>Sampling Rules</code> are provided by clients and sent to <code>Samplers</code> using Neblic's <code>Control Plane</code> (described in the next section).</p>
-<p>You can take a look at this <a href="../../learn/samplers/#configuration">section</a> to learn more about how to set up <code>Sampling Rules</code> and this <a href="../../reference/sampling-rules/">reference</a> page to see their syntax.</p>
+<h3 id="event">Event<a class="headerlink" href="#event" title="Permanent link">¶</a></h3>
+<p>Something that has happened that has potential interest to understand the behavior of the application. These can also be generated at different points of the platform. The main way of generating events is defining rules that are evaluated on the <code>Data Samples</code> contents.</p>
+<p>You can take a look at this <a href="../../learn/samplers/#configuration">section</a> to learn more about how to create <code>Events</code> and this <a href="../../reference/rules/">reference</a> page to see their syntax.</p>
+<h3 id="stream">Stream<a class="headerlink" href="#stream" title="Permanent link">¶</a></h3>
+<p>A subset of <code>Data Samples</code> selected using a sampling rule usually based on the contents of the <code>Data Sample</code>, but this is not necessarily the only condition that can take part on determining whether a <code>Data Sample</code> should be added as part of the stream.</p>
+<p><code>Streams</code> behave as an independent selection of <code>Samples</code> coming from a <code>Sampler</code> which means that <code>Digests</code> and <code>Events</code> can be generated only taking into account the <code>Data Samples</code> within a <code>Stream</code>.</p>
+<p>You can take a look at this <a href="../../learn/samplers/#configuration">section</a> to learn more about how to create <code>Streams</code> and this <a href="../../reference/rules/">reference</a> page to see their syntax.</p>
 <h2 id="control-plane">Control Plane<a class="headerlink" href="#control-plane" title="Permanent link">¶</a></h2>
-<p>Neblic implements a protocol that allows you to configure at runtime, how <code>Samplers</code> behave. For example, you can update the <code>Sampling Rules</code> that a <code>Sampler</code> evaluates to decide which <code>Data Samples</code> should export, or you can set a new maximum sampling rate to limit the amount of <code>Data Samples</code> that a <code>Sampler</code> can export per second.</p>
+<p>Neblic implements a protocol that allows you to configure at runtime, how <code>Samplers</code> behave. For example, you can create new <code>Streams</code> to decide which <code>Data Samples</code> should be processed, or you can set a new maximum sampling rate to limit the amount of <code>Data Samples</code> that a <code>Stream</code> can export per second.</p>
 <p>The <code>Control Plane</code> has a central server to which all <code>Samplers</code> and clients connect. It stores the configurations sent by the clients and acts as a broker, passing them on to the <code>Samplers</code> when they register. Although it can run independently, it is common to run the <code>Control Plane</code> server in the Neblic collector along with the <code>Data Samples</code> collection endpoint.</p>
 <p>If you want to learn how to interact with the control plane so you can configure <code>Samplers</code>, check <a href="../../reference/neblictl/">this</a> guide that shows how to use the <code>neblictl</code> CLI to send commands. </p>
 <h2 id="data-plane">Data plane<a class="headerlink" href="#data-plane" title="Permanent link">¶</a></h2>

@@ -150,11 +150,6 @@
       </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="../../learn/stores/">
-        Stores
-      </a>
-</li>
-<li class="md-nav__item">
 <a class="md-nav__link" href="../../learn/samplers/">
         Samplers
       </a>
@@ -215,8 +210,8 @@
         </label>
 <ul class="md-nav__list" data-md-scrollfix="">
 <li class="md-nav__item">
-<a class="md-nav__link" href="../sampling-rules/">
-        Sampling rules
+<a class="md-nav__link" href="../rules/">
+        Rules
       </a>
 </li>
 <li class="md-nav__item">
@@ -262,21 +257,40 @@
 <!-- BEGIN INCLUDE ../../../cmd/neblictl/README.md '&lt;!--ref-start--&gt;' '&lt;!--ref-end--&gt;' -->
 <h1 id="reference">Reference<a class="headerlink" href="#reference" title="Permanent link">¶</a></h1>
 <h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">¶</a></h2>
-<h3 id="help">help<a class="headerlink" href="#help" title="Permanent link">¶</a></h3>
-<p>Shows all the available commands</p>
-<h3 id="list">list<a class="headerlink" href="#list" title="Permanent link">¶</a></h3>
-<p>Lists elements: <code>Samplers</code>, <code>Resources</code>, or <code>Sampling Rules</code>. For example, <code>list samplers</code> shows the list of registered samplers.</p>
-<h3 id="createupdatedelete-rule">create/update/delete rule<a class="headerlink" href="#createupdatedelete-rule" title="Permanent link">¶</a></h3>
-<p>Allows the definition and modification of <code>Sampling Rules</code>. For example: <code>create rule &lt;resource_name&gt; &lt;sampler_name&gt; &lt;sampling_rule&gt;</code> (sampling rule as a CEL expression) creates a new <code>Sampling Rule</code> on the specified <code>Sampler</code>.</p>
-<h3 id="createupdatedelete-rate">create/update/delete rate<a class="headerlink" href="#createupdatedelete-rate" title="Permanent link">¶</a></h3>
-<p>Create/update and delete sampling rates. This configuration limits how many samples can be exported. For example: <code>create rate &lt;resource&gt; &lt;sampler&gt; &lt;samples_per_second&gt;</code></p>
-<h2 id="using-wildcards">Using wildcards<a class="headerlink" href="#using-wildcards" title="Permanent link">¶</a></h2>
-<p>In commands where a <code>&lt;sampler&gt;</code> or a <code>&lt;resource&gt;</code> is set, the special character <code>*</code> can be used to match all the entries. For example:</p>
-<ul>
-<li><code>list rules * *</code>: It shows the rules for all resources and <code>Samplers</code></li>
-<li><code>list rules * sampler1</code>: It shows the rules for the resources that have a <code>sampler1</code> sampler</li>
-<li><code>list rules resource1 *</code>: It shows all the rules of all the samplers of <code>resource1</code> resource</li>
-</ul>
+<p>Format <code>namespace:command</code> (e.g <code>samplers:list</code>)</p>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a>resources: A resource identifies a service or a group of services that are part of the same logical application.
+<a href="#__codelineno-0-2" id="__codelineno-0-2" name="__codelineno-0-2"></a>   o list: List all resources
+<a href="#__codelineno-0-3" id="__codelineno-0-3" name="__codelineno-0-3"></a>
+<a href="#__codelineno-0-4" id="__codelineno-0-4" name="__codelineno-0-4"></a>samplers: A sampler is a component that collects samples from a resource.
+<a href="#__codelineno-0-5" id="__codelineno-0-5" name="__codelineno-0-5"></a>   o list: List all samplers
+<a href="#__codelineno-0-6" id="__codelineno-0-6" name="__codelineno-0-6"></a>   o list:config: List all samplers configurations
+<a href="#__codelineno-0-7" id="__codelineno-0-7" name="__codelineno-0-7"></a>   o limiterin:set: Sets the maximum number of samples processed per second by a sampler
+<a href="#__codelineno-0-8" id="__codelineno-0-8" name="__codelineno-0-8"></a>   o limiterin:unset: Unsets the maximum number of samples per second processed by a sampler
+<a href="#__codelineno-0-9" id="__codelineno-0-9" name="__codelineno-0-9"></a>   o samplerin:set:deterministic: Sets a deterministic samplerin configuration
+<a href="#__codelineno-0-10" id="__codelineno-0-10" name="__codelineno-0-10"></a>   o samplerin:unset: Unsets any samplerin configuration set
+<a href="#__codelineno-0-11" id="__codelineno-0-11" name="__codelineno-0-11"></a>   o limiterout:set: Sets the maximum number of samples exported per second by a sampler
+<a href="#__codelineno-0-12" id="__codelineno-0-12" name="__codelineno-0-12"></a>   o limiterout:unset: Unsets the maximum number of samples per second exported by a sampler
+<a href="#__codelineno-0-13" id="__codelineno-0-13" name="__codelineno-0-13"></a>
+<a href="#__codelineno-0-14" id="__codelineno-0-14" name="__codelineno-0-14"></a>streams: A stream is a sequence of samples collected from a resource by a sampler.
+<a href="#__codelineno-0-15" id="__codelineno-0-15" name="__codelineno-0-15"></a>   o list: List streams
+<a href="#__codelineno-0-16" id="__codelineno-0-16" name="__codelineno-0-16"></a>   o create: Create streams
+<a href="#__codelineno-0-17" id="__codelineno-0-17" name="__codelineno-0-17"></a>   o update: Update streams
+<a href="#__codelineno-0-18" id="__codelineno-0-18" name="__codelineno-0-18"></a>   o delete: Delete streams
+<a href="#__codelineno-0-19" id="__codelineno-0-19" name="__codelineno-0-19"></a>
+<a href="#__codelineno-0-20" id="__codelineno-0-20" name="__codelineno-0-20"></a>digests:
+<a href="#__codelineno-0-21" id="__codelineno-0-21" name="__codelineno-0-21"></a>   o list: List configured digests
+<a href="#__codelineno-0-22" id="__codelineno-0-22" name="__codelineno-0-22"></a>   o structure:create: Generate structure digests
+<a href="#__codelineno-0-23" id="__codelineno-0-23" name="__codelineno-0-23"></a>   o structure:update: Update structure digests
+<a href="#__codelineno-0-24" id="__codelineno-0-24" name="__codelineno-0-24"></a>   o value:create: Configure generation of value digests
+<a href="#__codelineno-0-25" id="__codelineno-0-25" name="__codelineno-0-25"></a>   o value:update: Update value digests
+<a href="#__codelineno-0-26" id="__codelineno-0-26" name="__codelineno-0-26"></a>   o delete: Delete digest
+<a href="#__codelineno-0-27" id="__codelineno-0-27" name="__codelineno-0-27"></a>
+<a href="#__codelineno-0-28" id="__codelineno-0-28" name="__codelineno-0-28"></a>events:
+<a href="#__codelineno-0-29" id="__codelineno-0-29" name="__codelineno-0-29"></a>   o list: List configured events
+<a href="#__codelineno-0-30" id="__codelineno-0-30" name="__codelineno-0-30"></a>   o create: Create events
+<a href="#__codelineno-0-31" id="__codelineno-0-31" name="__codelineno-0-31"></a>   o update: Update events
+<a href="#__codelineno-0-32" id="__codelineno-0-32" name="__codelineno-0-32"></a>   o delete: Delete events
+</code></pre></div>
 <!-- END INCLUDE -->
 </article>
 </div>
