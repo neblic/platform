@@ -32,6 +32,10 @@ After establishing a connection with the server, they start the registration pro
 
 The registration request is the first message that the server expects after a new connection is established. Other messages are ignored until the registration process completes.
 
+### Inital configuration
+
+During the registration, the `Sampler` sends the server its initial configuration, if any. Then, the server may decide to use it if there isn't any other configuration defined, in that case, it is sent back to the `Sampler` confirming that it should configure itself using its initial configuration.
+
 
 ## Reconnections
 

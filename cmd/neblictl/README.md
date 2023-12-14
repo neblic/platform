@@ -27,21 +27,24 @@ neblictl -host localhost -control-port 8899
 
 `Neblictl` provides an interactive client with auto-completion and built-in help where you will be able to enter commands once connected.
 
-#### Set a Bearer token
+#### Authentication
+
+If authentication is enabled in the `Control Plane` server, you will need to set a `Bearer token`:
+
 - Run `neblictl init` to create the configuration file if necessary and show its path.
 - Open the configuration file and set the desired token value in the `Token` field.
 
 ### Configure a `Sampler`
 
-Before continuing there are two main concepts that you need to understand: `Samplers` and `Sampling Rules`. Check the concepts [page](https://docs.neblic.com/latest/getting-started/concepts/) to learn more about them.
+Before continuing, it's useful to understand the concepts defined in this [page](https://docs.neblic.com/latest/getting-started/concepts/).
 
-1. Run the command `list samplers`. This will show a list with all the `Samplers` available and some stats for each one of them.
-2. Create a rule using the commend `create rule <resource> <sampler> <sampling_rule>`.
-3. After a while, you can check the `Sampler` stats to see if the number of exported samples has increased running `list samplers` again.
+The format of the commands is `namespace:command`. Run the command `help` to see all of them and their commnds. The 4 main namespaces are:
 
-### Set a `Sampling Rate`
+* `sampler`: Configures options at the `sampler` level. This means they affect all `streams` defined in the `sampler`. For example, you can configure a maximum amount of samples processed or exported.
+* `streams`: Creates a pipeline of data containing a subset of the `Data Samples`. On creation, you will need to provide a [rule](https://docs.neblic.com/latest/reference/rules/) that filters the `Data Samples` that will be part of that `Stream`.
+* `digests`: Enables and configures `Digests`. On creation, a `Digest` requires a target `Stream`.
+* `events`: Configure the generation of `Events`. Similarly to `Digests` they require a target `Stream` and additionally, they require a [rule](https://docs.neblic.com/latest/reference/rules/) that determines when has occurred the `Event`.
 
-It's usually useful to set a rate limit as a safeguard to avoid exporting too many samples, the sample rate limits the number of samples per second that can be exported, discarding the ones above the limit. By default, a sampling rate is defined when a sampler is initialized in the service code, but this value can be overridden using the client with the command `create rate <resouce> <sampler> <limit>`
 <!--how-to-end-->
 
 <!--ref-start-->
@@ -49,27 +52,41 @@ It's usually useful to set a rate limit as a safeguard to avoid exporting too ma
 
 ## Commands
 
-### help
+Format `namespace:command` (e.g `samplers:list`)
 
-Shows all the available commands
+```
+resources: A resource identifies a service or a group of services that are part of the same logical application.
+   o list: List all resources
 
-### list
+samplers: A sampler is a component that collects samples from a resource.
+   o list: List all samplers
+   o list:config: List all samplers configurations
+   o limiterin:set: Sets the maximum number of samples processed per second by a sampler
+   o limiterin:unset: Unsets the maximum number of samples per second processed by a sampler
+   o samplerin:set:deterministic: Sets a deterministic samplerin configuration
+   o samplerin:unset: Unsets any samplerin configuration set
+   o limiterout:set: Sets the maximum number of samples exported per second by a sampler
+   o limiterout:unset: Unsets the maximum number of samples per second exported by a sampler
 
-Lists elements: `Samplers`, `Resources`, or `Sampling Rules`. For example, `list samplers` shows the list of registered samplers.
+streams: A stream is a sequence of samples collected from a resource by a sampler.
+   o list: List streams
+   o create: Create streams
+   o update: Update streams
+   o delete: Delete streams
 
-### create/update/delete rule
+digests:
+   o list: List configured digests
+   o structure:create: Generate structure digests
+   o structure:update: Update structure digests
+   o value:create: Configure generation of value digests
+   o value:update: Update value digests
+   o delete: Delete digest
 
-Allows the definition and modification of `Sampling Rules`. For example: `create rule <resource_name> <sampler_name> <sampling_rule>` (sampling rule as a CEL expression) creates a new `Sampling Rule` on the specified `Sampler`.
+events:
+   o list: List configured events
+   o create: Create events
+   o update: Update events
+   o delete: Delete events
+```
 
-### create/update/delete rate
-
-Create/update and delete sampling rates. This configuration limits how many samples can be exported. For example: `create rate <resource> <sampler> <samples_per_second>`
-
-## Using wildcards
-
-In commands where a `<sampler>` or a `<resource>` is set, the special character `*` can be used to match all the entries. For example:
-
-- `list rules * *`: It shows the rules for all resources and `Samplers`
-- `list rules * sampler1`: It shows the rules for the resources that have a `sampler1` sampler
-- `list rules resource1 *`: It shows all the rules of all the samplers of `resource1` resource
 <!--ref-end-->

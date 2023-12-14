@@ -8,32 +8,47 @@ The following diagram shows most of the concepts presented here and serves as a 
 graph LR;
     Samplers--Data samples-->col[Collector]
     col--Configurations-->Samplers
-
-    col--Data samples-->store[(Data Sample Store)]
+    col--Digests/Events-->neblic[Neblic Cloud]
     ctl[neblictl]--Configurations-->col
 ```
 
 ## Sampler
 
-A component or library that generates `Data Samples`. It can be thought of as a logger that specializes in logging semi-structured data (e.g. JSON) but smarter. `Samplers` connect to Neblic's `Control Plane` and `Data Plane`, so they can be dynamically configured at runtime, and their function is to export `Data Samples` to an external system for further analysis. 
+A component or library that processes `Data Samples`. It can be thought of as a logger that specializes in logging semi-structured data (e.g. JSON) but smarter. `Samplers` connect to Neblic's `Control Plane` and `Data Plane`, so they can be dynamically configured at runtime, and their function is to generate `Digests`, `Events`, and/or to export `Data Samples` to an external system for further analysis.
 
 For more information about the types of `Samplers` that are available and best practices for their use, you can read the [samplers](../learn/samplers.md) section.
 
 ### Data sample
 
-Any piece of information in a semi-structured format that may be of interest to understand how the system works. Software systems, regardless of their architecture (i.e. microservices, event-driven, stream processing), continuously generate and process data in response to internal and external events: requests, responses, updating internal state, executing queries... all of this generated data can be captured as a `Data sample` to gain depth insights into how the system works.
+Any piece of information in a semi-structured format that may be of interest to understand how the system works. Software systems, regardless of their architecture (i.e. microservices, event-driven, stream processing), continuously generate and process data in response to internal and external events: requests, responses, updating internal state, executing queries... all of this generated data can be captured as a `Data sample` to gain deep insights into how the system works.
 
 Each `Sampler` supports different serialization formats and message types. These are described on the [samplers](../learn/samplers.md#available-samplers) page 
 
-### Sampling Rule
+### Digest
 
-An expression that determines whether a `Data Sample` should be exported. Usually based on the contents of the `Data Sample`, but this is not necessarily the only condition that can take part n determining whether a `Data Sample` should be captured. `Sampling Rules` are provided by clients and sent to `Samplers` using Neblic's `Control Plane` (described in the next section).
+A summary of a collection of `Data Samples`. These can be generated at different points of the platform depending of your preferences and requirements. There are two main types of digests: structure digests and value digests.
 
-You can take a look at this [section](../learn/samplers.md#configuration) to learn more about how to set up `Sampling Rules` and this [reference](../reference/sampling-rules.md) page to see their syntax.
+A structure digest encodes information about the `Data Samples` schemas i.e. the fields and their types. For example, it registers how many times a field is present over the total of `Data Samples` processed.
+
+A value digest aggregates the values seen in each field. This allows, for example, to show value metrics and statistics about the contents of your `Data Samples`.
+
+### Event
+
+Something that has happened that is potentially interesting to understand the behavior of the application. These can also be generated at different points of the platform. The main way of generating events is defining rules that are evaluated on the `Data Samples` contents.
+
+You can take a look at this [section](../learn/samplers.md#configuration) to learn more about how to create `Events` and this [reference](../reference/rules.md) page to see their syntax.
+
+### Stream
+
+A subset of `Data Samples` selected using a sampling rule usually based on the contents of the `Data Sample`, but this is not necessarily the only condition that can take part on determining whether a `Data Sample` should be added as part of the stream.
+
+`Streams` are seen as a selection of `Samples` coming from a `Sampler`. This means that `Digests` and `Events` can be configured to be generated only taking into account the `Data Samples` within a `Stream`.
+
+You can take a look at this [section](../learn/samplers.md#configuration) to learn more about how to create `Streams` and this [reference](../reference/rules.md) page to see their syntax.
 
 ## Control Plane
 
-Neblic implements a protocol that allows you to configure at runtime, how `Samplers` behave. For example, you can update the `Sampling Rules` that a `Sampler` evaluates to decide which `Data Samples` should export, or you can set a new maximum sampling rate to limit the amount of `Data Samples` that a `Sampler` can export per second.
+Neblic implements a protocol that allows you to configure at runtime, how `Samplers` behave. For example, you can create new `Streams` to decide which `Data Samples` should be processed, or you can set a new maximum sampling rate to limit the amount of `Data Samples` that a `Stream` can export per second.
 
 The `Control Plane` has a central server to which all `Samplers` and clients connect. It stores the configurations sent by the clients and acts as a broker, passing them on to the `Samplers` when they register. Although it can run independently, it is common to run the `Control Plane` server in the Neblic collector along with the `Data Samples` collection endpoint.
 
@@ -51,10 +66,4 @@ The `Collector` is the central point that receives `Data Samples` from `Samplers
 
 As mentioned above, it is common (and it is the recommended approach) to run Neblic's `Control Plane` server in the `Collector` to simplify the deployment.
 
-Neblic uses the [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) because of its flexibility and maturity. For more details on how to configure the OTEL collector for use with Neblic, please refer to the deployment [guide](../getting-started/deployment.md).
-
-## Store
-
-Once `Data Samples` are exported from `Samplers` and received by the `Collector`, they are stored for later exploration. When using the OpenTelemetry-based `Collector`, and because `Data Samples` are encoded as OpenTelemetry logs, you have many possible data store choices.
-
-The deployment [guide](../getting-started/deployment.md) will help you choose which store to use. You can read more information about what stores are recommended [here](../learn/stores.md).
+Neblic uses the [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) because of its flexibility and maturity. For more details on how to configure the OTEL collector for use with Neblic, please refer to the usage [guide](../getting-started/usage.md).
