@@ -14,7 +14,27 @@ Neblic provides a standalone service called `kafka-sampler` capable of automatic
 <!--how-to-start-->
 ## Deployment
 
-See the [releases](https://github.com/neblic/platform/releases) page to download the latest binary or the [packages](https://github.com/orgs/neblic/packages?repo_name=platform) page to see the available containers. It is recommended to use the provided container image to deploy `kafka-sampler`.
+See the [releases](https://github.com/neblic/platform/releases) page to download the latest binary or the [packages](https://github.com/neblic/platform/pkgs/container/kafka-sampler) page to see the available containers. It is recommended to use the provided container image to deploy `kafka-sampler`. The following section describes how to deploy it using the container image.
+
+### Container
+
+#### Supported architectures
+
+For now, only `x86-64` builds are offered. If you need another architecture you can build your own container using the files found in [here](https://github.com/neblic/platform/tree/main/dist/kafka-sampler).
+
+#### Examples
+
+##### docker-compose
+
+``` yaml
+--8<-- "./dist/kafka-sampler/compose/docker-compose.yaml"
+```
+
+##### kubernetes
+
+``` yaml
+--8<-- "./dist/kafka-sampler/k8s/deployment.yaml"
+```
 
 ## Usage
 
@@ -24,12 +44,12 @@ On startup, it will subscribe to all or a subset (based on your configuration) o
 <!--ref-start-->
 ## Configuration 
 
-By default, `kafka-sampler` will look for a config file at `/etc/neblic/kafka-sampler/config.yaml`.
+By default, `kafka-sampler` will look for a config file at `/etc/neblic/kafka-sampler/config.yaml`. This path can be changed using the `--config` flag when executing the service.
 
-All the options defined in the configuration file can be configured/overridden using environment variables. The environment variable name will be written in all caps and using `_` to divide nested objects. For example, to configure the Kafka server URL you would need to use the env variable `KAFKA_SERVERS`.
+All the options defined in the configuration file can be configured/overridden using environment variables. The environment variable name needs to be written in all caps and use `_` to divide nested objects. For example, to configure the Kafka server URL you would need to use the env variable `KAFKA_SERVERS` or to configure the filters `KAFKA_TOPICS_FILTER_ALLOW`.
 <!--ref-end-->
 
 <!-- Link to reference configuration. In the documentation, this file is directly embedded in the reference section -->
-## Reference configuration file
+### Reference configuration file
 
 A commented complete configuration file is available [here](../../dist/kafka-sampler/config.yaml)

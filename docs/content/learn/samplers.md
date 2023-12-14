@@ -1,17 +1,19 @@
 # Samplers
 
-`Samplers` are available as libraries to be imported into your services or are created by standalone components that retrieve `Data Samples` from a system (such as a data broker or a database) by themselves.
+`Samplers` are available as libraries to be imported into your services or are created by standalone components that retrieve `Data Samples` from a system (such as a data broker or a database) by themselves such as the [`kafka-sampler`](../how-to/data-from-kafka.md).
 
-They are designed to not interfere with the normal operation of your systems and to have a negligible impact on performace. `Sampling Rules` are defined using [Google's CEL language](https://opensource.google.com/projects/cel), which, quoting their documentation id `designed for simplicity, speed, safety, and portability`.
+They are designed to not interfere with the normal operation of your systems and to have a negligible impact on performace. `Streams` of `Data Samples` are created using rules defined with the [Google's CEL language](https://opensource.google.com/projects/cel), which, quoting their documentation is `designed for simplicity, speed, safety, and portability`.
 
-`Samplers` need to be able to decode the data that they intercept so that it can be evaluated by their configured `Sampling rules`, which decide whether or not that `Data Sample` needs to be exported. Therefore, you need to choose a `Sampler` that is compatible with the message encoding (e.g. Protocol Buffers, JSON...) that your service works with.
+`Samplers` need to be able to decode the data that they intercept so that it can be evaluated by their configured `Streams`, which decide whether or not that `Data Sample` needs to be processed. Therefore, you need to choose a `Sampler` that is compatible with the message encoding (e.g. Protocol Buffers, JSON...) that your service works with.
 
 !!! note
-    All `Samplers` are able to process `JSON` messages. Since it is a self-describing language, it is enough with the message itself (no external schema required) is sufficient to decode its contents. And since, at least when using `Samplers` within your services, it is usually possible to convert any object to `JSON`, this option works as a fallback in case the encoding your service uses is not supported. Of course, there is a performance penalty to consider when converting messages to `JSON`. 
+    All `Samplers` are able to process `JSON` messages. Since it is a self-describing language, it is enough with the message itself (no external schema required) to be able to decode its contents. And since, at least when using `Samplers` within your services, it is usually possible to convert any object to `JSON`, this option works as a fallback in case the encoding your service uses is not supported. Of course, there is a performance penalty to consider when converting messages to `JSON`. 
+
+The `Data Samples` selected to be processed are then parsed so they can be incorporated to the `Sampler` enabled `Digests` or forwarded to the `Collector` as-is so they can be processed there. This depends on how are they configured.
 
 ## Best practices
 
-Because their performance impact is negligible when no `Sampling Rules` are configured, it is recommended to add them wherever data is transformed or exchanged. This will allow you to track how your data evolves throughout your system. 
+Because their performance impact is negligible when no `Streams` are configured, it is recommended to add them wherever data is transformed or exchanged. This will allow you to track how your data evolves throughout your system. 
 
 !!! note
     Unlike logs, where it is usually recommended to not add logging in the critical path to avoid too much noise and increased costs, `Samplers` can be dynamically configured so you can add them anywhere without worrying about impacting your application or costs. 
@@ -35,11 +37,11 @@ To make it easier to get `Data Samples` from multiple places, Neblic provides he
 
 The pair `Sampler` name and resource id is what identifies a particular set of `Samplers`. For example, if you have multiple replicas of the same service, each replica will register a `Sampler` with the same name and resource id. All of these `Samplers` are treated as a group and you can configure them all together. However, each `Sampler` has a unique id in case you want to send a configuration to only one of the `Samplers`.
 
-### Sampling rules
+### Streams
 
-`Sampling Rules` are the main configuration that `Samplers` need to be able to start exporting `Data Samples`. Clients (such as the CLI client `neblictl`) connect to the `Control Plane` server, usually running in your collector, and send `Sampling Rules` to `Samplers` using their name and resource id.
+`Streams` are the initial configuration that `Samplers` need to be able to start exporting `Data Samples`, generating `Digests` or `Events`. Clients (such as the CLI client `neblictl`) connect to the `Control Plane` server, usually running in your collector, and create `Streams` in the registered `Samplers`.
 
-See this [how-to](../how-to/configure-samplers-using-neblictl.md) page to learn how to configure `Samplers` using `neblictl` and the [sampling rules reference](../reference/sampling-rules.md) to learn what expressions you can use in your `Sampling Rules`.
+See this [how-to](../how-to/configure-samplers-using-neblictl.md) page to learn how to configure `Samplers` using `neblictl` and the [rules reference](../reference/rules.md) to learn what expressions you can use.
 
 ## Available Samplers
 

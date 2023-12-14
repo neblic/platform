@@ -1,6 +1,4 @@
-# Deployment
-
-Before starting this tutorial make sure you have a general idea of the components that make up the Neblic platform. If not, please read the [concepts](../getting-started/concepts.md) page first.
+# On-prem data visualization
 
 Neblic provides all the components needed to export `Data Samples` from your applications and components. These components include `Samplers`, the `Control Plane` server and clients, and others. However, since `Data Samples` are encoded as [OpenTelemetry (OTLP) logs](https://opentelemetry.io/docs/reference/specification/logs/data-model), and use the [OTLP/gRPC](https://opentelemetry.io/docs/reference/specification/protocol/otlp/#otlpgrpc) protocol for transport, any logging stack compatible with OpenTelemetry log telemetry can be used as a backend for Neblic. Therefore, there are two ways to proceed:
 
@@ -13,7 +11,7 @@ Before deciding to reuse your current logging stack you need to consider:
   * Is your log exploration interface able to filter nested documents using complex expressions? `Data Samples` are encoded as JSON documents within the log body, and to explore them, you will want to be able to create filters based on their contents. 
     * For example, if your data is in this format: `{id: "1", product_name: "T-Shirt", price: -10 }`, you would ideally want to be able to create an expression to filter all of these `Data Samples` similar to `sample.price < 0`.
 
-If you want to give it a try with your current logging pipeline, you can skip to this [section](../getting-started/deployment.md#reuse-your-existing-logging-stack) where you can find out which Neblic-specific components you will need to deploy. Otherwise, please read on.
+If you want to give it a try with your current logging pipeline, you can skip to this [section](./#reuse-your-existing-logging-stack) where you can find out which Neblic-specific components you will need to deploy. Otherwise, please read on.
 
 ##  Deploying an open-source Neblic backend
 

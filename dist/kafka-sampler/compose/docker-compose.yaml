@@ -1,0 +1,10 @@
+version: "2.1"
+services:
+  neblic-kafka-sampler:
+    image: ghcr.io/neblic/kafka-sampler:latest
+    container_name: neblic-kafka-sampler
+    environment:
+      - KAFKA_SERVERS=kafka01:9092;kafka02:9092
+      - NEBLIC_CONTROLSERVERADDR=neblic-otelcol:8899
+      - NEBLIC_DATASERVERADDR=neblic-itelcol:4317
+    restart: unless-stopped

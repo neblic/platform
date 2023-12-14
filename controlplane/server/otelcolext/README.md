@@ -16,5 +16,5 @@ processors:
 
 You can use as a reference the [configuration file](https://github.com/neblic/platform/blob/main/dist/otelcol/ocb.yaml) used to build the collector that Neblic distributes.
 
-Once built, you can configure it as described [here](https://docs.neblic.com/latest/learn/collector/)
+Once built, you can learn more about how to use it and configure it in [here](https://docs.neblic.com/latest/learn/collector/)
 <!--how-to-end-->

@@ -6,13 +6,11 @@ nav:
     - 'What is Neblic': index.md
     - 'Quickstart':
         - 'How does Neblic work': 'quickstart/how-does-neblic-work.md'
-        - 'Playground': 'quickstart/playground.md'
     - 'Getting started': 
       - 'Concepts': 'getting-started/concepts.md'
-      - 'Deployment': 'getting-started/deployment.md'
+      - 'Usage': 'getting-started/usage.md'
     - 'Learn':
       - 'Collector': 'learn/collector.md'
-      - 'Stores': 'learn/stores.md'
       - 'Samplers': 'learn/samplers.md'
       - 'Protocol': 'learn/protocol.md'
     - 'How-to guides':
@@ -21,7 +19,7 @@ nav:
       - 'Configure Samplers': 'how-to/configure-samplers-using-neblictl.md'
       - 'Build your own collector': 'how-to/build-your-own-collector.md'
     - 'Reference':
-      - 'Sampling rules': 'reference/sampling-rules.md'
+      - 'Rules': 'reference/rules.md'
       - 'Collector': 'reference/collector.md'
       - 'Neblictl': 'reference/neblictl.md'
       - 'Kafka Sampler': 'reference/kafka-sampler.md'

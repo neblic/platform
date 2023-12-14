@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: neblic-otelcol
+  labels:
+    app: neblic-otelcol
+spec:
+  ports:
+  - port: 8899
+    name: controlplane
+    protocol: TCP
+  - port: 4317
+    name: dataplane
+    protocol: TCP
+  selector:
+    app: neblic-otelcol
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: neblic-otelcol
+  labels:
+    app: neblic-otelcol
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neblic-otelcol
+  template:
+    metadata:
+      labels:
+        app: neblic-otelcol
+    spec:
+      containers:
+      - name: neblic-otelcol
+        image: ghcr.io/neblic/otelcol:latest
+        env:
+          - name: NEBLIC_DATA_PLANE_EXPORTER_BEARER_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: neblic-otelcol
+                key: exporter-bearer-token
+        volumeMounts:
+          - name: config
+            mountPath: /var/lib/otelcol
+  volumeClaimTemplates:
+    - metadata:
+        name: config
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 10M

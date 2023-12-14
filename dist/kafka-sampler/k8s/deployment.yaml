@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: neblic-kafka-sampler
+  labels:
+    app: neblic-kafka-sampler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: neblic-kafka-sampler
+  template:
+    metadata:
+      labels:
+        app: neblic-kafka-sampler
+    spec:
+      containers:
+      - name: neblic-kafka-sampler
+        image: ghcr.io/neblic/kafka-sampler:latest
+        env:
+          - name: KAFKA_SERVERS
+            value: kafka.default.svc.cluster.local:9092
+          - name: NEBLIC_CONTROLSERVERADDR
+            value: neblic-otelcol.default.svc.cluster.local:8899
+          - name: NEBLIC_DATASERVERADDR
+            value: neblic-otelcol.default.svc.cluster.local:4317

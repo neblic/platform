@@ -1,0 +1,8 @@
+version: "2.1"
+services:
+  neblic-otelcol:
+    image: ghcr.io/neblic/otelcol:latest
+    container_name: neblic-otelcol
+    environment:
+      - NEBLIC_DATA_PLANE_EXPORTER_BEARER_TOKEN=<your-api-token>
+    restart: unless-stopped

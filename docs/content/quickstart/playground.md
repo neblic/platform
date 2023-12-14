@@ -95,4 +95,4 @@ For the sake of brevity, this guide has only shown the basic functionality that 
 
 ### Next steps
 
-If you would like to learn more about the concepts that define Neblic, it is recommended that you take a look at the [concepts](../getting-started/concepts.md) page. Then, once you are familiarized with how Neblic works and its architecture, you can go to the [deployment](../getting-started/deployment.md) guide to learn how best to deploy it in your environment!
+If you would like to learn more about the concepts that define Neblic, it is recommended that you take a look at the [concepts](../getting-started/concepts.md) page. Then, once you are familiarized with how Neblic works and its architecture, you can go to the [usage](../getting-started/usage.md) guide to learn how best to deploy it in your environment!
