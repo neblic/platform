@@ -14,7 +14,7 @@ import (
 )
 
 // --8<-- [start:ProviderInit]
-func initProvider() defs.Provider {
+func initProvider(t *testing.T) defs.Provider {
 	// the `Settings` struct contains the required configuration settings
 	settings := sampler.Settings{
 		ResourceName:      "service-name",
@@ -29,13 +29,16 @@ func initProvider() defs.Provider {
 	// optional: It is recommended to register the `Provider` as global.
 	// this will allow you to initialize a `Sampler` from anywhere in your code
 	// without needing a reference to the `Provider`.
-	global.SetSamplerProvider(provider)
+	err := global.SetSamplerProvider(provider)
+	if err != nil {
+		t.Error(err)
+	}
 
 	return provider
 }
 
 // --8<-- [end:ProviderInit]
 
-func TestInitProvider(_ *testing.T) {
-	initProvider()
+func TestInitProvider(t *testing.T) {
+	initProvider(t)
 }

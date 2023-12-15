@@ -98,12 +98,12 @@ func (n *neblic) Shutdown(_ context.Context) error {
 	var errs error
 	if n.s != nil {
 		err := n.s.Stop(time.Second)
-		errors.Join(errs, err)
+		errs = errors.Join(errs, err)
 	}
 
 	if n.processor != nil {
 		err := n.processor.Stop()
-		errors.Join(errs, err)
+		errs = errors.Join(errs, err)
 	}
 
 	return errs

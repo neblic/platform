@@ -232,8 +232,9 @@ func (p *Processor) UpdateConfig(resource, sampler string, config *control.Sampl
 			err := eventor.SetEventsConfig(config.Events)
 			if err != nil {
 				logger.Error("Could not set event config", "error", err)
+			} else {
+				tr.eventor = eventor
 			}
-			tr.eventor = eventor
 		}
 	} else {
 		logger.Debug("No events configuration found. Disabling eventor")
