@@ -5,3 +5,4 @@ linters:
     - goimports
     - revive
     - govet
+    - errcheck
