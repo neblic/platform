@@ -48,12 +48,15 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 
 	// Populate registry data using storage data
 	samplers := map[defs.SamplerIdentifier]*defs.Sampler{}
-	storageInstance.Range(func(key defs.SamplerIdentifier, sampler *defs.Sampler) {
+	err := storageInstance.Range(func(key defs.SamplerIdentifier, sampler *defs.Sampler) {
 
 		// Initialize instances (not persisted)
 		sampler.Instances = map[control.SamplerUID]*defs.SamplerInstance{}
 		samplers[key] = sampler
 	})
+	if err != nil {
+		return nil, fmt.Errorf("error populating sampler registry from storage: %v", err)
+	}
 
 	return &SamplerRegistry{
 		samplers:    samplers,
