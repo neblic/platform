@@ -750,6 +750,10 @@ func (e *Executors) EventsCreate(ctx context.Context, parameters interpoler.Para
 			return nil, fmt.Errorf("Stream does not exist")
 		}
 
+		if !stream.ExportRawSamples {
+			return nil, fmt.Errorf("Stream must export raw samples to be able to compute events")
+		}
+
 		return &control.SamplerConfigUpdate{
 			EventUpdates: []control.EventUpdate{
 				{
@@ -796,6 +800,10 @@ func (e *Executors) EventsUpdate(ctx context.Context, parameters interpoler.Para
 		stream, ok := getEntryByName(samplerControl.Config.Streams, streamNameParameter.Value)
 		if !ok {
 			return nil, fmt.Errorf("Stream does not exist")
+		}
+
+		if !stream.ExportRawSamples {
+			return nil, fmt.Errorf("Stream must export raw samples to be able to compute events")
 		}
 
 		return &control.SamplerConfigUpdate{
