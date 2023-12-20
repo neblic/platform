@@ -219,21 +219,21 @@ func (p *Processor) UpdateConfig(resource, sampler string, config *control.Sampl
 
 	// Update eventor
 	if config != nil && len(config.Events) > 0 {
-		var eventor *event.Eventor
+		logger.Debug("Setting event configuration", "config", config.Events)
 
+		var err error
 		if tr.eventor == nil {
-			logger.Debug("Setting event configuration", "config", config.Events)
-			eventor, err = p.newEventor(resource, sampler)
+			tr.eventor, err = p.newEventor(resource, sampler)
 			if err != nil {
 				logger.Error("Could not create eventor", "error", err)
+				tr.eventor = nil
 			}
 		}
-		if eventor != nil {
-			err := eventor.SetEventsConfig(config.Events)
+		if tr.eventor != nil {
+			err := tr.eventor.SetEventsConfig(config.Events)
 			if err != nil {
 				logger.Error("Could not set event config", "error", err)
-			} else {
-				tr.eventor = eventor
+				tr.eventor = nil
 			}
 		}
 	} else {
