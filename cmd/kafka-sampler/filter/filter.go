@@ -46,12 +46,15 @@ func (f *Filter) Evaluate(element string) bool {
 	return f.evalFunc(f.predicate, element)
 }
 
-func (f *Filter) EvaluateList(elements []string) []string {
-	evaluatedList := make([]string, 0, len(elements))
+func (f *Filter) EvaluateList(elements []string) ([]string, []string) {
+	allowedList := make([]string, 0, len(elements))
+	deniedList := make([]string, 0, len(elements))
 	for _, element := range elements {
 		if f.Evaluate(element) {
-			evaluatedList = append(evaluatedList, element)
+			allowedList = append(allowedList, element)
+		} else {
+			deniedList = append(deniedList, element)
 		}
 	}
-	return evaluatedList
+	return allowedList, deniedList
 }

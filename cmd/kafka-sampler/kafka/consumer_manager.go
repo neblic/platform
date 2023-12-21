@@ -14,8 +14,6 @@ import (
 	"github.com/neblic/platform/logging"
 )
 
-var internalKafkaTopics = map[string]struct{}{"__consumer_offsets": {}, "__transaction_state": {}}
-
 type groupProvider func(topic string) (ConsumerGroup, error)
 
 type consumerInstance struct {
@@ -27,17 +25,37 @@ type consumerInstance struct {
 }
 
 type ConsumerManager struct {
-	ctx           context.Context
-	logger        logging.Logger
-	config        *Config
-	client        Client
-	topicFilter   *filter.Filter
-	groupProvider groupProvider
-	consumers     map[string]*consumerInstance
+	ctx            context.Context
+	logger         logging.Logger
+	config         *Config
+	client         Client
+	internalFilter *filter.Filter
+	topicFilter    *filter.Filter
+	groupProvider  groupProvider
+	consumers      map[string]*consumerInstance
 }
 
 func NewConsumerManager(ctx context.Context, logger logging.Logger, config *Config) (*ConsumerManager, error) {
 	client, err := sarama.NewClient(config.Servers, &config.Sarama)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create filter including well known internal topics
+	// _schemas: Confluent Schema Registry
+	// __consumer_offsets: Kafka group offsets
+	// __transaction_state: Kafka transaction state
+	// _confluent*: Confluent related topics
+	// *-KSTREAM-*: Kafka Streams
+	// *-changelog: Kafka Streams
+	// __amazon_msk*: MSK
+	internalFilterRegex, err := filter.NewRegex("(^_schemas$|^__consumer_offsets$|^__transaction_state$|^_confluent.*$|^.*-KSTREAM-.*$|^.*-changelog$|^__amazon_msk.*$)")
+	if err != nil {
+		return nil, err
+	}
+	internalFilter, err := filter.New(&filter.Config{
+		Deny: internalFilterRegex,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -48,11 +66,12 @@ func NewConsumerManager(ctx context.Context, logger logging.Logger, config *Conf
 	}
 
 	return &ConsumerManager{
-		ctx:         ctx,
-		logger:      logger,
-		config:      config,
-		client:      client,
-		topicFilter: filter,
+		ctx:            ctx,
+		logger:         logger,
+		config:         config,
+		client:         client,
+		internalFilter: internalFilter,
+		topicFilter:    filter,
 		groupProvider: func(topic string) (ConsumerGroup, error) {
 			h := md5.New()
 			io.WriteString(h, topic)
@@ -173,20 +192,16 @@ func (m *ConsumerManager) Reconcile() error {
 	m.logger.Debug(fmt.Sprintf("Available topics: %s", topics))
 
 	// Remove internal kafka topics
-	externalTopics := make([]string, 0, len(topics))
-	for _, topic := range topics {
-		if _, ok := internalKafkaTopics[topic]; !ok {
-			externalTopics = append(externalTopics, topic)
-		}
-	}
-	m.logger.Debug(fmt.Sprintf("Removed internal kafka topics: %v", internalKafkaTopics))
+	internalAllowed, internalDenied := m.internalFilter.EvaluateList(topics)
+	m.logger.Debug(fmt.Sprintf("Removed internal kafka topics: %v", internalDenied))
 
 	// Filter topics based on the user provided rules.
-	filteredTopics := m.topicFilter.EvaluateList(externalTopics)
-	m.logger.Debug(fmt.Sprintf("Assigned topics: %v", filteredTopics))
+	externalAllowed, externalDenied := m.topicFilter.EvaluateList(internalAllowed)
+	m.logger.Debug(fmt.Sprintf("Removed user filtered topics: %v", externalDenied))
+	m.logger.Debug(fmt.Sprintf("Assigned topics: %v", externalAllowed))
 
 	// Update internal status to reflect the list of pulled topics
-	err = m.reconcile(filteredTopics)
+	err = m.reconcile(externalAllowed)
 
 	return err
 }
