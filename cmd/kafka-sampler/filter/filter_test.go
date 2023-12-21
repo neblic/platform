@@ -132,10 +132,11 @@ func TestFilter_EvaluateList(t *testing.T) {
 		elements []string
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   []string
+		name        string
+		fields      fields
+		args        args
+		wantAllowed []string
+		wantDenied  []string
 	}{
 		{
 			name: "Evaluate list using allow",
@@ -146,7 +147,8 @@ func TestFilter_EvaluateList(t *testing.T) {
 			args: args{
 				elements: []string{"string0", "string1", "string2"},
 			},
-			want: []string{"string1"},
+			wantAllowed: []string{"string1"},
+			wantDenied:  []string{"string0", "string2"},
 		},
 		{
 			name: "Evaluate list using deny",
@@ -157,7 +159,8 @@ func TestFilter_EvaluateList(t *testing.T) {
 			args: args{
 				elements: []string{"string0", "string1", "string2"},
 			},
-			want: []string{"string0", "string2"},
+			wantAllowed: []string{"string0", "string2"},
+			wantDenied:  []string{"string1"},
 		},
 		{
 			name: "Evaluate list without allow neither deny",
@@ -168,7 +171,8 @@ func TestFilter_EvaluateList(t *testing.T) {
 			args: args{
 				elements: []string{"string0", "string1", "string2"},
 			},
-			want: []string{"string0", "string1", "string2"},
+			wantAllowed: []string{"string0", "string1", "string2"},
+			wantDenied:  []string{},
 		},
 	}
 	for _, tt := range tests {
@@ -177,8 +181,13 @@ func TestFilter_EvaluateList(t *testing.T) {
 				predicate: tt.fields.predicate,
 				evalFunc:  tt.fields.evalFunc,
 			}
-			if got := f.EvaluateList(tt.args.elements); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Filter.EvaluateList() = %v, want %v", got, tt.want)
+
+			gotAllowed, gotDenied := f.EvaluateList(tt.args.elements)
+			if !reflect.DeepEqual(gotAllowed, tt.wantAllowed) {
+				t.Errorf("Filter.EvaluateList() allowed = %v, want %v", gotAllowed, tt.wantAllowed)
+			}
+			if !reflect.DeepEqual(gotDenied, tt.wantDenied) {
+				t.Errorf("Filter.EvaluateList() denied = %v, want %v", gotDenied, tt.wantDenied)
 			}
 		})
 	}
