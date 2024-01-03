@@ -3,98 +3,109 @@ package storage
 import (
 	"reflect"
 	"testing"
+
+	"github.com/neblic/platform/controlplane/control"
+	"github.com/neblic/platform/controlplane/server/internal/defs"
 )
 
-func initializeStorage(storage Storage[TestKey, *TestValue]) {
-	err := storage.Set(TestKey{Key: "key1"}, &TestValue{Value: "value1"})
-	if err != nil {
-		panic(err)
+func newSamplerConfig(stream control.SamplerStreamUID) control.SamplerConfig {
+	return control.SamplerConfig{
+		Streams: map[control.SamplerStreamUID]control.Stream{stream: {UID: stream}},
+		LimiterIn: &control.LimiterConfig{
+			Limit: 0,
+		},
+		SamplingIn: &control.SamplingConfig{
+			SamplingType: 0,
+			DeterministicSampling: control.DeterministicSamplingConfig{
+				SampleRate:             0,
+				SampleEmptyDeterminant: false,
+			},
+		},
+		LimiterOut: &control.LimiterConfig{
+			Limit: 0,
+		},
+		Digests: map[control.SamplerDigestUID]control.Digest{},
+		Events:  map[control.SamplerEventUID]control.Event{},
 	}
-	err = storage.Set(TestKey{Key: "key3"}, &TestValue{Value: "value3"})
+}
+
+func initializeStorage(storage Storage) error {
+	err := storage.SetSampler("resource1", "sampler1", newSamplerConfig("stream1"))
 	if err != nil {
-		panic(err)
+		return err
 	}
+	err = storage.SetSampler("resource3", "sampler3", newSamplerConfig("stream3"))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-type TestKey struct {
-	Key string
-}
-
-func (k TestKey) ToString() string {
-	return k.Key
-}
-
-func (k *TestKey) FromString(str string) {
-	k.Key = str
-}
-
-type TestValue struct {
-	Value string
-}
-
-func (k TestValue) ToString() string {
-	return k.Value
-}
-
-func (k *TestValue) FromString(str string) {
-	k.Value = str
-}
-
-func StorageGetSuite(t *testing.T, storageProvider func() Storage[TestKey, *TestValue]) {
+func StorageGetSamplerSuite(t *testing.T, storageProvider func() Storage) {
 
 	type args struct {
-		key TestKey
+		resource string
+		sampler  string
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    *TestValue
+		want    control.SamplerConfig
 		wantErr error
 	}{
 		{
 			name: "get value that exists",
 			args: args{
-				key: TestKey{Key: "key1"},
+				resource: "resource1",
+				sampler:  "sampler1",
 			},
-			want:    &TestValue{Value: "value1"},
+			want:    newSamplerConfig("stream1"),
 			wantErr: nil,
 		},
 		{
 			name: "get value that does not exists",
 			args: args{
-				key: TestKey{Key: "key2"},
+				resource: "resource2",
+				sampler:  "sampler2",
 			},
-			want:    nil,
-			wantErr: ErrUnknownKey,
+			want:    control.SamplerConfig{},
+			wantErr: ErrUnknownSampler,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := storageProvider()
-			got, err := s.Get(tt.args.key)
+			err := initializeStorage(s)
+			if err != nil {
+				t.Errorf("Storage.GetSampler() error initializing storage = %v", err)
+				return
+			}
+
+			got, err := s.GetSampler(tt.args.resource, tt.args.sampler)
 			if err != tt.wantErr {
-				t.Errorf("Storage.Get() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Storage.GetSampler() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Storage.Get() = %v, want %v", got, tt.want)
+				t.Errorf("Storage.GetSampler() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func StorageRangeSuite(t *testing.T, storageProvider func() Storage[TestKey, *TestValue]) {
+func StorageRangeSamplersSuite(t *testing.T, storageProvider func() Storage) {
 
 	tests := []struct {
 		name    string
-		want    map[TestKey]*TestValue
+		want    map[defs.SamplerIdentifier]control.SamplerConfig
 		wantErr error
 	}{
 		{
 			name: "successful range",
-			want: map[TestKey]*TestValue{
-				{Key: "key1"}: {Value: "value1"},
-				{Key: "key3"}: {Value: "value3"},
+			want: map[defs.SamplerIdentifier]control.SamplerConfig{
+				{Resource: "resource1", Name: "sampler1"}: newSamplerConfig("stream1"),
+				{Resource: "resource3", Name: "sampler3"}: newSamplerConfig("stream3"),
 			},
 			wantErr: nil,
 		},
@@ -103,67 +114,70 @@ func StorageRangeSuite(t *testing.T, storageProvider func() Storage[TestKey, *Te
 		t.Run(tt.name, func(t *testing.T) {
 
 			s := storageProvider()
-			got := map[TestKey]*TestValue{}
-			err := s.Range(func(key TestKey, value *TestValue) {
-				got[key] = value
+			got := map[defs.SamplerIdentifier]control.SamplerConfig{}
+			err := s.RangeSamplers(func(resource string, sampler string, config control.SamplerConfig) {
+				got[defs.NewSamplerIdentifier(resource, sampler)] = config
 			})
 			if err != tt.wantErr {
-				t.Errorf("Storage.Range() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Storage.RangeSamplers() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Storage.Range() = %v, want %v", got, tt.want)
+				t.Errorf("Storage.RangeSamplers() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func StorageSetSuite(t *testing.T, storageProvider func() Storage[TestKey, *TestValue]) {
+func StorageSetSamplerSuite(t *testing.T, storageProvider func() Storage) {
 
 	type args struct {
-		key   TestKey
-		value *TestValue
+		resource string
+		sampler  string
+		config   control.SamplerConfig
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    *TestValue
+		want    control.SamplerConfig
 		wantErr bool
 	}{
 		{
 			name: "test setting non existing value",
 			args: args{
-				key:   TestKey{Key: "key2"},
-				value: &TestValue{Value: "value2"},
+				resource: "resource2",
+				sampler:  "sampler2",
+				config:   newSamplerConfig("stream2"),
 			},
-			want:    &TestValue{Value: "value2"},
+			want:    newSamplerConfig("stream2"),
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := storageProvider()
-			err := s.Set(tt.args.key, tt.args.value)
+			err := s.SetSampler(tt.args.resource, tt.args.sampler, tt.args.config)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Storage.Set() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Storage.SetSampler() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			value, err := s.Get(tt.args.key)
+			value, err := s.GetSampler(tt.args.resource, tt.args.sampler)
 			if err != nil {
-				t.Errorf("Storage.Set() error validating set data = %v", err)
+				t.Errorf("Storage.SetSampler() error validating set data = %v", err)
 			}
 			if !reflect.DeepEqual(value, tt.want) {
-				t.Errorf("Storage.Set() set data did not produce the expected result, got %v, want %v", value, tt.want)
+				t.Errorf("Storage.SetSampler() set data did not produce the expected result, got %v, want %v", value, tt.want)
 			}
 		})
 	}
 }
 
-func StorageDeleteSuite(t *testing.T, storageProvider func() Storage[TestKey, *TestValue]) {
+func StorageDeleteSamplerSuite(t *testing.T, storageProvider func() Storage) {
 
 	type args struct {
-		key TestKey
+		resource string
+		sampler  string
 	}
 	tests := []struct {
 		name    string
@@ -173,29 +187,31 @@ func StorageDeleteSuite(t *testing.T, storageProvider func() Storage[TestKey, *T
 		{
 			name: "delete existing key",
 			args: args{
-				key: TestKey{Key: "key1"},
+				resource: "resource1",
+				sampler:  "sampler1",
 			},
 			wantErr: nil,
 		},
 		{
 			name: "delete non existing key",
 			args: args{
-				key: TestKey{Key: "key2"},
+				resource: "resource2",
+				sampler:  "sampler2",
 			},
-			wantErr: ErrUnknownKey,
+			wantErr: ErrUnknownSampler,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := storageProvider()
-			err := s.Delete(tt.args.key)
+			err := s.DeleteSampler(tt.args.resource, tt.args.sampler)
 			if err != tt.wantErr {
 				t.Errorf("Storage.Delete() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
-			_, err = s.Get(tt.args.key)
-			if err != ErrUnknownKey {
+			_, err = s.GetSampler(tt.args.resource, tt.args.sampler)
+			if err != ErrUnknownSampler {
 				t.Errorf("Storage.Delete() element not deleted")
 			}
 		})

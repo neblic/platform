@@ -41,7 +41,7 @@ type Sampler struct {
 	Resource  string
 	Name      string
 	Config    control.SamplerConfig
-	Instances map[control.SamplerUID]*SamplerInstance `json:"-"`
+	Instances map[control.SamplerUID]*SamplerInstance
 }
 
 func NewSampler(resource string, name string) *Sampler {

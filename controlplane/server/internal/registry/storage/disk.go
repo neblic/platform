@@ -1,187 +1,175 @@
 package storage
 
 import (
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
+
+	"github.com/google/renameio/v2"
+	"github.com/neblic/platform/controlplane/control"
+	"gopkg.in/yaml.v3"
 )
 
-type Disk[K comparable, V any] struct {
-	mutex    sync.RWMutex
-	fullPath string
+type SamplerEntry struct {
+	Resource string
+	Name     string
+	Config   control.SamplerConfig
 }
 
-func NewDisk[K comparable, V any](path string, name string) (*Disk[K, V], error) {
-	fullPath := filepath.Join(path, name)
+type ConfigDocument struct {
+	Samplers []SamplerEntry
+}
 
-	err := os.MkdirAll(fullPath, os.ModePerm)
+type Disk struct {
+	mutex sync.RWMutex
+	path  string
+}
+
+func NewDisk(path string) (*Disk, error) {
+
+	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
 	if err != nil {
-		return nil, fmt.Errorf("could not create storage directory: %v", err)
+		return nil, fmt.Errorf("could not create disk storage directory: %v", err)
 	}
 
-	return &Disk[K, V]{
-		mutex:    sync.RWMutex{},
-		fullPath: fullPath,
+	_, err = os.Stat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		err := writeConfigDocument(path, &ConfigDocument{})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &Disk{
+		mutex: sync.RWMutex{},
+		path:  path,
 	}, nil
 }
 
-func (d *Disk[K, V]) marshalKey(key K) []byte {
-	// Marshal key
-	bytes, err := json.Marshal(key)
+func readConfigDocument(path string) (*ConfigDocument, error) {
+	data, err := os.ReadFile(path)
 	if err != nil {
-		panic(fmt.Sprintf("could not marshal key: %v", err))
+		return nil, fmt.Errorf("could not read configuration from disk: %v", err)
 	}
 
-	// Keys are stored as base64, encode marshaled key
-	encodedBytes := make([]byte, hex.EncodedLen(len(bytes)))
-	hex.Encode(encodedBytes, bytes)
+	configDocument := &ConfigDocument{}
+	err = yaml.Unmarshal(data, configDocument)
 	if err != nil {
-		panic(fmt.Sprintf("could not decode key from a base64 string: %v", err))
+		return nil, fmt.Errorf("could not unmarshal configuration: %v", err)
 	}
 
-	return encodedBytes
+	return configDocument, nil
 }
 
-func (d *Disk[K, V]) unmarshalKey(keyBytes []byte) K {
-	// Keys are stored as base64, decode it
-	decodedBytes := make([]byte, hex.DecodedLen(len(keyBytes)))
-	_, err := hex.Decode(decodedBytes, keyBytes)
+func writeConfigDocument(path string, configDocument *ConfigDocument) error {
+	data, err := yaml.Marshal(configDocument)
 	if err != nil {
-		panic(fmt.Sprintf("could not decode key from a base64 string: %v", err))
+		return fmt.Errorf("could not marshal configuration: %v", err)
 	}
 
-	// Unmarshal decoded bytes
-	var key K
-	err = json.Unmarshal(decodedBytes, (*K)(&key))
+	err = renameio.WriteFile(path, data, 0666)
 	if err != nil {
-		panic(fmt.Sprintf("could not unmarshal key: %v", err))
+		return fmt.Errorf("could not write configuration to disk: %v", err)
 	}
 
-	return key
+	return nil
 }
 
-func (d *Disk[K, V]) marshalValue(value V) []byte {
-	// Marshal value
-	bytes, err := json.Marshal(value)
-	if err != nil {
-		panic(fmt.Sprintf("could not marshal value: %v", err))
-	}
-
-	return bytes
+func findSampler(samplers []SamplerEntry, resource string, sampler string) int {
+	return slices.IndexFunc(samplers, func(entry SamplerEntry) bool {
+		return entry.Resource == resource && entry.Name == sampler
+	})
 }
 
-func (d *Disk[K, V]) unmarshalValue(b []byte) V {
-	var value V
-	err := json.Unmarshal(b, (*V)(&value))
-	if err != nil {
-		panic(fmt.Sprintf("could not unmarshal value: %v", err))
-	}
-
-	return value
-}
-
-func (d *Disk[K, V]) keyPath(key K) string {
-	return filepath.Join(d.fullPath, string(d.marshalKey(key)))
-}
-
-func (d *Disk[K, V]) Get(key K) (V, error) {
-	var emptyValue V
-
+func (d *Disk) RangeSamplers(fn func(resource string, sampler string, config control.SamplerConfig)) error {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 
-	data, err := os.ReadFile(d.keyPath(key))
+	// Read data
+	configDocument, err := readConfigDocument(d.path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return emptyValue, ErrUnknownKey
-		}
-		return emptyValue, fmt.Errorf("could not read data from disk: %v", err)
+		return err
 	}
 
-	value := d.unmarshalValue(data)
-
-	return value, nil
-}
-
-func (d *Disk[K, V]) Range(fn func(key K, value V)) error {
-	entries, err := os.ReadDir(d.fullPath)
-	if err != nil {
-		return fmt.Errorf("could not read all data from disk: %w", err)
-	}
-
-	var multiErr error
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-
-		// Read data from file
-		content, err := os.ReadFile(filepath.Join(d.fullPath, entry.Name()))
-		if err != nil {
-			multiErr = errors.Join(multiErr, err)
-		}
-
-		// Decode key
-		key := d.unmarshalKey([]byte(entry.Name()))
-
-		// Decode value
-		value := d.unmarshalValue(content)
-
-		fn(key, value)
-	}
-
-	return multiErr
-}
-
-func (d *Disk[K, V]) Set(key K, value V) error {
-	d.mutex.Lock()
-	defer d.mutex.Unlock()
-
-	keyBytes := d.marshalKey(key)
-
-	// Perform a two step write to avoid populating malformed configuration to disk in case
-	// of unexpected stop of the service at mid write. In order to achieve that, configuration
-	// is writen to a tmporary file and then moved to the final place.
-	tmpFile, err := os.CreateTemp(d.fullPath, string(keyBytes))
-	if err != nil {
-		return fmt.Errorf("could not create a temporary file: %v", err)
-	}
-
-	valueBytes := d.marshalValue(value)
-	if _, err := tmpFile.Write(valueBytes); err != nil {
-		return fmt.Errorf("could not write configuration to a temporary file: %v", err)
-	}
-
-	if err := tmpFile.Sync(); err != nil {
-		return fmt.Errorf("could not sync to disk the temporary file: %v", err)
-	}
-
-	if err := tmpFile.Close(); err != nil {
-		return fmt.Errorf("could not close the temporary file: %v", err)
-	}
-
-	if err := os.Rename(tmpFile.Name(), d.keyPath(key)); err != nil {
-		return fmt.Errorf("could not rename the temporary file: %v", err)
+	// Range samplers
+	for _, sampler := range configDocument.Samplers {
+		fn(sampler.Resource, sampler.Name, sampler.Config)
 	}
 
 	return nil
 }
 
-func (d *Disk[K, V]) Delete(key K) error {
+func (d *Disk) GetSampler(resource string, sampler string) (control.SamplerConfig, error) {
+	d.mutex.RLock()
+	defer d.mutex.RUnlock()
+
+	// Read data
+	configDocument, err := readConfigDocument(d.path)
+	if err != nil {
+		return control.SamplerConfig{}, err
+	}
+
+	// Find sampler
+	index := findSampler(configDocument.Samplers, resource, sampler)
+	if index == -1 {
+		return control.SamplerConfig{}, ErrUnknownSampler
+	}
+
+	return configDocument.Samplers[index].Config, nil
+}
+
+func (d *Disk) SetSampler(resource string, sampler string, config control.SamplerConfig) error {
+	d.mutex.RLock()
+	defer d.mutex.RUnlock()
+
+	// Read data
+	configDocument, err := readConfigDocument(d.path)
+	if err != nil {
+		return err
+	}
+
+	// Find sampler and replace config
+	index := findSampler(configDocument.Samplers, resource, sampler)
+	if index == -1 {
+		configDocument.Samplers = append(configDocument.Samplers, SamplerEntry{
+			Resource: resource,
+			Name:     sampler,
+			Config:   config,
+		})
+	} else {
+		configDocument.Samplers[index].Config = config
+	}
+
+	// Write data
+	err = writeConfigDocument(d.path, configDocument)
+
+	return err
+}
+
+func (d *Disk) DeleteSampler(resource string, sampler string) error {
 	d.mutex.Lock()
 	defer d.mutex.Unlock()
 
-	err := os.Remove(d.keyPath(key))
+	// Read data
+	configDocument, err := readConfigDocument(d.path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return ErrUnknownKey
-		}
-		return fmt.Errorf("could not delete data from disk: %v", err)
+		return err
 	}
 
-	return nil
+	// Find sampler and replace config
+	index := findSampler(configDocument.Samplers, resource, sampler)
+	if index == -1 {
+		return ErrUnknownSampler
+	}
+
+	// Delete entry
+	configDocument.Samplers = append(configDocument.Samplers[:index], configDocument.Samplers[index+1:]...)
+
+	// Write data
+	err = writeConfigDocument(d.path, configDocument)
+
+	return err
 }
