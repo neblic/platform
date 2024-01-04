@@ -17,7 +17,10 @@ func diskStorageProvider() Storage {
 		panic(err)
 	}
 
-	initializeStorage(diskStorage)
+	err = initializeStorage(diskStorage)
+	if err != nil {
+		panic(err)
+	}
 
 	return diskStorage
 }
