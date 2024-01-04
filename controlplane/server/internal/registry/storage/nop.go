@@ -1,25 +1,26 @@
 package storage
 
-type Nop[K comparable, V any] struct {
+import "github.com/neblic/platform/controlplane/control"
+
+type Nop struct {
 }
 
-func NewNop[K comparable, V any]() *Nop[K, V] {
-	return &Nop[K, V]{}
+func NewNop() *Nop {
+	return &Nop{}
 }
 
-func (d *Nop[K, V]) Get(_ K) (V, error) {
-	var value V
-	return value, nil
+func (d *Nop) GetSampler(_ string, _ string) (control.SamplerConfig, error) {
+	return control.SamplerConfig{}, nil
 }
 
-func (d *Nop[K, V]) Range(_ func(key K, value V)) error {
+func (d *Nop) RangeSamplers(_ func(resource string, sampler string, config control.SamplerConfig)) error {
 	return nil
 }
 
-func (d *Nop[K, V]) Set(_ K, _ V) error {
+func (d *Nop) SetSampler(_ string, _ string, _ control.SamplerConfig) error {
 	return nil
 }
 
-func (d *Nop[K, V]) Delete(_ K) error {
+func (d *Nop) DeleteSampler(_ string, _ string) error {
 	return nil
 }

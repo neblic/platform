@@ -63,7 +63,7 @@ var _ = Describe("DataPlane", func() {
 							FlushPeriod:         200 * time.Millisecond,
 							ComputationLocation: control.ComputationLocationSampler,
 							Type:                control.DigestTypeSt,
-							St: control.DigestSt{
+							St: &control.DigestSt{
 								MaxProcessedFields: 100,
 							},
 						},
@@ -113,7 +113,7 @@ var _ = Describe("DataPlane", func() {
 							FlushPeriod:         200 * time.Millisecond,
 							ComputationLocation: control.ComputationLocationCollector,
 							Type:                control.DigestTypeSt,
-							St: control.DigestSt{
+							St: &control.DigestSt{
 								MaxProcessedFields: 100,
 							},
 						},

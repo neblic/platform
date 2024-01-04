@@ -6,6 +6,7 @@ import (
 
 	"github.com/neblic/platform/controlplane/protos"
 	"google.golang.org/protobuf/types/known/durationpb"
+	"gopkg.in/yaml.v3"
 )
 
 type DigestType uint8
@@ -16,6 +17,41 @@ const (
 	DigestTypeValue
 )
 
+func NewDigestTypeFromString(t string) DigestType {
+	switch t {
+	case "unknown":
+		return DigestTypeUnknown
+	case "st":
+		return DigestTypeSt
+	case "value":
+		return DigestTypeValue
+	default:
+		return DigestTypeUnknown
+	}
+}
+
+func (dt DigestType) String() string {
+	switch dt {
+	case DigestTypeUnknown:
+		return "unknown"
+	case DigestTypeSt:
+		return "st"
+	case DigestTypeValue:
+		return "value"
+	default:
+		return "unknown"
+	}
+}
+
+func (dt DigestType) MarshalYAML() (interface{}, error) {
+	return dt.String(), nil
+}
+
+func (dt *DigestType) UnmarshalYAML(value *yaml.Node) error {
+	*dt = NewDigestTypeFromString(value.Value)
+	return nil
+}
+
 type ComputationLocation uint8
 
 const (
@@ -24,20 +60,7 @@ const (
 	ComputationLocationCollector
 )
 
-func (s ComputationLocation) String() string {
-	switch s {
-	case ComputationLocationUnknown:
-		return "unknown"
-	case ComputationLocationSampler:
-		return "sampler"
-	case ComputationLocationCollector:
-		return "collector"
-	default:
-		return "unknown"
-	}
-}
-
-func ParseComputationLocation(t string) ComputationLocation {
+func NewComputationLocationFromString(t string) ComputationLocation {
 	switch t {
 	case "unknown":
 		return ComputationLocationUnknown
@@ -50,18 +73,40 @@ func ParseComputationLocation(t string) ComputationLocation {
 	}
 }
 
+func (cl ComputationLocation) String() string {
+	switch cl {
+	case ComputationLocationUnknown:
+		return "unknown"
+	case ComputationLocationSampler:
+		return "sampler"
+	case ComputationLocationCollector:
+		return "collector"
+	default:
+		return "unknown"
+	}
+}
+
+func (cl ComputationLocation) MarshalYAML() (interface{}, error) {
+	return cl.String(), nil
+}
+
+func (cl *ComputationLocation) UnmarshalYAML(value *yaml.Node) error {
+	*cl = NewComputationLocationFromString(value.Value)
+	return nil
+}
+
 type SamplerDigestUID string
 
 type DigestSt struct {
 	MaxProcessedFields int
 }
 
-func NewDigestStFromProto(protoDigestSt *protos.Digest_St) DigestSt {
+func NewDigestStFromProto(protoDigestSt *protos.Digest_St) *DigestSt {
 	if protoDigestSt == nil {
-		return DigestSt{}
+		return nil
 	}
 
-	return DigestSt{
+	return &DigestSt{
 		MaxProcessedFields: int(protoDigestSt.MaxProcessedFields),
 	}
 }
@@ -76,12 +121,12 @@ type DigestValue struct {
 	MaxProcessedFields int
 }
 
-func NewDigestValueFromProto(protoDigestValue *protos.Digest_Value) DigestValue {
+func NewDigestValueFromProto(protoDigestValue *protos.Digest_Value) *DigestValue {
 	if protoDigestValue == nil {
-		return DigestValue{}
+		return nil
 	}
 
-	return DigestValue{
+	return &DigestValue{
 		MaxProcessedFields: int(protoDigestValue.MaxProcessedFields),
 	}
 }
@@ -102,8 +147,8 @@ type Digest struct {
 
 	// digest specific config
 	Type  DigestType
-	St    DigestSt
-	Value DigestValue
+	St    *DigestSt    `yaml:",omitempty"`
+	Value *DigestValue `yaml:",omitempty"`
 }
 
 func (d Digest) GetName() string {

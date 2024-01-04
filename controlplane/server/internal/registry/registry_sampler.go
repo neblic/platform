@@ -19,7 +19,7 @@ var (
 
 type SamplerRegistry struct {
 	samplers map[defs.SamplerIdentifier]*defs.Sampler
-	storage  storage.Storage[defs.SamplerIdentifier, *defs.Sampler]
+	storage  storage.Storage
 
 	eventsChan  chan event.Event
 	notifyDirty chan struct{}
@@ -34,13 +34,13 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 	}
 
 	// Initialize storage
-	var storageInstance storage.Storage[defs.SamplerIdentifier, *defs.Sampler]
+	var storageInstance storage.Storage
 	switch storageOpts.Type {
 	case storage.NopType:
-		storageInstance = storage.NewNop[defs.SamplerIdentifier, *defs.Sampler]()
+		storageInstance = storage.NewNop()
 	case storage.DiskType:
 		var err error
-		storageInstance, err = storage.NewDisk[defs.SamplerIdentifier, *defs.Sampler](storageOpts.Path, "config")
+		storageInstance, err = storage.NewDisk(storageOpts.Path)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing sampler registry disk storage: %v", err)
 		}
@@ -48,11 +48,13 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 
 	// Populate registry data using storage data
 	samplers := map[defs.SamplerIdentifier]*defs.Sampler{}
-	err := storageInstance.Range(func(key defs.SamplerIdentifier, sampler *defs.Sampler) {
-
-		// Initialize instances (not persisted)
-		sampler.Instances = map[control.SamplerUID]*defs.SamplerInstance{}
-		samplers[key] = sampler
+	err := storageInstance.RangeSamplers(func(resource string, sampler string, config control.SamplerConfig) {
+		samplers[defs.NewSamplerIdentifier(resource, sampler)] = &defs.Sampler{
+			Resource:  resource,
+			Name:      sampler,
+			Config:    config,
+			Instances: map[control.SamplerUID]*defs.SamplerInstance{},
+		}
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error populating sampler registry from storage: %v", err)
@@ -82,7 +84,7 @@ func (sr *SamplerRegistry) setSampler(resource string, name string, sampler *def
 	sr.samplers[samplerIdentifier] = sampler
 
 	// Store sampler in the storage
-	err := sr.storage.Set(samplerIdentifier, sampler)
+	err := sr.storage.SetSampler(resource, name, sampler.Config)
 
 	return err
 }
@@ -114,9 +116,6 @@ func (sr *SamplerRegistry) setInstance(resource string, name string, instance *d
 
 	// Set sampler instance
 	sampler.SetInstance(instance.UID, instance)
-
-	// Set sampler
-	err = sr.setSampler(resource, name, sampler)
 
 	return err
 }

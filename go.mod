@@ -7,6 +7,7 @@ require (
 	github.com/cenkalti/backoff v2.2.1+incompatible
 	github.com/golang/protobuf v1.5.3
 	github.com/google/cel-go v0.18.2
+	github.com/google/renameio/v2 v2.0.0
 	github.com/google/uuid v1.4.0
 	github.com/mitchellh/mapstructure v1.5.1-0.20220423185008-bf980b35cac4
 	github.com/onsi/ginkgo/v2 v2.13.2
@@ -32,6 +33,7 @@ require (
 	golang.org/x/time v0.5.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -84,7 +86,6 @@ require (
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20231127180814-3a041ad873d4 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231127180814-3a041ad873d4 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 exclude github.com/knadh/koanf v1.5.0

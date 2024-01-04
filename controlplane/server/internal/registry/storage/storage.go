@@ -1,14 +1,18 @@
 package storage
 
-import "fmt"
+import (
+	"fmt"
 
-var (
-	ErrUnknownKey = fmt.Errorf("unknown key")
+	"github.com/neblic/platform/controlplane/control"
 )
 
-type Storage[K comparable, V any] interface {
-	Get(K) (V, error)
-	Range(func(key K, value V)) error
-	Set(K, V) error
-	Delete(K) error
+var (
+	ErrUnknownSampler = fmt.Errorf("unknown sampler")
+)
+
+type Storage interface {
+	GetSampler(resource string, sampler string) (control.SamplerConfig, error)
+	RangeSamplers(func(resource string, sampler string, config control.SamplerConfig)) error
+	SetSampler(resource string, sampler string, config control.SamplerConfig) error
+	DeleteSampler(resource string, sampler string) error
 }

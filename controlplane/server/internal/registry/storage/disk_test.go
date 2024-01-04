@@ -6,33 +6,37 @@ import (
 	"testing"
 )
 
-func diskStorageProvider() Storage[TestKey, *TestValue] {
-	dir, err := os.MkdirTemp("", "storagetest")
+func diskStorageProvider() Storage {
+	file, err := os.CreateTemp("", "storagetest")
 	if err != nil {
 		log.Fatal(err)
 	}
-	diskStorage, err := NewDisk[TestKey, *TestValue](dir, "test")
+
+	diskStorage, err := NewDisk(file.Name())
 	if err != nil {
 		panic(err)
 	}
 
-	initializeStorage(diskStorage)
+	err = initializeStorage(diskStorage)
+	if err != nil {
+		panic(err)
+	}
 
 	return diskStorage
 }
 
 func TestDisk_Get(t *testing.T) {
-	StorageGetSuite(t, diskStorageProvider)
+	StorageGetSamplerSuite(t, diskStorageProvider)
 }
 
 func TestDisk_Range(t *testing.T) {
-	StorageRangeSuite(t, diskStorageProvider)
+	StorageRangeSamplersSuite(t, diskStorageProvider)
 }
 
 func TestDisk_Set(t *testing.T) {
-	StorageSetSuite(t, diskStorageProvider)
+	StorageSetSamplerSuite(t, diskStorageProvider)
 }
 
 func TestDisk_Delete(t *testing.T) {
-	StorageDeleteSuite(t, diskStorageProvider)
+	StorageDeleteSamplerSuite(t, diskStorageProvider)
 }

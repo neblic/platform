@@ -72,7 +72,7 @@ func newDefaultStructDigestUpdate(streamUID control.SamplerStreamUID, location c
 			FlushPeriod:         time.Second * time.Duration(60),
 			ComputationLocation: location,
 			Type:                control.DigestTypeSt,
-			St: control.DigestSt{
+			St: &control.DigestSt{
 				MaxProcessedFields: int(100),
 			},
 		},
@@ -89,7 +89,7 @@ func newDefaultValueDigestUpdate(streamUID control.SamplerStreamUID, location co
 			FlushPeriod:         time.Second * time.Duration(60),
 			ComputationLocation: location,
 			Type:                control.DigestTypeValue,
-			Value: control.DigestValue{
+			Value: &control.DigestValue{
 				MaxProcessedFields: int(100),
 			},
 		},
