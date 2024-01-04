@@ -10,15 +10,18 @@ type SamplerStreamRuleUID string
 type RuleLang int
 
 const (
-	SrlCel = iota + 1
+	SrlUnknown RuleLang = iota
+	SrlCel
 )
 
 func NewRuleLangFromString(s string) RuleLang {
 	switch s {
+	case "UNKNOWN":
+		return SrlUnknown
 	case "CEL":
 		return SrlCel
 	default:
-		return 0
+		return SrlUnknown
 	}
 }
 
@@ -26,8 +29,10 @@ func (srl RuleLang) String() string {
 	switch srl {
 	case SrlCel:
 		return "CEL"
+	case SrlUnknown:
+		return "UNKNOWN"
 	default:
-		return "Unknown"
+		return "UNKNOWN"
 	}
 }
 
