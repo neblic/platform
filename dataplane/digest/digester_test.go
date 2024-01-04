@@ -46,13 +46,13 @@ func TestBuildWorkers(t *testing.T) {
 		"New worker": {
 			oldCfg: nil,
 			newCfg: map[control.SamplerDigestUID]control.Digest{
-				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt},
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt, St: &control.DigestSt{MaxProcessedFields: 100}},
 			},
 			expectedWorkersDigestUIDs: []control.SamplerDigestUID{"sampler_digest_uid"},
 		},
 		"Delete worker": {
 			oldCfg: map[control.SamplerDigestUID]control.Digest{
-				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt},
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt, St: &control.DigestSt{MaxProcessedFields: 100}},
 			},
 			newCfg:                    nil,
 			expectedWorkersDigestUIDs: []control.SamplerDigestUID{},
@@ -60,10 +60,10 @@ func TestBuildWorkers(t *testing.T) {
 		// TODO: actually check that the worker settings have been updated
 		"Update worker": {
 			oldCfg: map[control.SamplerDigestUID]control.Digest{
-				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt, St: control.DigestSt{MaxProcessedFields: 10}},
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt, St: &control.DigestSt{MaxProcessedFields: 10}},
 			},
 			newCfg: map[control.SamplerDigestUID]control.Digest{
-				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt, St: control.DigestSt{MaxProcessedFields: 20}},
+				"sampler_digest_uid": {UID: "sampler_digest_uid", Type: control.DigestTypeSt, St: &control.DigestSt{MaxProcessedFields: 20}},
 			},
 			expectedWorkersDigestUIDs: []control.SamplerDigestUID{"sampler_digest_uid"},
 		},

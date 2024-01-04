@@ -5,6 +5,7 @@ import (
 	"regexp"
 
 	"github.com/neblic/platform/controlplane/protos"
+	"gopkg.in/yaml.v3"
 )
 
 var nameValidationRegex = regexp.MustCompile(`^[\.\/()\w-_]*$`)
@@ -178,25 +179,133 @@ func (scu SamplerConfigUpdate) IsValid() error {
 	return errs
 }
 
+type Streams map[SamplerStreamUID]Stream
+
+// MarshalYAML implements the yaml.Marshaler interface. Streams contains a map, but the data is
+// marshaled into a list.
+func (s Streams) MarshalYAML() (interface{}, error) {
+	streams := make([]Stream, 0, len(s))
+	for _, stream := range s {
+		streams = append(streams, stream)
+	}
+
+	node := yaml.Node{}
+	err := node.Encode(streams)
+	if err != nil {
+		return nil, err
+	}
+
+	return node, err
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface. Streams contains a list, but the data is
+// unmarshaled into a map.
+func (s *Streams) UnmarshalYAML(node *yaml.Node) error {
+	streams := []Stream{}
+	err := node.Decode(&streams)
+	if err != nil {
+		return err
+	}
+
+	*s = map[SamplerStreamUID]Stream{}
+	for _, stream := range streams {
+		(*s)[stream.UID] = stream
+	}
+
+	return nil
+}
+
+type Digests map[SamplerDigestUID]Digest
+
+// MarshalYAML implements the yaml.Marshaler interface. Digests contains a map, but the data is
+// marshaled into a list.
+func (d Digests) MarshalYAML() (interface{}, error) {
+	digests := make([]Digest, 0, len(d))
+	for _, digest := range d {
+		digests = append(digests, digest)
+	}
+
+	node := yaml.Node{}
+	err := node.Encode(digests)
+	if err != nil {
+		return nil, err
+	}
+
+	return node, err
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface. Digests contains a list, but the data is
+// unmarshaled into a map.
+func (d *Digests) UnmarshalYAML(node *yaml.Node) error {
+	digests := []Digest{}
+	err := node.Decode(&digests)
+	if err != nil {
+		return err
+	}
+
+	*d = map[SamplerDigestUID]Digest{}
+	for _, digest := range digests {
+		(*d)[digest.UID] = digest
+	}
+
+	return nil
+}
+
+type Events map[SamplerEventUID]Event
+
+// MarshalYAML implements the yaml.Marshaler interface. Events contains a map, but the data is
+// marshaled into a list.
+func (d Events) MarshalYAML() (interface{}, error) {
+	events := make([]Event, 0, len(d))
+	for _, event := range d {
+		events = append(events, event)
+	}
+
+	node := yaml.Node{}
+	err := node.Encode(events)
+	if err != nil {
+		return nil, err
+	}
+
+	return node, err
+}
+
+// UnmarshalYAML implements the yaml.Unmarshaler interface. Events contains a list, but the data is
+// unmarshaled into a map.
+func (d *Events) UnmarshalYAML(node *yaml.Node) error {
+	events := []Event{}
+	err := node.Decode(&events)
+	if err != nil {
+		return err
+	}
+
+	*d = map[SamplerEventUID]Event{}
+	for _, event := range events {
+		(*d)[event.UID] = event
+	}
+
+	return nil
+}
+
 // Used to get and update the sampler configuration.
 //
 // When sent by the server to update a sampler, only the fields that are present
 // are updated. If a field is present, the previous value is replaced with the
 // new one.
 type SamplerConfig struct {
-	Streams    map[SamplerStreamUID]Stream
+	Streams    Streams
 	LimiterIn  *LimiterConfig
 	SamplingIn *SamplingConfig
 	LimiterOut *LimiterConfig
-	Digests    map[SamplerDigestUID]Digest
-	Events     map[SamplerEventUID]Event
+	Digests    Digests
+	Events     Events
 }
 
 func NewSamplerConfig() *SamplerConfig {
 	return &SamplerConfig{
-		Streams: make(map[SamplerStreamUID]Stream),
-		Digests: make(map[SamplerDigestUID]Digest),
-		Events:  make(map[SamplerEventUID]Event),
+		Streams: Streams{},
+		Digests: Digests{},
+		Events:  Events{},
 	}
 }
 

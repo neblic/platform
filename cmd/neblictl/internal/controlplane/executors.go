@@ -496,7 +496,7 @@ func (e *Executors) DigestsStructureCreate(ctx context.Context, parameters inter
 						FlushPeriod:         time.Second * time.Duration(flushPeriodInt32),
 						ComputationLocation: computationLocation,
 						Type:                control.DigestTypeSt,
-						St: control.DigestSt{
+						St: &control.DigestSt{
 							MaxProcessedFields: int(maxProcessedFieldsInt32),
 						},
 					},
@@ -553,7 +553,7 @@ func (e *Executors) DigestsStructureUpdate(ctx context.Context, parameters inter
 						FlushPeriod:         time.Second * time.Duration(flushPeriodInt32),
 						ComputationLocation: computationLocation,
 						Type:                control.DigestTypeSt,
-						St: control.DigestSt{
+						St: &control.DigestSt{
 							MaxProcessedFields: int(maxProcessedFieldsInt32),
 						},
 					},
@@ -611,7 +611,7 @@ func (e *Executors) DigestsValueCreate(ctx context.Context, parameters interpole
 						FlushPeriod:         time.Second * time.Duration(flushPeriodInt32),
 						ComputationLocation: computationLocation,
 						Type:                control.DigestTypeValue,
-						Value: control.DigestValue{
+						Value: &control.DigestValue{
 							MaxProcessedFields: int(maxProcessedFieldsInt32),
 						},
 					},
@@ -668,7 +668,7 @@ func (e *Executors) DigestsValueUpdate(ctx context.Context, parameters interpole
 						FlushPeriod:         time.Second * time.Duration(flushPeriodInt32),
 						ComputationLocation: computationLocation,
 						Type:                control.DigestTypeValue,
-						Value: control.DigestValue{
+						Value: &control.DigestValue{
 							MaxProcessedFields: int(maxProcessedFieldsInt32),
 						},
 					},

@@ -2,6 +2,7 @@ package control
 
 import (
 	"github.com/neblic/platform/controlplane/protos"
+	"gopkg.in/yaml.v3"
 )
 
 type SamplerStreamRuleUID string
@@ -11,6 +12,15 @@ type RuleLang int
 const (
 	SrlCel = iota + 1
 )
+
+func NewRuleLangFromString(s string) RuleLang {
+	switch s {
+	case "CEL":
+		return SrlCel
+	default:
+		return 0
+	}
+}
 
 func (srl RuleLang) String() string {
 	switch srl {
@@ -40,14 +50,19 @@ func (srl RuleLang) ToProto() protos.Rule_Language {
 	}
 }
 
+func (srl RuleLang) MarshalYAML() (interface{}, error) {
+	return srl.String(), nil
+}
+
+func (srl *RuleLang) UnmarshalYAML(value *yaml.Node) error {
+	*srl = NewRuleLangFromString(value.Value)
+
+	return nil
+}
+
 type Rule struct {
 	Lang       RuleLang
 	Expression string
-}
-
-func (r Rule) String() string {
-	// Lang intentionally not shown since it is implicit it is always a CEL type for now
-	return r.Expression
 }
 
 func NewRuleFromProto(sr *protos.Rule) Rule {
