@@ -6,20 +6,24 @@ import (
 	"github.com/IBM/sarama"
 	"github.com/hashicorp/go-multierror"
 	"github.com/neblic/platform/logging"
-	"github.com/neblic/platform/sampler/defs"
-	"github.com/neblic/platform/sampler/global"
+	"github.com/neblic/platform/sampler"
+	"github.com/neblic/platform/sampler/sample"
 )
 
 // Handler represents a Sarama consumer group consumer
 type SamplerHandler struct {
-	logger   logging.Logger
-	samplers map[string]defs.Sampler
+	logger logging.Logger
+
+	samplerOpts []sampler.Option
+	samplers    map[string]sampler.Sampler
 }
 
-func NewSamplerHandler(logger logging.Logger) *SamplerHandler {
+func NewSamplerHandler(logger logging.Logger, samplerOpts []sampler.Option) *SamplerHandler {
 	return &SamplerHandler{
-		logger:   logger,
-		samplers: map[string]defs.Sampler{},
+		logger: logger,
+
+		samplerOpts: samplerOpts,
+		samplers:    map[string]sampler.Sampler{},
 	}
 }
 
@@ -28,9 +32,8 @@ func (h *SamplerHandler) Setup(sess sarama.ConsumerGroupSession) error {
 	var errors error
 
 	// Initialize one sampler for each topic
-	samplerProvider := global.SamplerProvider()
 	for topic := range sess.Claims() {
-		sampler, err := samplerProvider.Sampler(topic, defs.NewDynamicSchema())
+		sampler, err := sampler.New(topic, sample.NewDynamicSchema(), h.samplerOpts...)
 		if err != nil {
 			errors = multierror.Append(errors, fmt.Errorf("cannot initialize sampler for topic %s: %w", topic, err))
 		}
@@ -53,7 +56,7 @@ func (h *SamplerHandler) Cleanup(sarama.ConsumerGroupSession) error {
 		}
 	}
 
-	h.samplers = map[string]defs.Sampler{}
+	h.samplers = map[string]sampler.Sampler{}
 
 	return nil
 }
@@ -73,7 +76,7 @@ func (h *SamplerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 			if !ok {
 				return fmt.Errorf("received a message from an unexpected topic: %s. There isn't an initialized sampler for this topic.", message.Topic)
 			}
-			sampler.Sample(session.Context(), defs.JSONSample(string(message.Value), string(message.Key)))
+			sampler.Sample(session.Context(), sample.JSONSample(string(message.Value), string(message.Key)))
 
 			session.MarkMessage(message, "")
 

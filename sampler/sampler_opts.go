@@ -6,46 +6,12 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/neblic/platform/controlplane/control"
-	"github.com/neblic/platform/logging"
 )
 
-type Settings struct {
-	// ResourceName sets the resource name common to all samplers created by this provider
-	// For example, the service or the data pipeline operator name
-	ResourceName string
-	// ControlServerAddr specifies the address where the control server is listening at.
-	// Format addr:port
-	ControlServerAddr string
-	// ControlServerAddr specifies the address where the data server is listening at.
-	// By default, it sends the data samples encoded as OTLP logs following the OTLP gRPC
-	// protocol, so it works with any OTLP gRPC logs compatible collector.
-	// Format addr:port
-	DataServerAddr string
-}
-
-type authBearerOption struct {
-	token string
-}
-
-type authOption struct {
-	authType string
-	bearer   authBearerOption
-}
-
 type options struct {
-	controlServerTLSEnable bool
-	dataServerTLSEnable    bool
-
-	controlServerAuth authOption
-	dataServerAuth    authOption
-
-	initialStream *control.Stream
-	initialConfig control.SamplerConfigUpdate
-
+	initialStream     *control.Stream
+	initialConfig     control.SamplerConfigUpdate
 	updateStatsPeriod time.Duration
-
-	logger      logging.Logger
-	samplersErr chan error
 }
 
 func newDefaultStreamUpdate(uid control.SamplerStreamUID) control.StreamUpdate {
@@ -110,9 +76,6 @@ func newDefaultOptions() *options {
 	}
 
 	return &options{
-		controlServerTLSEnable: false,
-		dataServerTLSEnable:    false,
-
 		initialStream: &initialStreamUpdate.Stream,
 		initialConfig: initialConfig,
 
@@ -136,25 +99,6 @@ func newFuncOption(f func(*options)) *funcOption {
 	return &funcOption{
 		f: f,
 	}
-}
-
-// WithTLS enables TLS connections with the server
-func WithTLS() Option {
-	return newFuncOption(func(o *options) {
-		o.controlServerTLSEnable = true
-		o.dataServerTLSEnable = true
-	})
-}
-
-// WithBearerAuth sets authorization based on a Bearer token
-func WithBearerAuth(token string) Option {
-	return newFuncOption(func(o *options) {
-		o.controlServerAuth.authType = "bearer"
-		o.controlServerAuth.bearer.token = token
-
-		o.dataServerAuth.authType = "bearer"
-		o.dataServerAuth.bearer.token = token
-	})
 }
 
 // WithLimiterInLimit establishes the initial limiter in rate limit
@@ -306,22 +250,5 @@ func WithUpdateStatsPeriod(p time.Duration) Option {
 			p = time.Second
 		}
 		o.updateStatsPeriod = p
-	})
-}
-
-// WithLogger provides a logger instance to log the Provider and Sampler
-// activity
-func WithLogger(l logging.Logger) Option {
-	return newFuncOption(func(o *options) {
-		o.logger = l
-	})
-}
-
-// WithErrorChannel received a channel where Sampler errors will be sent.
-// The avoid blocking the Sampler, it won't block if the channel is full so it is responsibility of
-// the provider to ensure the channel has enough buffer to avoid losing errors.
-func WithSamplerErrorChannel(errCh chan error) Option {
-	return newFuncOption(func(o *options) {
-		o.samplersErr = errCh
 	})
 }

@@ -4,13 +4,13 @@ import (
 	"fmt"
 
 	"github.com/google/cel-go/cel"
-	"github.com/neblic/platform/sampler/defs"
+	"github.com/neblic/platform/sampler/sample"
 )
 
 const sampleKey = "sample"
 
 type Builder struct {
-	schema defs.Schema
+	schema sample.Schema
 	env    *cel.Env
 }
 
@@ -21,7 +21,7 @@ const (
 	CheckFunctions
 )
 
-func NewBuilder(schema defs.Schema, supportedFunctions SupportedFunctions) (*Builder, error) {
+func NewBuilder(schema sample.Schema, supportedFunctions SupportedFunctions) (*Builder, error) {
 	var celEnvOpts []cel.EnvOption
 
 	// Add custom functions to the environemnt
@@ -33,7 +33,7 @@ func NewBuilder(schema defs.Schema, supportedFunctions SupportedFunctions) (*Bui
 	}
 
 	switch s := schema.(type) {
-	case defs.ProtoSchema:
+	case sample.ProtoSchema:
 		typ := string(s.Proto.ProtoReflect().Descriptor().FullName())
 		celEnvOpts = append(celEnvOpts,
 			cel.Types(s.Proto),
@@ -41,7 +41,7 @@ func NewBuilder(schema defs.Schema, supportedFunctions SupportedFunctions) (*Bui
 				cel.ObjectType(typ),
 			),
 		)
-	case defs.DynamicSchema:
+	case sample.DynamicSchema:
 		celEnvOpts = append(celEnvOpts,
 			cel.Variable(sampleKey, cel.MapType(cel.StringType, cel.DynType)),
 		)

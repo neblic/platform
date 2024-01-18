@@ -7,20 +7,21 @@ import (
 	// --8<-- [start:SamplerInitImport]
 
 	"github.com/neblic/platform/sampler"
-	"github.com/neblic/platform/sampler/defs"
+	"github.com/neblic/platform/sampler/sample"
 	// --8<-- [end:SamplerInitImport]
 )
 
-var someSampler defs.Sampler
+var someSampler sampler.Sampler
 
 // --8<-- [start:SamplerInit]
-func initSampler() defs.Sampler {
+func initSampler() sampler.Sampler {
 	// initialize the schema that the sampled `Data Samples` will
 	// a `DynamicSchema` supports Json strings and Go structs
-	schema := defs.NewDynamicSchema()
+	schema := sample.NewDynamicSchema()
 
-	// equivalent to calling `global.SamplerProvider().Sampler()`
-	someSampler, _ := sampler.Sampler("sampler-name", schema)
+	// creates a Sampler using the global provider
+	// the global provider can be set using the `sampler.SetProvider(...)` method
+	someSampler, _ := sampler.New("sampler-name", schema)
 
 	return someSampler
 }
@@ -32,7 +33,7 @@ func sampleData(ctx context.Context) bool {
 	var dataSample string
 
 	// evaluate a `Data Sample`
-	return someSampler.Sample(ctx, defs.JSONSample(dataSample, ""))
+	return someSampler.Sample(ctx, sample.JSONSample(dataSample, ""))
 }
 
 // --8<-- [end:SampleData]

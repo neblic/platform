@@ -14,9 +14,9 @@ import (
 	"github.com/neblic/platform/controlplane/server/mock"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler"
-	"github.com/neblic/platform/sampler/defs"
 	otlpmock "github.com/neblic/platform/sampler/internal/sample/exporter/otlp/mock"
 	internalSampler "github.com/neblic/platform/sampler/internal/sampler"
+	"github.com/neblic/platform/sampler/sample"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
@@ -97,7 +97,7 @@ var _ = Describe("Sampler", func() {
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", sample.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has recieived the first configuration (with the default stream and digest)
@@ -110,7 +110,7 @@ var _ = Describe("Sampler", func() {
 					time.Second, time.Millisecond*5,
 				)
 
-				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
 				Expect(sampled).To(BeTrue())
 
 				Expect(s.Close()).ToNot(HaveOccurred())
@@ -128,11 +128,11 @@ var _ = Describe("Sampler", func() {
 					ControlServerAddr: controlPlaneServer.Addr(),
 					DataServerAddr:    logsReceiverLn.Addr().String(),
 				}
-				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
+				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", sample.DynamicSchema{}, sampler.WithoutDefaultInitialConfig())
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has received the initial configuration (empty)
@@ -145,7 +145,7 @@ var _ = Describe("Sampler", func() {
 					time.Second, time.Millisecond*5,
 				)
 
-				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
 				Expect(sampled).To(BeFalse())
 
 				Expect(s.Close()).ToNot(HaveOccurred())
@@ -178,11 +178,11 @@ var _ = Describe("Sampler", func() {
 					ControlServerAddr: controlPlaneServer.Addr(),
 					DataServerAddr:    logsReceiverLn.Addr().String(),
 				}
-				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
+				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", sample.DynamicSchema{}, sampler.WithoutDefaultInitialConfig())
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has received the initial configuration (empty) and the posterior update
@@ -195,7 +195,7 @@ var _ = Describe("Sampler", func() {
 					time.Second, time.Millisecond*5,
 				)
 
-				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
 				Expect(sampled).To(BeFalse())
 
 				Expect(s.Close()).ToNot(HaveOccurred())
@@ -206,7 +206,7 @@ var _ = Describe("Sampler", func() {
 	Describe("Not exporting raw samples", func() {
 		var (
 			err      error
-			provider defs.Provider
+			provider sampler.Provider
 		)
 
 		BeforeEach(func() {
@@ -233,14 +233,14 @@ var _ = Describe("Sampler", func() {
 				ControlServerAddr: controlPlaneServer.Addr(),
 				DataServerAddr:    logsReceiverLn.Addr().String(),
 			}
-			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
+			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		When("there is a matching rule but exporting raw samples is disabled", func() {
 			It("should not export the sample", func() {
 				// create a sampler
-				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", sample.DynamicSchema{}, sampler.WithoutDefaultInitialConfig())
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has received the initial configuration (empty) and the posterior update
@@ -258,7 +258,7 @@ var _ = Describe("Sampler", func() {
 					func() bool {
 						defer GinkgoRecover()
 
-						s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+						s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
 						return receiver.TotalItems.Load() >= 1
 					},
 					time.Millisecond*500, time.Millisecond)
@@ -271,7 +271,7 @@ var _ = Describe("Sampler", func() {
 	Describe("Exporting raw samples", func() {
 		var (
 			err      error
-			provider defs.Provider
+			provider sampler.Provider
 		)
 
 		BeforeEach(func() {
@@ -313,14 +313,14 @@ var _ = Describe("Sampler", func() {
 				ControlServerAddr: controlPlaneServer.Addr(),
 				DataServerAddr:    logsReceiverLn.Addr().String(),
 			}
-			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger), sampler.WithoutDefaultInitialConfig())
+			provider, err = sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
 			Expect(err).ToNot(HaveOccurred())
 		})
 
 		When("there is a matching rule and", func() {
 			It("is a JSON sample it should export the sample", func() {
 				// create a sampler
-				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", sample.DynamicSchema{}, sampler.WithoutDefaultInitialConfig())
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has received the initial configuration (empty) and the posterior update
@@ -334,7 +334,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send samples to sampler
-				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
 				Expect(sampled).To(BeTrue())
 
 				// the receiver should have received the sample
@@ -350,7 +350,7 @@ var _ = Describe("Sampler", func() {
 
 			It("is a native sample it should export the sample", func() {
 				// create a sampler
-				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", sample.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				// wait until sampler has received the initial configuration (empty) and the posterior update
@@ -364,7 +364,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send sample
-				sampled := s.Sample(context.Background(), defs.NativeSample(nativeSample{ID: 1}, ""))
+				sampled := s.Sample(context.Background(), sample.NativeSample(nativeSample{ID: 1}, ""))
 				Expect(sampled).To(BeTrue())
 
 				// the receiver should have received the sample
@@ -380,7 +380,7 @@ var _ = Describe("Sampler", func() {
 
 			It("is a proto sample it should export the sample", func() {
 				// create a sampler
-				s, err := provider.Sampler("sampler1", defs.NewProtoSchema(&protos.SamplerToServer{}))
+				s, err := provider.Sampler("sampler1", sample.NewProtoSchema(&protos.SamplerToServer{}))
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has received the initial configuration (empty) and the posterior update
@@ -394,7 +394,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send sample
-				sampled := s.Sample(context.Background(), defs.ProtoSample(&protos.SamplerToServer{SamplerUid: "1"}, ""))
+				sampled := s.Sample(context.Background(), sample.ProtoSample(&protos.SamplerToServer{SamplerUid: "1"}, ""))
 				Expect(sampled).To(BeTrue())
 
 				// wait until the receiver has received the sample
@@ -451,16 +451,15 @@ var _ = Describe("Sampler", func() {
 
 		When("there is a structure digest with sampler computation location", func() {
 			It("should export structure digest samples", func() {
-				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithInitialLimiterOutLimit(10),
-					sampler.WithLogger(logger),
-					sampler.WithoutDefaultInitialConfig(),
-					sampler.WithInitialStructDigest(control.ComputationLocationSampler),
-				)
+				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				s, err := providerLimitedOut.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := providerLimitedOut.Sampler("sampler1", sample.DynamicSchema{},
+					sampler.WithInitialLimiterOutLimit(10),
+					sampler.WithoutDefaultInitialConfig(),
+					sampler.WithInitialStructDigest(control.ComputationLocationSampler),
+				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has received the initial configuration (empty) and the posterior update
@@ -474,7 +473,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send sample
-				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
 				Expect(sampled).To(BeTrue())
 
 				// wait until the receiver has received the digest
@@ -504,16 +503,15 @@ var _ = Describe("Sampler", func() {
 
 		When("there is a structure digest with collector computation location", func() {
 			It("should never export structure digest samples", func() {
-				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithInitialLimiterOutLimit(10),
-					sampler.WithLogger(logger),
-					sampler.WithoutDefaultInitialConfig(),
-					sampler.WithInitialStructDigest(control.ComputationLocationCollector),
-				)
+				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				s, err := providerLimitedOut.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := providerLimitedOut.Sampler("sampler1", sample.DynamicSchema{},
+					sampler.WithInitialLimiterOutLimit(10),
+					sampler.WithoutDefaultInitialConfig(),
+					sampler.WithInitialStructDigest(control.ComputationLocationCollector),
+				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has received the initial configuration (empty) and the posterior update
@@ -527,7 +525,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send sample
-				sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
 				Expect(sampled).To(BeTrue())
 
 				// no digest has to be generated
@@ -573,15 +571,14 @@ var _ = Describe("Sampler", func() {
 
 		When("there is an out limiter set", func() {
 			It("should not export more samples than the allowed by the limiter settings", func() {
-				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithInitialLimiterOutLimit(10),
-					sampler.WithLogger(logger),
-					sampler.WithoutDefaultInitialConfig(),
-				)
+				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				s, err := providerLimitedOut.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := providerLimitedOut.Sampler("sampler1", sample.DynamicSchema{},
+					sampler.WithInitialLimiterOutLimit(10),
+					sampler.WithoutDefaultInitialConfig(),
+				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// wait until sampler has received the initial configuration (empty) and the posterior update
@@ -597,7 +594,7 @@ var _ = Describe("Sampler", func() {
 				// send a large amount of samples so the limiter kicks in
 				numSampled := 0
 				for i := 0; i < 1000; i++ {
-					sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+					sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
 
 					if sampled {
 						numSampled++
@@ -620,15 +617,14 @@ var _ = Describe("Sampler", func() {
 
 		When("there is an in limiter set", func() {
 			It("should not export more samples than the allowed by the limiter settings", func() {
-				providerLimitedIn, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithInitialLimiterInLimit(5),
-					sampler.WithLogger(logger),
-					sampler.WithoutDefaultInitialConfig(),
-				)
+				providerLimitedIn, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				s, err := providerLimitedIn.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := providerLimitedIn.Sampler("sampler1", sample.DynamicSchema{},
+					sampler.WithInitialLimiterInLimit(5),
+					sampler.WithoutDefaultInitialConfig(),
+				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has received the initial configuration (empty) and the posterior update
@@ -644,7 +640,7 @@ var _ = Describe("Sampler", func() {
 				// send a large amount of samples so the limiter kicks in
 				numSampled := 0
 				for i := 0; i < 1000; i++ {
-					sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, ""))
+					sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
 
 					if sampled {
 						numSampled++
@@ -668,16 +664,15 @@ var _ = Describe("Sampler", func() {
 
 		When("there is an in sampler set", func() {
 			It("should not export samples if their determinant is not selected", func() {
-				providerSampledIn, err := sampler.NewProvider(context.Background(), settings,
+				providerSampledIn, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
+				Expect(err).ToNot(HaveOccurred())
+				// create a sampler
+				s, err := providerSampledIn.Sampler("sampler1", sample.DynamicSchema{},
 					sampler.WithInitialLimiterInLimit(1000),
 					sampler.WithInitialDeterministicSamplingIn(2),
 					sampler.WithInitialLimiterOutLimit(1000),
-					sampler.WithLogger(logger),
 					sampler.WithoutDefaultInitialConfig(),
 				)
-				Expect(err).ToNot(HaveOccurred())
-				// create a sampler
-				s, err := providerSampledIn.Sampler("sampler1", defs.DynamicSchema{})
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has received the initial configuration (empty) and the posterior update
@@ -695,7 +690,7 @@ var _ = Describe("Sampler", func() {
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, "some_non_matching_key"))
+						sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, "some_non_matching_key"))
 						return !sampled
 					},
 					time.Second, time.Millisecond)
@@ -703,7 +698,7 @@ var _ = Describe("Sampler", func() {
 				// should all be sampled
 				numSampled := 0
 				for i := 0; i < 100; i++ {
-					sampled := s.Sample(context.Background(), defs.JSONSample(`{"id": 1}`, "some_matching_key"))
+					sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, "some_matching_key"))
 
 					if sampled {
 						numSampled++
@@ -749,15 +744,14 @@ var _ = Describe("Sampler", func() {
 					ControlServerAddr: controlPlaneServer.Addr(),
 					DataServerAddr:    logsReceiverLn.Addr().String(),
 				}
-				provider, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithUpdateStatsPeriod(time.Second),
-					sampler.WithLogger(logger),
-					sampler.WithoutDefaultInitialConfig(),
-				)
+				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", sample.DynamicSchema{},
+					sampler.WithUpdateStatsPeriod(time.Second),
+					sampler.WithoutDefaultInitialConfig(),
+				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has received the initial configuration (empty)
@@ -806,15 +800,16 @@ var _ = Describe("Sampler", func() {
 				errCh := make(chan error, 1)
 
 				provider, err := sampler.NewProvider(context.Background(), settings,
-					sampler.WithUpdateStatsPeriod(time.Second),
 					sampler.WithLogger(logger),
 					sampler.WithSamplerErrorChannel(errCh),
-					sampler.WithoutDefaultInitialConfig(),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				s, err := provider.Sampler("sampler1", defs.DynamicSchema{})
+				s, err := provider.Sampler("sampler1", sample.DynamicSchema{},
+					sampler.WithUpdateStatsPeriod(time.Second),
+					sampler.WithoutDefaultInitialConfig(),
+				)
 				Expect(err).ToNot(HaveOccurred())
 
 				// Wait until sampler has received the initial configuration (empty) and the posterior update
@@ -828,7 +823,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send an invalid sample
-				sampled := s.Sample(context.Background(), defs.JSONSample(`invalid_json: `, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`invalid_json: `, ""))
 				Expect(sampled).To(BeFalse())
 
 				/// expect an error to be received

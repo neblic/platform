@@ -11,7 +11,10 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/neblic/platform/cmd/kafka-sampler/filter"
 	"github.com/neblic/platform/cmd/kafka-sampler/kafka/sarama"
+	"github.com/neblic/platform/cmd/kafka-sampler/neblic"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/logging"
+	"github.com/neblic/platform/sampler"
 )
 
 type groupProvider func(topic string) (ConsumerGroup, error)
@@ -35,7 +38,7 @@ type ConsumerManager struct {
 	consumers      map[string]*consumerInstance
 }
 
-func NewConsumerManager(ctx context.Context, logger logging.Logger, config *Config) (*ConsumerManager, error) {
+func NewConsumerManager(ctx context.Context, logger logging.Logger, config *Config, neblicConfig *neblic.Config) (*ConsumerManager, error) {
 	client, err := sarama.NewClient(config.Servers, &config.Sarama)
 	if err != nil {
 		return nil, err
@@ -65,6 +68,17 @@ func NewConsumerManager(ctx context.Context, logger logging.Logger, config *Conf
 		return nil, err
 	}
 
+	samplerOpts := []sampler.Option{
+		sampler.WithInitialStructDigest(control.ComputationLocationSampler),
+		sampler.WithInitalValueDigest(control.ComputationLocationSampler),
+	}
+	if neblicConfig.LimiterOutLimit != 0 {
+		samplerOpts = append(samplerOpts, sampler.WithInitialLimiterOutLimit(int32(neblicConfig.LimiterOutLimit)))
+	}
+	if neblicConfig.UpdateStatsPeriod != 0 {
+		samplerOpts = append(samplerOpts, sampler.WithUpdateStatsPeriod(neblicConfig.UpdateStatsPeriod))
+	}
+
 	return &ConsumerManager{
 		ctx:            ctx,
 		logger:         logger,
@@ -78,7 +92,7 @@ func NewConsumerManager(ctx context.Context, logger logging.Logger, config *Conf
 			consumerGroup := fmt.Sprintf("%s-%s", config.ConsumerGroup, hex.EncodeToString(h.Sum(nil)[:8]))
 
 			logger.Debug("Creating new consumer group", "topic", topic, "consumer_group", consumerGroup)
-			return sarama.NewConsumerGroup(logger, config.Servers, consumerGroup, &config.Sarama)
+			return sarama.NewConsumerGroup(logger, config.Servers, consumerGroup, &config.Sarama, samplerOpts)
 		},
 		consumers: map[string]*consumerInstance{},
 	}, nil

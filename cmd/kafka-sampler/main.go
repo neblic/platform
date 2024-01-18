@@ -19,10 +19,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/neblic/platform/cmd/kafka-sampler/filter"
 	"github.com/neblic/platform/cmd/kafka-sampler/neblic"
-	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler"
-	"github.com/neblic/platform/sampler/global"
 	"go.uber.org/zap"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -130,29 +128,21 @@ func initNeblic(ctx context.Context, logger logging.Logger, config *neblic.Confi
 	logger.Info("Initializing Neblic connection", "config", config)
 
 	// Propagate options
-	options := []sampler.Option{
+	providerOpts := []sampler.ProviderOption{
 		sampler.WithLogger(logger),
-		sampler.WithInitialStructDigest(control.ComputationLocationSampler),
-		sampler.WithInitalValueDigest(control.ComputationLocationSampler),
-	}
-	if config.Bearer != "" {
-		options = append(options, sampler.WithBearerAuth(config.Bearer))
 	}
 	if config.TLS {
-		options = append(options, sampler.WithTLS())
+		providerOpts = append(providerOpts, sampler.WithTLS())
 	}
-	if config.LimiterOutLimit != 0 {
-		options = append(options, sampler.WithInitialLimiterOutLimit(int32(config.LimiterOutLimit)))
-	}
-	if config.UpdateStatsPeriod != 0 {
-		options = append(options, sampler.WithUpdateStatsPeriod(config.UpdateStatsPeriod))
+	if config.Bearer != "" {
+		providerOpts = append(providerOpts, sampler.WithBearerAuth(config.Bearer))
 	}
 
-	provider, err := sampler.NewProvider(ctx, config.Settings, options...)
+	provider, err := sampler.NewProvider(ctx, config.Settings, providerOpts...)
 	if err != nil {
 		return fmt.Errorf("error initializing neblic provider: %w", err)
 	}
-	err = global.SetSamplerProvider(provider)
+	err = sampler.SetProvider(provider)
 	if err != nil {
 		return fmt.Errorf("error setting global sampler provider: %w", err)
 	}

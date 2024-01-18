@@ -5,7 +5,7 @@ import (
 
 	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/internal/pkg/exporter"
-	"github.com/neblic/platform/sampler/defs"
+	"github.com/neblic/platform/sampler/sample"
 )
 
 const closeTimeout = time.Duration(2) * time.Second
@@ -22,7 +22,7 @@ type AuthOptions struct {
 type Settings struct {
 	Name     string
 	Resource string
-	Schema   defs.Schema
+	Schema   sample.Schema
 
 	ControlPlaneAddr string
 	EnableTLS        bool
