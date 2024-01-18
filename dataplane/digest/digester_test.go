@@ -2,9 +2,11 @@ package digest
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/neblic/platform/controlplane/control"
 	dpsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/internal/pkg/data"
@@ -140,7 +142,6 @@ func TestWorkerRun(t *testing.T) {
 				func() bool { return len(testExporter.exportedOtlpLogs) >= 1 },
 				testTimeout, 50*time.Millisecond,
 			)
-			time.Sleep(time.Millisecond * 50)
 			assert.Equal(t, testExporter.exportedOtlpLogs[0].Len(), 1)
 
 			var wantResource string
@@ -164,7 +165,13 @@ func TestWorkerRun(t *testing.T) {
 			assert.Equal(t, wantResource, gotResource)
 			assert.Equal(t, wantSampler, gotSampler)
 			assert.Equal(t, want.Streams(), got.Streams())
-			assert.Equal(t, string(want.SampleRawData()), string(got.SampleRawData()))
+			diff := cmp.Diff(want.SampleRawData(), got.SampleRawData(), cmp.Transformer("ParseJSON", func(in []byte) (out any) {
+				if err := json.Unmarshal(in, &out); err != nil {
+					return err
+				}
+				return out
+			}))
+			assert.Empty(t, diff)
 
 			worker.stop()
 		})
