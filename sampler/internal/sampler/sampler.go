@@ -13,12 +13,10 @@ import (
 	"github.com/neblic/platform/internal/pkg/exporter"
 	"github.com/neblic/platform/internal/pkg/rule"
 	"github.com/neblic/platform/logging"
-	"github.com/neblic/platform/sampler/defs"
 	"github.com/neblic/platform/sampler/internal/sample/sampling"
+	"github.com/neblic/platform/sampler/sample"
 	"golang.org/x/time/rate"
 )
-
-var _ defs.Sampler = (*Sampler)(nil)
 
 type streamConfig struct {
 	rule            *rule.Rule
@@ -335,7 +333,7 @@ func (p *Sampler) ConfigUpdates() uint64 {
 	return p.configUpdates
 }
 
-func (p *Sampler) Sample(ctx context.Context, smpl defs.Sample) bool {
+func (p *Sampler) Sample(ctx context.Context, smpl sample.Sample) bool {
 	if p.configUpdates == 0 {
 		return false
 	}
@@ -344,11 +342,11 @@ func (p *Sampler) Sample(ctx context.Context, smpl defs.Sample) bool {
 		sampleData *data.Data
 	)
 	switch smpl.Type {
-	case defs.JSONSampleType:
+	case sample.JSONSampleType:
 		sampleData = data.NewSampleDataFromJSON(smpl.JSON)
-	case defs.NativeSampleType:
+	case sample.NativeSampleType:
 		sampleData = data.NewSampleDataFromNative(smpl.Native)
-	case defs.ProtoSampleType:
+	case sample.ProtoSampleType:
 		sampleData = data.NewSampleDataFromProto(smpl.Proto)
 	default:
 		return false

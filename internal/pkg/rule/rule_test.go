@@ -6,7 +6,7 @@ import (
 
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/internal/pkg/data"
-	"github.com/neblic/platform/sampler/defs"
+	"github.com/neblic/platform/sampler/sample"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -32,7 +32,7 @@ func TestEvalJSON(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(defs.DynamicSchema{}, CheckFunctions)
+			rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
 			require.NoError(t, err)
 
 			rule, err := rb.Build(tc.expression)
@@ -77,7 +77,7 @@ func TestEvalNative(t *testing.T) {
 		wantMatch:  false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(defs.NewDynamicSchema(), CheckFunctions)
+			rb, err := NewBuilder(sample.NewDynamicSchema(), CheckFunctions)
 			require.NoError(t, err)
 
 			rule, err := rb.Build(tc.expression)
@@ -120,7 +120,7 @@ func TestEvalProto(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(defs.NewProtoSchema(&protos.SamplerToServer{}), CheckFunctions)
+			rb, err := NewBuilder(sample.NewProtoSchema(&protos.SamplerToServer{}), CheckFunctions)
 			require.NoError(t, err)
 
 			rule, err := rb.Build(tc.expression)

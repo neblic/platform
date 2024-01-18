@@ -6,6 +6,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/neblic/platform/logging"
+	"github.com/neblic/platform/sampler"
 )
 
 type ConsumerGroup struct {
@@ -13,7 +14,7 @@ type ConsumerGroup struct {
 	handler *SamplerHandler
 }
 
-func NewConsumerGroup(logger logging.Logger, servers []string, groupID string, config *Config) (*ConsumerGroup, error) {
+func NewConsumerGroup(logger logging.Logger, servers []string, groupID string, config *Config, samplerOpts []sampler.Option) (*ConsumerGroup, error) {
 	group, err := sarama.NewConsumerGroup(servers, groupID, config)
 	if err != nil {
 		return nil, fmt.Errorf("error creating saram kafka consumer group: %w", err)
@@ -21,7 +22,7 @@ func NewConsumerGroup(logger logging.Logger, servers []string, groupID string, c
 
 	return &ConsumerGroup{
 		group:   group,
-		handler: NewSamplerHandler(logger),
+		handler: NewSamplerHandler(logger, samplerOpts),
 	}, nil
 }
 

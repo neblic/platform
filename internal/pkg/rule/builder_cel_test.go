@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/cel-go/cel"
-	"github.com/neblic/platform/sampler/defs"
+	"github.com/neblic/platform/sampler/sample"
 	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
@@ -137,7 +137,7 @@ func Test_ParseStatefulFunctions(t *testing.T) {
 
 func TestBuilder_Build(t *testing.T) {
 	type fields struct {
-		schema defs.Schema
+		schema sample.Schema
 	}
 	type args struct {
 		rule string
@@ -151,7 +151,7 @@ func TestBuilder_Build(t *testing.T) {
 		{
 			name: "build rule with abs function",
 			fields: fields{
-				schema: defs.NewDynamicSchema(),
+				schema: sample.NewDynamicSchema(),
 			},
 			args: args{
 				rule: `abs(-1) == 1`,
@@ -161,7 +161,7 @@ func TestBuilder_Build(t *testing.T) {
 		{
 			name: "build rule with sequence function",
 			fields: fields{
-				schema: defs.NewDynamicSchema(),
+				schema: sample.NewDynamicSchema(),
 			},
 			args: args{
 				rule: `sequence(-1, "asc")`,
@@ -171,7 +171,7 @@ func TestBuilder_Build(t *testing.T) {
 		{
 			name: "build rule with complete function",
 			fields: fields{
-				schema: defs.NewDynamicSchema(),
+				schema: sample.NewDynamicSchema(),
 			},
 			args: args{
 				rule: `complete(0, 1)`,

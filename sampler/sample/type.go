@@ -1,10 +1,6 @@
-package defs
+package sample
 
-import (
-	"context"
-
-	"google.golang.org/protobuf/proto"
-)
+import "google.golang.org/protobuf/proto"
 
 type SampleType uint8
 
@@ -55,13 +51,4 @@ func ProtoSample(proto proto.Message, key string) Sample {
 		Type:  ProtoSampleType,
 		Proto: proto,
 	}
-}
-
-// Sampler defines the sampler public interface
-type Sampler interface {
-	// Sample samples the given data sample. Returns true if the sample has been exported.
-	Sample(ctx context.Context, sample Sample) bool
-	// Close closes all Sampler connections with the Control and Data planes. Once closed,
-	// the Sampler can't be reused and none of its methods can be called.
-	Close() error
 }

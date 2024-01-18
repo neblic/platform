@@ -4,8 +4,8 @@ import (
 	"context"
 
 	oldProto "github.com/golang/protobuf/proto"
-	"github.com/neblic/platform/sampler/defs"
-	"github.com/neblic/platform/sampler/global"
+	"github.com/neblic/platform/sampler"
+	"github.com/neblic/platform/sampler/sample"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
 )
@@ -21,27 +21,27 @@ func toProtoMessage(msg interface{}) proto.Message {
 	return protoMsg
 }
 
-func getProtoSampler(samplers map[string]defs.Sampler, key string, schema proto.Message) defs.Sampler {
+func getProtoSampler(samplers map[string]sampler.Sampler, key string, schema proto.Message) sampler.Sampler {
 	var (
-		sampler defs.Sampler
-		ok      bool
+		smplr sampler.Sampler
+		ok    bool
 	)
-	if sampler, ok = samplers[key]; !ok {
-		sampler, _ = global.SamplerProvider().Sampler(
+	if smplr, ok = samplers[key]; !ok {
+		smplr, _ = sampler.New(
 			key,
-			defs.NewProtoSchema(schema),
+			sample.NewProtoSchema(schema),
 		)
-		samplers[key] = sampler
+		samplers[key] = smplr
 	}
 
-	return sampler
+	return smplr
 }
 
 // UnaryClientInterceptor provides a gRPC unary client interceptor that lazily creates two samplers
 // per each gRPC method called by the client. The samplers capture the request and response gRPC messages.
 func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
-	samplerReqs := make(map[string]defs.Sampler)
-	samplerResps := make(map[string]defs.Sampler)
+	samplerReqs := make(map[string]sampler.Sampler)
+	samplerResps := make(map[string]sampler.Sampler)
 
 	return func(
 		ctx context.Context,
@@ -56,7 +56,7 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 			samplerName := method + "Req"
 			samplerReq := getProtoSampler(samplerReqs, samplerName, reqProtoMsg)
 			// TODO: allow the user to provide a way to get the determinant from the request
-			samplerReq.Sample(ctx, defs.ProtoSample(reqProtoMsg, ""))
+			samplerReq.Sample(ctx, sample.ProtoSample(reqProtoMsg, ""))
 		}
 
 		err := invoker(ctx, method, req, reply, cc, callOpts...)
@@ -66,7 +66,7 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 			samplerName := method + "Res"
 			samplerRes := getProtoSampler(samplerResps, samplerName, resProtoMsg)
 			// TODO: allow the user to provide a way to get the determinant from the response
-			samplerRes.Sample(ctx, defs.ProtoSample(resProtoMsg, ""))
+			samplerRes.Sample(ctx, sample.ProtoSample(resProtoMsg, ""))
 		}
 
 		return err
@@ -76,8 +76,8 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 // UnaryServerInterceptor provides a gRPC unary server interceptor that lazily creates two samplers
 // per each gRPC method served The samplers capture the request and response gRPC messages.
 func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
-	samplerReqs := make(map[string]defs.Sampler)
-	samplerResps := make(map[string]defs.Sampler)
+	samplerReqs := make(map[string]sampler.Sampler)
+	samplerResps := make(map[string]sampler.Sampler)
 
 	return func(
 		ctx context.Context,
@@ -90,7 +90,7 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 			samplerName := info.FullMethod + "Req"
 			samplerReq := getProtoSampler(samplerReqs, samplerName, reqProtoMsg)
 			// TODO: allow the user to provide a way to get the determinant from the request
-			samplerReq.Sample(ctx, defs.ProtoSample(reqProtoMsg, ""))
+			samplerReq.Sample(ctx, sample.ProtoSample(reqProtoMsg, ""))
 		}
 
 		reply, err := handler(ctx, req)
@@ -100,7 +100,7 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 			samplerName := info.FullMethod + "Res"
 			samplerRes := getProtoSampler(samplerResps, samplerName, resProtoMsg)
 			// TODO: allow the user to provide a way to get the determinant from the response
-			samplerRes.Sample(ctx, defs.ProtoSample(resProtoMsg, ""))
+			samplerRes.Sample(ctx, sample.ProtoSample(resProtoMsg, ""))
 		}
 
 		return reply, err

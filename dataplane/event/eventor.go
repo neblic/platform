@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/neblic/platform/controlplane/control"
-	"github.com/neblic/platform/dataplane/sample"
+	dsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/internal/pkg/rule"
-	"github.com/neblic/platform/sampler/defs"
+	"github.com/neblic/platform/sampler/sample"
 	"golang.org/x/exp/slices"
 	"golang.org/x/time/rate"
 )
@@ -35,7 +35,7 @@ type Eventor struct {
 }
 
 func NewEventor(settings Settings) (*Eventor, error) {
-	ruleBuilder, err := rule.NewBuilder(defs.NewDynamicSchema(), rule.CheckFunctions)
+	ruleBuilder, err := rule.NewBuilder(sample.NewDynamicSchema(), rule.CheckFunctions)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create rule builder: %w", err)
 	}
@@ -103,12 +103,12 @@ func (e *Eventor) SetEventsConfig(eventsCfgs map[control.SamplerEventUID]control
 
 // ProessSample iterates over all the raw flows in the sampler logs and creates events when necessary.
 // Generated events are appended to the provided sampler logs
-func (e *Eventor) ProcessSample(samplerLogs sample.SamplerOTLPLogs) error {
+func (e *Eventor) ProcessSample(samplerLogs dsample.SamplerOTLPLogs) error {
 	var errs error
 
 	// Iterate and append events in-place. As range function does not iterate over appended elements after
 	// it's call, new events will not be visited.
-	sample.RangeSamplerLogsWithType[sample.RawSampleOTLPLog](samplerLogs, func(rawSample sample.RawSampleOTLPLog) {
+	dsample.RangeSamplerLogsWithType[dsample.RawSampleOTLPLog](samplerLogs, func(rawSample dsample.RawSampleOTLPLog) {
 		for _, event := range e.events {
 			if slices.Contains(rawSample.Streams(), event.streamUID) {
 				data, err := rawSample.SampleData()

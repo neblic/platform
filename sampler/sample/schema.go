@@ -1,4 +1,4 @@
-package defs
+package sample
 
 import "google.golang.org/protobuf/proto"
 

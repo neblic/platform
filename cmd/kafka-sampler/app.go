@@ -17,7 +17,7 @@ type KafkaSampler struct {
 }
 
 func NewKafkaSampler(ctx context.Context, logger logging.Logger, config *Config) (*KafkaSampler, error) {
-	consumerManager, err := kafka.NewConsumerManager(ctx, logger, &config.Kafka)
+	consumerManager, err := kafka.NewConsumerManager(ctx, logger, &config.Kafka, &config.Neblic)
 	if err != nil {
 		return nil, fmt.Errorf("error creating kafka consumer manager: %w", err)
 	}
