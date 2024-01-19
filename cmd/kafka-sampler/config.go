@@ -24,3 +24,7 @@ func NewConfig() *Config {
 		Neblic: *neblic.NewConfig(),
 	}
 }
+
+func (c *Config) Finalize() error {
+	return c.Kafka.Finalize()
+}

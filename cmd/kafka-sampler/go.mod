@@ -19,6 +19,7 @@ require (
 	github.com/neblic/platform v0.0.0
 	github.com/onsi/ginkgo/v2 v2.13.2
 	github.com/onsi/gomega v1.30.0
+	github.com/xdg-go/scram v1.1.2
 	go.uber.org/zap v1.26.0
 	golang.org/x/text v0.14.0
 )
@@ -66,6 +67,8 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
+	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
+	github.com/xdg-go/stringprep v1.0.4 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/collector v0.90.1 // indirect
 	go.opentelemetry.io/collector/component v0.90.1 // indirect
