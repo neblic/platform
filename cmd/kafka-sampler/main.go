@@ -115,6 +115,11 @@ func initConfig(path *string) *Config {
 		log.Fatalf("Error unmarshaling config: %v", err)
 	}
 
+	// Finalize configuration
+	if err := config.Finalize(); err != nil {
+		log.Fatalf("Error finalizing config: %v", err)
+	}
+
 	// We need to recreate the metric registry, otherwise it is not properly initilized and segfaults
 	config.Kafka.Sarama.MetricRegistry = sarama.NewConfig().MetricRegistry
 

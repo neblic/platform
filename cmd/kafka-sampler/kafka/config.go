@@ -32,3 +32,7 @@ func NewConfig() *Config {
 		},
 	}
 }
+
+func (c *Config) Finalize() error {
+	return sarama.Finalize(&c.Sarama)
+}
