@@ -93,11 +93,6 @@ message Event {
   Limiter limiter = 6;
 }
 
-message Capabilities {
-  bool struct_digest = 1;
-  bool value_digest = 2;
-}
-
 // Used to get and update the sampler configuration.
 //
 // When sent by the server to update a sampler, only the fields that are present
@@ -237,8 +232,6 @@ message SamplerStatsMsg { SamplerSamplingStats sampling_stats = 2; }
 
 message SamplerRegisterReq {
   ClientSamplerConfigUpdate sampler_config_update = 1;
-  Capabilities capabilities = 2;
-  map<string, string> tags = 3;
 }
 
 message SamplerRegisterRes { Status status = 1; }
@@ -324,7 +317,6 @@ message ClientSamplerConfigUpdate {
     bool limiter_out = 4;
     bool digests = 5;
     bool events = 6;
-    bool capabilities = 7;
   }
   Reset reset = 1;
 
