@@ -231,7 +231,7 @@ message SamplerStatsMsg { SamplerSamplingStats sampling_stats = 2; }
 // register
 
 message SamplerRegisterReq {
-  ClientSamplerConfigUpdate sampler_config_update = 1;
+  ClientSamplerConfigUpdate initial_config = 1;
 }
 
 message SamplerRegisterRes { Status status = 1; }
