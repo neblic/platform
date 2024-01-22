@@ -1829,7 +1829,7 @@ type SamplerRegisterReq struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SamplerConfigUpdate *ClientSamplerConfigUpdate `protobuf:"bytes,1,opt,name=sampler_config_update,json=samplerConfigUpdate,proto3" json:"sampler_config_update,omitempty"`
+	InitialConfig *ClientSamplerConfigUpdate `protobuf:"bytes,1,opt,name=initial_config,json=initialConfig,proto3" json:"initial_config,omitempty"`
 }
 
 func (x *SamplerRegisterReq) Reset() {
@@ -1864,9 +1864,9 @@ func (*SamplerRegisterReq) Descriptor() ([]byte, []int) {
 	return file_protos_controlplane_proto_rawDescGZIP(), []int{17}
 }
 
-func (x *SamplerRegisterReq) GetSamplerConfigUpdate() *ClientSamplerConfigUpdate {
+func (x *SamplerRegisterReq) GetInitialConfig() *ClientSamplerConfigUpdate {
 	if x != nil {
-		return x.SamplerConfigUpdate
+		return x.InitialConfig
 	}
 	return nil
 }

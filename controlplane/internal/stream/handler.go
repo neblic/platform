@@ -112,7 +112,7 @@ func (ch SamplerHandler) regReqMsg(uid string) *protos.SamplerToServer {
 	toServerMsg := ch.toServerMsg(uid)
 	toServerMsg.Message = &protos.SamplerToServer_RegisterReq{
 		RegisterReq: &protos.SamplerRegisterReq{
-			SamplerConfigUpdate: ch.initialConfig,
+			InitialConfig: ch.initialConfig,
 		},
 	}
 

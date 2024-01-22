@@ -40,7 +40,7 @@ func RegisterSamplerHandler(stream protos.ControlPlane_SamplerConnServer) error 
 	Expect(err).ShouldNot(HaveOccurred())
 
 	// get initial config
-	initialConfigUpdate := control.NewSamplerConfigUpdateFromProto(msg.GetRegisterReq().SamplerConfigUpdate)
+	initialConfigUpdate := control.NewSamplerConfigUpdateFromProto(msg.GetRegisterReq().GetInitialConfig())
 	initialConfig := control.NewSamplerConfig()
 	initialConfig.Merge(initialConfigUpdate)
 
