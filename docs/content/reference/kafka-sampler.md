@@ -6,6 +6,8 @@
    end="<!--ref-end-->"
 %}
 
+## Default configuration
+
 ``` yaml
 --8<-- "./dist/kafka-sampler/config.yaml"
 ```

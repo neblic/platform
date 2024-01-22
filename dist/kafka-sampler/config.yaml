@@ -9,8 +9,8 @@ kafka:
   # consumergroup: neblic-kafka-sampler
 
   # Kafka configuration as defined in the Sarama library
-  # https://pkg.go.dev/github.com/shopify/sarama#Config
-  # Convert field names to all lowercase and divide nested structs with `_`
+  # https://pkg.go.dev/github.com/IBM/sarama#Config
+  # Convert field names to all lowercase and nested structs to nested fields
   # sarama:  (...)
 
   # topics:
@@ -25,8 +25,8 @@ kafka:
   #   # supports regex RE2 syntax as described at https://github.com/google/re2/wiki/Syntax, except for `\C`.
   #   # It always ignores internal topics like: `__consumer_offsets` and `__transaction_state`.
   #   filter:
-  #     # Topics matching `allowlist` will be monitored, and topics matching `denylist` will be ignored.
-  #     # `allowlist` and `denylist` can't be set at the same time.
+  #     # Topics matching `allow` will be monitored, and topics matching `deny` will be ignored.
+  #     # `allow` and `deny` options can't be set at the same time.
   #     allow: ^(topic1|topic2)$
   #     deny: ^topic3$
 
