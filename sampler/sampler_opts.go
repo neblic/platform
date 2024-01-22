@@ -101,14 +101,6 @@ func newFuncOption(f func(*options)) *funcOption {
 	}
 }
 
-// WithLimiterInLimit establishes the initial limiter in rate limit
-// in samples per second
-//
-// Deprecated: Use WithInitialLimiterInLimit instead
-func WithLimiterInLimit(l int32) Option {
-	return WithInitialLimiterInLimit(l)
-}
-
 // WithInitialLimiterInLimit sets the initial limiter in rate limit. This configuration
 // is only used the first time a sampler is registered with a server, posterior executions
 // will use the configuration stored in the server and the provided configuration will be
@@ -119,13 +111,6 @@ func WithInitialLimiterInLimit(l int32) Option {
 			Limit: l,
 		}
 	})
-}
-
-// WithDeterministicSamplingIn defines a deterministic sampling strategy which will be applied
-//
-// Deprecated: Use WithInitialDeterministicSamplingIn instead
-func WithDeterministicSamplingIn(samplingRate int32) Option {
-	return WithInitialDeterministicSamplingIn(samplingRate)
 }
 
 // WithInitialDeterministicSamplingIn defines a deterministic sampling strategy which will be applied
@@ -144,14 +129,6 @@ func WithInitialDeterministicSamplingIn(samplingRate int32) Option {
 			},
 		}
 	})
-}
-
-// WithLimiterOutLimit establishes the initial limiter out rate limit
-// in samples per second
-//
-// Deprecated: Use WithInitialLimiterOutLimit instead
-func WithLimiterOutLimit(l int32) Option {
-	return WithInitialLimiterOutLimit(l)
 }
 
 // WithInitialLimiterInLimit sets the initial limiter in rate limit. This configuration
