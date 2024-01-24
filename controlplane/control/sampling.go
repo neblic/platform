@@ -33,7 +33,8 @@ func NewSamplingConfigFromProto(sr *protos.Sampling) SamplingConfig {
 		return SamplingConfig{
 			SamplingType: samplingType,
 			DeterministicSampling: DeterministicSamplingConfig{
-				SampleRate: sr.GetDeterministicSampling().GetSampleRate(),
+				SampleRate:             sr.GetDeterministicSampling().GetSampleRate(),
+				SampleEmptyDeterminant: sr.GetDeterministicSampling().GetSampleEmptyDeterminant(),
 			},
 		}
 	default:
@@ -47,7 +48,8 @@ func (sc SamplingConfig) ToProto() *protos.Sampling {
 		return &protos.Sampling{
 			Sampling: &protos.Sampling_DeterministicSampling{
 				DeterministicSampling: &protos.DeterministicSampling{
-					SampleRate: sc.DeterministicSampling.SampleRate,
+					SampleRate:             sc.DeterministicSampling.SampleRate,
+					SampleEmptyDeterminant: sc.DeterministicSampling.SampleEmptyDeterminant,
 				},
 			},
 		}
