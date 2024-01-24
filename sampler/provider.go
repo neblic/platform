@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/internal/pkg/exporter"
 	"github.com/neblic/platform/logging"
 	exporterotlp "github.com/neblic/platform/sampler/internal/sample/exporter/otlp"
@@ -187,7 +188,14 @@ func (p *provider) Sampler(name string, schema sample.Schema, opts ...Option) (S
 		opt.apply(setOpts)
 	}
 
-	samplerOpts := &sampler.Settings{
+	tagsWithAttrs := []control.Tag{}
+	for _, tag := range setOpts.tags {
+		tagsWithAttrs = append(tagsWithAttrs, control.Tag{
+			Name: tag,
+		})
+	}
+
+	samplerSettings := &sampler.Settings{
 		Name:     name,
 		Resource: p.settings.ResourceName,
 		Schema:   schema,
@@ -196,6 +204,7 @@ func (p *provider) Sampler(name string, schema sample.Schema, opts ...Option) (S
 		EnableTLS:        p.opts.controlServerTLSEnable,
 
 		InitialConfig: setOpts.initialConfig,
+		Tags:          tagsWithAttrs,
 		Exporter:      p.sampleExporter,
 
 		UpdateStatsPeriod: setOpts.updateStatsPeriod,
@@ -205,13 +214,13 @@ func (p *provider) Sampler(name string, schema sample.Schema, opts ...Option) (S
 
 	switch p.opts.controlServerAuth.authType {
 	case "bearer":
-		samplerOpts.Auth.Type = "bearer"
-		samplerOpts.Auth.Bearer.Token = p.opts.controlServerAuth.bearer.token
+		samplerSettings.Auth.Type = "bearer"
+		samplerSettings.Auth.Bearer.Token = p.opts.controlServerAuth.bearer.token
 	case "":
 		// nothing to do
 	default:
 		return nil, fmt.Errorf("invalid authorization type %s", p.opts.controlServerAuth.authType)
 	}
 
-	return sampler.New(samplerOpts, p.logger)
+	return sampler.New(samplerSettings, p.logger)
 }

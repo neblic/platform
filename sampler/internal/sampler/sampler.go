@@ -55,6 +55,7 @@ func New(
 	var clientOpts []csampler.Option
 	clientOpts = append(clientOpts, csampler.WithLogger(logger))
 	clientOpts = append(clientOpts, csampler.WithInitialConfig(settings.InitialConfig))
+	clientOpts = append(clientOpts, csampler.WithTags(settings.Tags...))
 	if settings.EnableTLS {
 		clientOpts = append(clientOpts, csampler.WithTLS())
 	}

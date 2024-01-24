@@ -138,13 +138,22 @@ func (s *Server) Addr() net.Addr {
 	return s.lis.Addr()
 }
 
-func (s *Server) GetSamplerConfig(resourceName string, samplerName string) (control.SamplerConfig, error) {
-	sampler, err := s.samplerRegistry.GetSampler(resourceName, samplerName)
+func (s *Server) GetSamplers(resourceName, samplerName string) ([]*control.Sampler, error) {
+	serverSampler, err := s.samplerRegistry.GetSampler(resourceName, samplerName)
 	if err != nil {
-		return control.SamplerConfig{}, err
+		return nil, err
 	}
 
-	return sampler.Config, nil
+	samplers := []*control.Sampler{}
+	for _, instance := range serverSampler.Instances {
+		sampler := control.NewSampler(serverSampler.Name, serverSampler.Resource, instance.UID)
+		sampler.Tags = serverSampler.Tags
+		sampler.Config = instance.Sampler.Config
+		sampler.SamplingStats = instance.Stats
+		samplers = append(samplers, sampler)
+	}
+
+	return samplers, nil
 }
 
 func (s *Server) Events() chan event.Event {

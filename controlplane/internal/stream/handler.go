@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -78,14 +79,16 @@ var _ Handler[*protos.ServerToSampler, *protos.SamplerToServer] = (*SamplerHandl
 type SamplerHandler struct {
 	name            string
 	resource        string
+	tags            []control.Tag
 	recvServerReqCb func(*protos.ServerToSampler) (bool, *protos.SamplerToServer, error)
 	initialConfig   *protos.ClientSamplerConfigUpdate
 }
 
-func NewSamplerHandler(name, resource string, recvServerReqCb func(*protos.ServerToSampler) (bool, *protos.SamplerToServer, error), initialConfig *protos.ClientSamplerConfigUpdate) Handler[*protos.ServerToSampler, *protos.SamplerToServer] {
+func NewSamplerHandler(name, resource string, tags []control.Tag, recvServerReqCb func(*protos.ServerToSampler) (bool, *protos.SamplerToServer, error), initialConfig *protos.ClientSamplerConfigUpdate) Handler[*protos.ServerToSampler, *protos.SamplerToServer] {
 	return &SamplerHandler{
 		name:            name,
 		resource:        resource,
+		tags:            tags,
 		recvServerReqCb: recvServerReqCb,
 		initialConfig:   initialConfig,
 	}
@@ -110,9 +113,15 @@ func (ch SamplerHandler) toServerMsg(uid string) *protos.SamplerToServer {
 
 func (ch SamplerHandler) regReqMsg(uid string) *protos.SamplerToServer {
 	toServerMsg := ch.toServerMsg(uid)
+	protoTags := []*protos.Sampler_Tag{}
+	for _, tag := range ch.tags {
+		protoTags = append(protoTags, tag.ToProto())
+	}
+
 	toServerMsg.Message = &protos.SamplerToServer_RegisterReq{
 		RegisterReq: &protos.SamplerRegisterReq{
 			InitialConfig: ch.initialConfig,
+			Tags:          protoTags,
 		},
 	}
 

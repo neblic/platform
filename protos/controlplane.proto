@@ -148,6 +148,11 @@ message Schema {
 }
 
 message Sampler {
+  message Tag {
+    string name = 1;
+    map<string, string> attrs = 2;
+  }
+
   // Identifies a single Sampler
   string uid = 1;
   // User-friendly and user-defined name to identify a Sampler.
@@ -157,6 +162,10 @@ message Sampler {
   // edifferent uids. e.g. multiple replicas of the same service will define
   // multiple times the same sampler with different uids.
   string resource = 3;
+  // User-defined tags to identify a Sampler.
+  // There are known tags that can be used to identify the Sampler type
+  // and may be used by the platform to provide additional functionality.
+  repeated Tag tags = 7;
   // Sampler schema information.
   Schema schema = 4;
   // The Sampler configuration,
@@ -232,6 +241,7 @@ message SamplerStatsMsg { SamplerSamplingStats sampling_stats = 2; }
 
 message SamplerRegisterReq {
   ClientSamplerConfigUpdate initial_config = 1;
+  repeated Sampler.Tag tags = 2;
 }
 
 message SamplerRegisterRes { Status status = 1; }
