@@ -15,6 +15,7 @@ type options struct {
 	logger            logging.Logger
 
 	initialConfig control.SamplerConfigUpdate
+	tags          []control.Tag
 }
 
 func newDefaultSamplerOptions() *options {
@@ -100,5 +101,11 @@ func WithLogger(l logging.Logger) Option {
 func WithInitialConfig(c control.SamplerConfigUpdate) Option {
 	return newFuncOption(func(po *options) {
 		po.initialConfig = c
+	})
+}
+
+func WithTags(tags ...control.Tag) Option {
+	return newFuncOption(func(po *options) {
+		po.tags = tags
 	})
 }

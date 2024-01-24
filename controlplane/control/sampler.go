@@ -533,9 +533,55 @@ func (s SamplerSamplingStats) ToProto() *protos.SamplerSamplingStats {
 
 type SamplerUID string
 
+// if updated, remember to update the exported tags in the public sampler API
+const (
+	ProducerTag = "producer"
+	ConsumerTag = "consumer"
+	RequestTag  = "request"
+	ResponseTag = "response"
+	DLQTag      = "dlq"
+)
+
+type Tag struct {
+	Name  string
+	Attrs map[string]string
+}
+
+func NewTagFromProto(tag *protos.Sampler_Tag) Tag {
+	if tag == nil {
+		return Tag{}
+	}
+
+	return Tag{
+		Name:  tag.GetName(),
+		Attrs: tag.GetAttrs(),
+	}
+}
+
+func NewTagsFromProto(protoTags []*protos.Sampler_Tag) []Tag {
+	if protoTags == nil {
+		return nil
+	}
+
+	tags := []Tag{}
+	for _, tag := range protoTags {
+		tags = append(tags, NewTagFromProto(tag))
+	}
+
+	return tags
+}
+
+func (t Tag) ToProto() *protos.Sampler_Tag {
+	return &protos.Sampler_Tag{
+		Name:  t.Name,
+		Attrs: t.Attrs,
+	}
+}
+
 type Sampler struct {
 	Name          string
 	Resource      string
+	Tags          []Tag
 	UID           SamplerUID
 	Config        SamplerConfig
 	SamplingStats SamplerSamplingStats
@@ -558,16 +604,23 @@ func NewSamplerFromProto(sampler *protos.Sampler) *Sampler {
 		UID:           SamplerUID(sampler.GetUid()),
 		Resource:      sampler.GetResource(),
 		Name:          sampler.GetName(),
+		Tags:          NewTagsFromProto(sampler.GetTags()),
 		Config:        NewSamplerConfigFromProto(sampler.Config),
 		SamplingStats: NewSamplerSamplingStatsFromProto(sampler.GetSamplingStats()),
 	}
 }
 
 func (p Sampler) ToProto() *protos.Sampler {
+	protoTags := []*protos.Sampler_Tag{}
+	for _, tag := range p.Tags {
+		protoTags = append(protoTags, tag.ToProto())
+	}
+
 	return &protos.Sampler{
 		Uid:           string(p.UID),
 		Name:          p.Name,
 		Resource:      p.Resource,
+		Tags:          protoTags,
 		Config:        p.Config.ToProto(),
 		SamplingStats: p.SamplingStats.ToProto(),
 	}

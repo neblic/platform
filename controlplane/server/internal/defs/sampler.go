@@ -40,6 +40,7 @@ func NewSamplerInstance(uid control.SamplerUID, sampler *Sampler) *SamplerInstan
 type Sampler struct {
 	Resource  string
 	Name      string
+	Tags      []control.Tag
 	Config    control.SamplerConfig
 	Instances map[control.SamplerUID]*SamplerInstance
 }

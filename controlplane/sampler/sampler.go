@@ -22,9 +22,9 @@ type Sampler struct {
 	logger logging.Logger
 }
 
-func New(name, resource string, samplerOptions ...Option) *Sampler {
+func New(name, resource string, options ...Option) *Sampler {
 	opts := newDefaultSamplerOptions()
-	for _, opt := range samplerOptions {
+	for _, opt := range options {
 		opt.apply(opts)
 	}
 
@@ -42,7 +42,12 @@ func New(name, resource string, samplerOptions ...Option) *Sampler {
 	p.samplerStream = stream.New(
 		string(p.data.UID),
 		opts.streamOpts,
-		stream.NewSamplerHandler(p.data.Name, p.data.Resource, p.recvServerReqCb, opts.initialConfig.ToProto()),
+		stream.NewSamplerHandler(p.data.Name,
+			p.data.Resource,
+			opts.tags,
+			p.recvServerReqCb,
+			opts.initialConfig.ToProto(),
+		),
 		p.logger,
 	)
 

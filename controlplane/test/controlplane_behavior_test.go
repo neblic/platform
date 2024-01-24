@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/neblic/platform/controlplane/client"
 	"github.com/neblic/platform/controlplane/control"
@@ -275,6 +276,116 @@ var _ = Describe("ControlPlane", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					<-registered
+					Expect(p.Close(condTimeout)).ToNot(HaveOccurred())
+				})
+
+				It("should send all its information", func() {
+					// fill all initialConfig fields with demo data
+					initialConfig := control.NewSamplerConfigUpdate()
+					initialStream := control.Stream{
+						UID:  control.SamplerStreamUID(uuid.NewString()),
+						Name: "some_stream_name",
+						StreamRule: control.Rule{
+							Lang:       control.NewRuleLangFromProto(protos.Rule_CEL),
+							Expression: "some_CEL_rule",
+						},
+					}
+					initialConfig.StreamUpdates = []control.StreamUpdate{
+						{
+							Op:     control.StreamUpsert,
+							Stream: initialStream,
+						},
+					}
+
+					initialConfig.LimiterIn = &control.LimiterConfig{Limit: 100}
+					initialConfig.LimiterOut = &control.LimiterConfig{Limit: 10}
+					initialConfig.SamplingIn = &control.SamplingConfig{
+						SamplingType: control.DeterministicSamplingType,
+						DeterministicSampling: control.DeterministicSamplingConfig{
+							SampleRate:             100,
+							SampleEmptyDeterminant: true,
+						},
+					}
+
+					initialDigest := control.Digest{
+						UID:                 control.SamplerDigestUID(uuid.NewString()),
+						Name:                "some_digest_name",
+						StreamUID:           initialStream.UID,
+						FlushPeriod:         time.Second * time.Duration(60),
+						ComputationLocation: control.ComputationLocationSampler,
+						Type:                control.DigestTypeValue,
+						Value: &control.DigestValue{
+							MaxProcessedFields: int(100),
+						},
+					}
+					initialConfig.DigestUpdates = []control.DigestUpdate{
+						{
+							Op:     control.DigestUpsert,
+							Digest: initialDigest,
+						},
+					}
+
+					initialEvent := control.Event{
+						UID:        control.SamplerEventUID(uuid.NewString()),
+						Name:       "some_event_name",
+						StreamUID:  initialStream.UID,
+						SampleType: control.RawSampleType,
+						Rule: control.Rule{
+							Lang:       control.NewRuleLangFromProto(protos.Rule_CEL),
+							Expression: "some_CEL_rule",
+						},
+						Limiter: control.LimiterConfig{
+							Limit: 100,
+						},
+					}
+					initialConfig.EventUpdates = []control.EventUpdate{
+						{
+							Op:    control.EventUpsert,
+							Event: initialEvent,
+						},
+					}
+
+					tags := []control.Tag{{Name: "some_tag_name", Attrs: map[string]string{"some_attr_name": "some_attr_value"}}}
+					p := sampler.New("sampler1", "resource1",
+						sampler.WithLogger(logger),
+						sampler.WithTags(tags...),
+						sampler.WithInitialConfig(initialConfig),
+					)
+					registered := waitSamplerRegistered(p)
+
+					err := p.Connect(s.Addr().String())
+					Expect(err).ToNot(HaveOccurred())
+
+					<-registered
+
+					samplers, err := s.GetSamplers("resource1", "sampler1")
+					Expect(err).ToNot(HaveOccurred())
+					Expect(samplers).To(HaveLen(1))
+
+					// we use cmp.Diff since it provides better error messages
+					diff := cmp.Diff(samplers[0].Config, control.SamplerConfig{
+						Streams: map[control.SamplerStreamUID]control.Stream{
+							initialStream.UID: initialStream,
+						},
+						LimiterIn:  &control.LimiterConfig{Limit: 100},
+						LimiterOut: &control.LimiterConfig{Limit: 10},
+						SamplingIn: &control.SamplingConfig{
+							SamplingType: control.DeterministicSamplingType,
+							DeterministicSampling: control.DeterministicSamplingConfig{
+								SampleRate:             100,
+								SampleEmptyDeterminant: true,
+							},
+						},
+						Digests: map[control.SamplerDigestUID]control.Digest{
+							initialDigest.UID: initialDigest,
+						},
+						Events: map[control.SamplerEventUID]control.Event{
+							initialEvent.UID: initialEvent,
+						},
+					})
+					Expect(diff).To(BeEmpty())
+					Expect(samplers[0].Tags).To(Equal(tags))
+
 					Expect(p.Close(condTimeout)).ToNot(HaveOccurred())
 				})
 			})

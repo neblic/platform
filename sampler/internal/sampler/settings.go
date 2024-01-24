@@ -30,6 +30,7 @@ type Settings struct {
 
 	SamplingIn    control.SamplingConfig
 	InitialConfig control.SamplerConfigUpdate
+	Tags          []control.Tag
 	Exporter      exporter.Exporter
 
 	UpdateStatsPeriod time.Duration

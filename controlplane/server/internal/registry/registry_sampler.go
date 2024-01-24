@@ -175,7 +175,10 @@ func (sr *SamplerRegistry) GetRegisteredInstances() []*defs.SamplerInstance {
 	return instances
 }
 
-func (sr *SamplerRegistry) Register(resource string, name string, uid control.SamplerUID, conn defs.SamplerConn, initialConfig control.SamplerConfig) error {
+func (sr *SamplerRegistry) Register(resource string, name string,
+	tags []control.Tag, initialConfig control.SamplerConfig,
+	uid control.SamplerUID, conn defs.SamplerConn,
+) error {
 	sr.m.Lock()
 	defer sr.m.Unlock()
 
@@ -187,6 +190,7 @@ func (sr *SamplerRegistry) Register(resource string, name string, uid control.Sa
 		}
 
 		sampler = defs.NewSampler(resource, name)
+		sampler.Tags = tags
 		sampler.Config = initialConfig
 	}
 

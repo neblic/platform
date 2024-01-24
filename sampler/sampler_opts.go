@@ -12,9 +12,22 @@ const allStreamName = "all"
 const allStreamCelRule = "true"
 const valueDigestName = "value"
 const structDigestName = "struct"
+const DLQEventName = "sample_sent_to_dlq"
+
+// re-exported known tags
+const (
+	ProducerTag = control.ProducerTag
+	ConsumerTag = control.ConsumerTag
+	RequestTag  = control.RequestTag
+	ResponseTag = control.ResponseTag
+	// DLQTag is used to tag samples that are sent to a dead letter queue
+	// Automatically enables an event that notifies when a sample is sent to a DLQ
+	DLQTag = control.DLQTag
+)
 
 type options struct {
 	initialConfig     control.SamplerConfigUpdate
+	tags              []string
 	updateStatsPeriod time.Duration
 }
 
@@ -235,5 +248,48 @@ func WithUpdateStatsPeriod(p time.Duration) Option {
 			p = time.Second
 		}
 		o.updateStatsPeriod = p
+	})
+}
+
+func applyDLQInitialConfig(o *options) {
+	// Check if the default DLQ event is present
+	dlqEventIdx := slices.IndexFunc(o.initialConfig.EventUpdates, func(eventUpdate control.EventUpdate) bool {
+		return eventUpdate.Event.Name == DLQEventName
+	})
+
+	// If the default DLQ event is not present, add it
+	if dlqEventIdx == -1 {
+		o.initialConfig.EventUpdates = append(o.initialConfig.EventUpdates, control.EventUpdate{
+			Op: control.EventUpsert,
+			Event: control.Event{
+				UID:        control.SamplerEventUID(uuid.NewString()),
+				Name:       DLQEventName,
+				StreamUID:  control.SamplerStreamUID(allStreamName),
+				SampleType: control.RawSampleType,
+				Rule: control.Rule{
+					Lang:       control.SrlCel,
+					Expression: "true",
+				},
+				Limiter: control.LimiterConfig{
+					Limit: 1,
+				},
+			},
+		})
+	}
+}
+
+// WithTags can be used to specify tags to classify the Sampler or to specify its type.
+// There are known tags that can be used to identify the Sampler type and may be used
+// by the platform to provide additional functionality automnatically.
+// See the tags constants defined in this file.
+func WithTags(tags ...string) Option {
+	return newFuncOption(func(o *options) {
+		o.tags = tags
+		for _, tag := range tags {
+			switch tag {
+			case DLQTag:
+				applyDLQInitialConfig(o)
+			}
+		}
 	})
 }
