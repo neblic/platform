@@ -138,9 +138,9 @@ type provider struct {
 //
 //	sampler, err := sampler.New(...)
 //
-// or simply:
+// which is equivalent to creating a sampler using the global provider:
 //
-//	sampler, err := Sampler(...)
+//	sampler, err := provider.Sampler(...)
 func NewProvider(ctx context.Context, settings Settings, opts ...ProviderOption) (Provider, error) {
 	setOpts := newDefaultProviderOptions()
 	for _, opt := range opts {
