@@ -54,7 +54,7 @@ func (p *samplerProviderPlaceholder) setDelegate(pp Provider) error {
 	return aggErr
 }
 
-func (p *samplerProviderPlaceholder) Sampler(name string, schema sample.Schema, opts ...Option) (Sampler, error) {
+func (p *samplerProviderPlaceholder) Sampler(name string, schema sample.Schema, _ ...Option) (Sampler, error) {
 	p.Lock()
 	defer p.Unlock()
 

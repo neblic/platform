@@ -2,10 +2,10 @@ package sample
 
 import "google.golang.org/protobuf/proto"
 
-type SampleType uint8
+type Type uint8
 
 const (
-	UnknownSampleType SampleType = iota
+	UnknownSampleType Type = iota
 	JSONSampleType
 	NativeSampleType
 	ProtoSampleType
@@ -14,7 +14,7 @@ const (
 type Sample struct {
 	Key string
 
-	Type   SampleType
+	Type   Type
 	JSON   string
 	Native any
 	Proto  proto.Message
