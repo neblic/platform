@@ -14,7 +14,7 @@ require (
 	github.com/onsi/gomega v1.30.0
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector/component v0.90.1
-	go.opentelemetry.io/collector/config/configopaque v0.90.1
+	go.opentelemetry.io/collector/config/configopaque v0.93.0
 	go.opentelemetry.io/collector/config/configtls v0.90.1
 	go.opentelemetry.io/collector/consumer v0.90.1
 	go.opentelemetry.io/collector/exporter v0.90.1
