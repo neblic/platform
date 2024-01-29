@@ -8,7 +8,7 @@ replace github.com/neblic/platform => ../../
 
 require (
 	github.com/c-bata/go-prompt v0.2.5
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	github.com/neblic/platform v0.0.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/term v1.1.0
