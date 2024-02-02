@@ -7,10 +7,10 @@ import (
 )
 
 func TestSequenceState_Add(t *testing.T) {
-	var zeroInt64 int64 = 0
-	var zeroUint64 uint64 = 0
-	var float64Zero float64 = 0
-	var stringZero string = "0"
+	zeroInt64 := int64(0)
+	zeroUint64 := uint64(0)
+	float64Zero := float64(0)
+	stringZero := "0"
 
 	type fields[T constraints.Ordered] struct {
 		last          *T
@@ -192,7 +192,7 @@ func TestSequenceState_Add(t *testing.T) {
 }
 
 func TestCompleteState_Add(t *testing.T) {
-	var oneInt64 int64 = 1
+	oneInt64 := int64(1)
 
 	type fields[T constraints.Ordered] struct {
 		next        *T
