@@ -7,18 +7,30 @@ import (
 	"github.com/neblic/platform/sampler/defs"
 )
 
+const sampleKey = "sample"
+
 type Builder struct {
 	schema defs.Schema
 	env    *cel.Env
 }
 
-const sampleKey = "sample"
+type SupportedFunctions int
 
-func NewBuilder(schema defs.Schema) (*Builder, error) {
+const (
+	StreamFunctions SupportedFunctions = iota
+	CheckFunctions
+)
+
+func NewBuilder(schema defs.Schema, supportedFunctions SupportedFunctions) (*Builder, error) {
 	var celEnvOpts []cel.EnvOption
 
 	// Add custom functions to the environemnt
-	celEnvOpts = append(celEnvOpts, CelFunctions...)
+	switch supportedFunctions {
+	case StreamFunctions:
+		celEnvOpts = append(celEnvOpts, StreamFunctionsEnvOptions...)
+	case CheckFunctions:
+		celEnvOpts = append(celEnvOpts, CheckFunctionsEnvOptions...)
+	}
 
 	switch s := schema.(type) {
 	case defs.ProtoSchema:
@@ -50,7 +62,9 @@ func NewBuilder(schema defs.Schema) (*Builder, error) {
 }
 
 func (rb *Builder) Build(rule string) (*Rule, error) {
-	ast, iss := rb.env.Compile(rule)
+	env := rb.env
+
+	ast, iss := env.Compile(rule)
 	if iss != nil && iss.Err() != nil {
 		return nil, fmt.Errorf("couldn't compile rule: %w", iss.Err())
 	}
@@ -59,11 +73,40 @@ func (rb *Builder) Build(rule string) (*Rule, error) {
 		return nil, fmt.Errorf("rule expects return type of bool, not %s", ast.OutputType())
 	}
 
+	expr, err := cel.AstToCheckedExpr(ast)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't convert AST to CheckedExpr: %w", err)
+	}
+
+	// In case of having stateful functions, the cel environment has to be extended to add the
+	// stateful functions definitions and state management.
+	statefulFunctions := []StatefulFunction{&SequenceStatefulFunction{}, &CompleteStatefulFunction{}}
+	err = ParseStatefulFunctions(statefulFunctions, expr.Expr)
+	if err != nil {
+		return nil, err
+	}
+	var stateProvider *StateProvider
+	celEnvOptions := []cel.EnvOption{}
+	for _, statefulFunction := range statefulFunctions {
+		if statefulFunction.Enabled() {
+			if stateProvider == nil {
+				stateProvider = NewStateProvider()
+			}
+			celEnvOptions = append(celEnvOptions, statefulFunction.GetCelEnvs(stateProvider)...)
+		}
+	}
+	if len(celEnvOptions) > 0 {
+		env, err = env.Extend(celEnvOptions...)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't extend CEL environment: %w", err)
+		}
+	}
+
 	// TODO: Investigate interesting program options: e.g. cost estimation/limit
-	prg, err := rb.env.Program(ast)
+	prg, err := env.Program(ast)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't build CEL program: %w", err)
 	}
 
-	return New(rb.schema, prg), nil
+	return New(rb.schema, prg, stateProvider), nil
 }

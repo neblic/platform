@@ -13,26 +13,29 @@ import (
 
 func TestEvalJSON(t *testing.T) {
 	for _, tc := range []struct {
-		name      string
-		filter    string
-		sample    string
-		wantMatch bool
-	}{{
-		name:      "simple match",
-		filter:    `sample.sub_struct.id == 11`,
-		sample:    `{"id": 1, "sub_struct": {"id": 11 }}`,
-		wantMatch: true,
-	}, {
-		name:      "simple mismatch",
-		filter:    `sample.id == 2`,
-		sample:    `{"id": 1}`,
-		wantMatch: false,
-	}} {
+		name       string
+		expression string
+		sample     string
+		wantMatch  bool
+	}{
+		{
+			name:       "simple match",
+			expression: `sample.sub_struct.id == 11`,
+			sample:     `{"id": 1, "sub_struct": {"id": 11 }}`,
+			wantMatch:  true,
+		},
+		{
+			name:       "simple mismatch",
+			expression: `sample.id == 2`,
+			sample:     `{"id": 1}`,
+			wantMatch:  false,
+		},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(defs.DynamicSchema{})
+			rb, err := NewBuilder(defs.DynamicSchema{}, CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.filter)
+			rule, err := rb.Build(tc.expression)
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromJSON(tc.sample)
@@ -41,7 +44,7 @@ func TestEvalJSON(t *testing.T) {
 			require.NoError(t, err)
 
 			if gotMatch != tc.wantMatch {
-				t.Errorf("expected cel(%q, %s) to be %v", tc.filter, tc.sample, tc.wantMatch)
+				t.Errorf("expected cel(%q, %s) to be %v", tc.expression, tc.sample, tc.wantMatch)
 			}
 		})
 	}
@@ -58,26 +61,26 @@ type sampleStruct struct {
 
 func TestEvalNative(t *testing.T) {
 	for _, tc := range []struct {
-		name      string
-		filter    string
-		sample    sampleStruct
-		wantMatch bool
+		name       string
+		expression string
+		sample     sampleStruct
+		wantMatch  bool
 	}{{
-		name:      "simple match",
-		filter:    `sample.SubStruct.ID == 11`,
-		sample:    sampleStruct{ID: 1, SubStruct: sampleSubStruct{ID: 11}},
-		wantMatch: true,
+		name:       "simple match",
+		expression: `sample.SubStruct.ID == 11`,
+		sample:     sampleStruct{ID: 1, SubStruct: sampleSubStruct{ID: 11}},
+		wantMatch:  true,
 	}, {
-		name:      "simple mismatch",
-		filter:    `sample.ID == 2`,
-		sample:    sampleStruct{ID: 1},
-		wantMatch: false,
+		name:       "simple mismatch",
+		expression: `sample.ID == 2`,
+		sample:     sampleStruct{ID: 1},
+		wantMatch:  false,
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(defs.NewDynamicSchema())
+			rb, err := NewBuilder(defs.NewDynamicSchema(), CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.filter)
+			rule, err := rb.Build(tc.expression)
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromNative(tc.sample)
@@ -86,7 +89,7 @@ func TestEvalNative(t *testing.T) {
 			require.NoError(t, err)
 
 			if gotMatch != tc.wantMatch {
-				t.Errorf("expected cel(%q, %+v) to be %v", tc.filter, tc.sample, tc.wantMatch)
+				t.Errorf("expected cel(%q, %+v) to be %v", tc.expression, tc.sample, tc.wantMatch)
 			}
 		})
 	}
@@ -94,31 +97,33 @@ func TestEvalNative(t *testing.T) {
 
 func TestEvalProto(t *testing.T) {
 	for _, tc := range []struct {
-		name      string
-		filter    string
-		sample    proto.Message
-		wantMatch bool
-	}{{
-		name:   "simple match",
-		filter: `sample.name == "sampler_name_value"`,
-		sample: &protos.SamplerToServer{
-			Name:       "sampler_name_value",
-			SamplerUid: "sampler_uid_value",
-			Message: &protos.SamplerToServer_RegisterReq{
-				RegisterReq: &protos.SamplerRegisterReq{},
-			}},
-		wantMatch: true,
-	}, {
-		name:      "simple mismatch",
-		filter:    `sample.sampler_uid == "non_matching_value"`,
-		sample:    &protos.SamplerToServer{SamplerUid: "sampler_uid_value"},
-		wantMatch: false,
-	}} {
+		name       string
+		expression string
+		sample     proto.Message
+		wantMatch  bool
+	}{
+		{
+			name:       "simple match",
+			expression: `sample.name == "sampler_name_value"`,
+			sample: &protos.SamplerToServer{
+				Name:       "sampler_name_value",
+				SamplerUid: "sampler_uid_value",
+				Message: &protos.SamplerToServer_RegisterReq{
+					RegisterReq: &protos.SamplerRegisterReq{},
+				}},
+			wantMatch: true,
+		}, {
+			name:       "simple mismatch",
+			expression: `sample.sampler_uid == "non_matching_value"`,
+			sample:     &protos.SamplerToServer{SamplerUid: "sampler_uid_value"},
+			wantMatch:  false,
+		},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
-			rb, err := NewBuilder(defs.NewProtoSchema(&protos.SamplerToServer{}))
+			rb, err := NewBuilder(defs.NewProtoSchema(&protos.SamplerToServer{}), CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.filter)
+			rule, err := rb.Build(tc.expression)
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromProto(tc.sample)
@@ -127,7 +132,7 @@ func TestEvalProto(t *testing.T) {
 			require.NoError(t, err)
 
 			if gotMatch != tc.wantMatch {
-				t.Errorf("expected cel(%q, %+v) to be %v", tc.filter, tc.sample, tc.wantMatch)
+				t.Errorf("expected cel(%q, %+v) to be %v", tc.expression, tc.sample, tc.wantMatch)
 			}
 		})
 	}

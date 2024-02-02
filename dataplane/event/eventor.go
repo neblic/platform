@@ -35,7 +35,7 @@ type Eventor struct {
 }
 
 func NewEventor(settings Settings) (*Eventor, error) {
-	ruleBuilder, err := rule.NewBuilder(defs.NewDynamicSchema())
+	ruleBuilder, err := rule.NewBuilder(defs.NewDynamicSchema(), rule.CheckFunctions)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create rule builder: %w", err)
 	}
@@ -48,23 +48,53 @@ func NewEventor(settings Settings) (*Eventor, error) {
 	}, nil
 }
 
+func (e *Eventor) newEventFrom(eventCfg control.Event) (*event, error) {
+	rule, err := e.ruleBuilder.Build(eventCfg.Rule.Expression)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create rule: %w", err)
+	}
+
+	return &event{
+		rule:           *rule,
+		uid:            eventCfg.UID,
+		streamUID:      eventCfg.StreamUID,
+		ruleExpression: eventCfg.Rule.Expression,
+		limiter:        *rate.NewLimiter(rate.Limit(eventCfg.Limiter.Limit), int(eventCfg.Limiter.Limit)),
+	}, nil
+}
+
 func (e *Eventor) SetEventsConfig(eventsCfgs map[control.SamplerEventUID]control.Event) error {
 	var errs error
-	e.events = make(map[control.SamplerEventUID]*event)
 
+	// Add new events
 	for eventUID, eventCfg := range eventsCfgs {
-		rule, err := e.ruleBuilder.Build(eventCfg.Rule.Expression)
-		if err != nil {
-			errs = errors.Join(errs, err)
-			continue
+		if _, ok := e.events[eventUID]; !ok {
+			newEvent, err := e.newEventFrom(eventCfg)
+			if err != nil {
+				errs = errors.Join(errs, err)
+				continue
+			}
+			e.events[eventUID] = newEvent
 		}
+	}
 
-		e.events[eventUID] = &event{
-			rule:           *rule,
-			uid:            eventCfg.UID,
-			streamUID:      eventCfg.StreamUID,
-			ruleExpression: eventCfg.Rule.Expression,
-			limiter:        *rate.NewLimiter(rate.Limit(eventCfg.Limiter.Limit), int(eventCfg.Limiter.Limit)),
+	// Update existing events with different rule expression
+	for eventUID, eventCfg := range eventsCfgs {
+		existingEvent, ok := e.events[eventUID]
+		if ok && existingEvent.ruleExpression != eventCfg.Rule.Expression {
+			newEvent, err := e.newEventFrom(eventCfg)
+			if err != nil {
+				errs = errors.Join(errs, err)
+				continue
+			}
+			e.events[eventUID] = newEvent
+		}
+	}
+
+	// Remove old events
+	for eventUID := range e.events {
+		if _, ok := eventsCfgs[eventUID]; !ok {
+			delete(e.events, eventUID)
 		}
 	}
 
