@@ -63,6 +63,93 @@ func TestFunctions(t *testing.T) {
 			},
 			want: types.Int(time.Now().YearDay()),
 		},
+
+		// sequence
+		{
+			name: "sequence with int and string order",
+			celEnvOpts: celEnvOpts{
+				function:  makeSequenceInt(NewStateProvider()),
+				variables: []cel.EnvOption{},
+			},
+			args: args{
+				expression: `sequence(1, "asc")`,
+				variables:  map[string]any{},
+			},
+			want: types.Bool(true),
+		},
+		{
+			name: "sequence with uint and string order",
+			celEnvOpts: celEnvOpts{
+				function:  makeSequenceUint(NewStateProvider()),
+				variables: []cel.EnvOption{},
+			},
+			args: args{
+				expression: `sequence(1u, "asc")`,
+				variables:  map[string]any{},
+			},
+			want: types.Bool(true),
+		},
+		{
+			name: "sequence with double and string order",
+			celEnvOpts: celEnvOpts{
+				function:  makeSequenceFloat64(NewStateProvider()),
+				variables: []cel.EnvOption{},
+			},
+			args: args{
+				expression: `sequence(1.0, "asc")`,
+				variables:  map[string]any{},
+			},
+			want: types.Bool(true),
+		},
+		{
+			name: "sequence with string and string order",
+			celEnvOpts: celEnvOpts{
+				function:  makeSequenceString(NewStateProvider()),
+				variables: []cel.EnvOption{},
+			},
+			args: args{
+				expression: `sequence("1", "asc")`,
+				variables:  map[string]any{},
+			},
+			want: types.Bool(true),
+		},
+		// complete
+		{
+			name: "complete with int and int step",
+			celEnvOpts: celEnvOpts{
+				function:  makeCompleteInt(NewStateProvider()),
+				variables: []cel.EnvOption{},
+			},
+			args: args{
+				expression: `complete(1, 1)`,
+				variables:  map[string]any{},
+			},
+			want: types.Bool(true),
+		},
+		{
+			name: "complete with uint and int step",
+			celEnvOpts: celEnvOpts{
+				function:  makeCompleteUint(NewStateProvider()),
+				variables: []cel.EnvOption{},
+			},
+			args: args{
+				expression: `complete(1u, 1)`,
+				variables:  map[string]any{},
+			},
+			want: types.Bool(true),
+		},
+		{
+			name: "complete with double, double step",
+			celEnvOpts: celEnvOpts{
+				function:  makeCompleteFloat64(NewStateProvider()),
+				variables: []cel.EnvOption{},
+			},
+			args: args{
+				expression: `complete(1.0, 1.0)`,
+				variables:  map[string]any{},
+			},
+			want: types.Bool(true),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -49,7 +49,7 @@ func New(
 	settings *Settings,
 	logger logging.Logger,
 ) (*Sampler, error) {
-	ruleBuilder, err := rule.NewBuilder(settings.Schema)
+	ruleBuilder, err := rule.NewBuilder(settings.Schema, rule.StreamFunctions)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't build CEL rule builder: %w", err)
 	}

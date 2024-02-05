@@ -18,15 +18,17 @@ const (
 )
 
 type Rule struct {
-	schema     defs.Schema
-	prg        cel.Program
-	sampleComp sampleCompatibility
+	schema        defs.Schema
+	prg           cel.Program
+	sampleComp    sampleCompatibility
+	stateProvider *StateProvider
 }
 
-func New(schema defs.Schema, prg cel.Program) *Rule {
+func New(schema defs.Schema, prg cel.Program, stateProvider *StateProvider) *Rule {
 	r := &Rule{
-		schema: schema,
-		prg:    prg,
+		schema:        schema,
+		prg:           prg,
+		stateProvider: stateProvider,
 	}
 	r.setCompatibility(schema)
 
@@ -92,4 +94,8 @@ func (r *Rule) Eval(ctx context.Context, sampleData *data.Data) (bool, error) {
 
 	// It is guaranteed to be a boolean because the rule has been checked at build time
 	return val.Value().(bool), nil
+}
+
+func (r *Rule) StateProvider() *StateProvider {
+	return r.stateProvider
 }
