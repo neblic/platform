@@ -30,6 +30,18 @@ func TestEvalJSON(t *testing.T) {
 			sample:     `{"id": 1}`,
 			wantMatch:  false,
 		},
+		{
+			name:       "sequence check",
+			expression: `sequence(sample.id, "asc")`,
+			sample:     `{"id": 1}`,
+			wantMatch:  true,
+		},
+		{
+			name:       "complete check",
+			expression: `complete(sample.id, 1.0)`,
+			sample:     `{"id": 1}`,
+			wantMatch:  true,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
@@ -65,17 +77,31 @@ func TestEvalNative(t *testing.T) {
 		expression string
 		sample     sampleStruct
 		wantMatch  bool
-	}{{
-		name:       "simple match",
-		expression: `sample.SubStruct.ID == 11`,
-		sample:     sampleStruct{ID: 1, SubStruct: sampleSubStruct{ID: 11}},
-		wantMatch:  true,
-	}, {
-		name:       "simple mismatch",
-		expression: `sample.ID == 2`,
-		sample:     sampleStruct{ID: 1},
-		wantMatch:  false,
-	}} {
+	}{
+		{
+			name:       "simple match",
+			expression: `sample.SubStruct.ID == 11`,
+			sample:     sampleStruct{ID: 1, SubStruct: sampleSubStruct{ID: 11}},
+			wantMatch:  true,
+		}, {
+			name:       "simple mismatch",
+			expression: `sample.ID == 2`,
+			sample:     sampleStruct{ID: 1},
+			wantMatch:  false,
+		},
+		{
+			name:       "sequence check",
+			expression: `sequence(sample.ID, "asc")`,
+			sample:     sampleStruct{ID: 1},
+			wantMatch:  true,
+		},
+		{
+			name:       "complete check",
+			expression: `complete(sample.ID, 1)`,
+			sample:     sampleStruct{ID: 1},
+			wantMatch:  true,
+		},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rb, err := NewBuilder(sample.NewDynamicSchema(), CheckFunctions)
 			require.NoError(t, err)
@@ -112,7 +138,8 @@ func TestEvalProto(t *testing.T) {
 					RegisterReq: &protos.SamplerRegisterReq{},
 				}},
 			wantMatch: true,
-		}, {
+		},
+		{
 			name:       "simple mismatch",
 			expression: `sample.sampler_uid == "non_matching_value"`,
 			sample:     &protos.SamplerToServer{SamplerUid: "sampler_uid_value"},
@@ -136,4 +163,44 @@ func TestEvalProto(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEvalSequence(t *testing.T) {
+	rb, err := NewBuilder(defs.DynamicSchema{}, CheckFunctions)
+	require.NoError(t, err)
+
+	rule, err := rb.Build(`sequence(sample.id, "asc")`)
+	require.NoError(t, err)
+
+	gotMatch, err := rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 1}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	gotMatch, err = rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 2}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	gotMatch, err = rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": -1}`))
+	require.NoError(t, err)
+	require.False(t, gotMatch)
+}
+
+func TestEvalComplete(t *testing.T) {
+	rb, err := NewBuilder(defs.DynamicSchema{}, CheckFunctions)
+	require.NoError(t, err)
+
+	rule, err := rb.Build(`complete(sample.id, 1.0)`)
+	require.NoError(t, err)
+
+	gotMatch, err := rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 1}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	gotMatch, err = rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 2}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	gotMatch, err = rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 1000}`))
+	require.NoError(t, err)
+	require.False(t, gotMatch)
 }

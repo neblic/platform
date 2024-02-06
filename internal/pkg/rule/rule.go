@@ -18,17 +18,17 @@ const (
 )
 
 type Rule struct {
-	schema        sample.Schema
-	prg           cel.Program
-	sampleComp    sampleCompatibility
-	stateProvider *StateProvider
+	schema            sample.Schema
+	prg               cel.Program
+	sampleComp        sampleCompatibility
+	statefulFunctions []StatefulFunction
 }
 
-func New(schema sample.Schema, prg cel.Program, stateProvider *StateProvider) *Rule {
+func New(schema sample.Schema, prg cel.Program, statefulFunctions []StatefulFunction) *Rule {
 	r := &Rule{
-		schema:        schema,
-		prg:           prg,
-		stateProvider: stateProvider,
+		schema:            schema,
+		prg:               prg,
+		statefulFunctions: statefulFunctions,
 	}
 	r.setCompatibility(schema)
 
@@ -87,15 +87,17 @@ func (r *Rule) Eval(ctx context.Context, sampleData *data.Data) (bool, error) {
 		}
 	}
 
-	val, _, err := r.prg.ContextEval(ctx, map[string]interface{}{sampleKey: smpl})
+	// Add state variables for the stateful functions
+	vars := map[string]interface{}{sampleKey: smpl}
+	for _, sf := range r.statefulFunctions {
+		vars[sf.StateName()] = sf
+	}
+
+	val, _, err := r.prg.ContextEval(ctx, vars)
 	if err != nil {
 		return false, fmt.Errorf("failed to evaluate sample: %w", err)
 	}
 
 	// It is guaranteed to be a boolean because the rule has been checked at build time
 	return val.Value().(bool), nil
-}
-
-func (r *Rule) StateProvider() *StateProvider {
-	return r.stateProvider
 }

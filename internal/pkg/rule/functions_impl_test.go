@@ -6,7 +6,7 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
-func TestSequenceState_Add(t *testing.T) {
+func TestSequenceStatefulFunctionOf_Call(t *testing.T) {
 	zeroInt64 := int64(0)
 	zeroUint64 := uint64(0)
 	float64Zero := float64(0)
@@ -152,46 +152,46 @@ func TestSequenceState_Add(t *testing.T) {
 			var got bool
 			switch tt.fields.(type) {
 			case fields[int64]:
-				ss := &SequenceState[int64]{
+				ss := &SequenceStatefulFunctionOf[int64]{
 					last:          tt.fields.(fields[int64]).last,
 					expectedOrder: tt.fields.(fields[int64]).expectedOrder,
 					Order:         tt.fields.(fields[int64]).Order,
 				}
-				got = ss.Add(tt.args.(args[int64]).value)
+				got = ss.Call(tt.args.(args[int64]).value)
 			case fields[uint64]:
-				ss := &SequenceState[uint64]{
+				ss := &SequenceStatefulFunctionOf[uint64]{
 					last:          tt.fields.(fields[uint64]).last,
 					expectedOrder: tt.fields.(fields[uint64]).expectedOrder,
 					Order:         tt.fields.(fields[uint64]).Order,
 				}
-				got = ss.Add(tt.args.(args[uint64]).value)
+				got = ss.Call(tt.args.(args[uint64]).value)
 			case fields[float64]:
-				ss := &SequenceState[float64]{
+				ss := &SequenceStatefulFunctionOf[float64]{
 					last:          tt.fields.(fields[float64]).last,
 					expectedOrder: tt.fields.(fields[float64]).expectedOrder,
 					Order:         tt.fields.(fields[float64]).Order,
 				}
-				got = ss.Add(tt.args.(args[float64]).value)
+				got = ss.Call(tt.args.(args[float64]).value)
 			case fields[string]:
-				ss := &SequenceState[string]{
+				ss := &SequenceStatefulFunctionOf[string]{
 					last:          tt.fields.(fields[string]).last,
 					expectedOrder: tt.fields.(fields[string]).expectedOrder,
 					Order:         tt.fields.(fields[string]).Order,
 				}
-				got = ss.Add(tt.args.(args[string]).value)
+				got = ss.Call(tt.args.(args[string]).value)
 			default:
 				t.Error("unknown type")
 				t.FailNow()
 			}
 
 			if got != tt.want {
-				t.Errorf("SequenceState.Add() = %v, want %v", got, tt.want)
+				t.Errorf("SequenceStatefulFunctionOf.Call() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestCompleteState_Add(t *testing.T) {
+func TestCompleteStatefulFunctionOf_Call(t *testing.T) {
 	oneInt64 := int64(1)
 
 	type fields[T constraints.Ordered] struct {
@@ -250,33 +250,33 @@ func TestCompleteState_Add(t *testing.T) {
 			var got bool
 			switch tt.fields.(type) {
 			case fields[int64]:
-				ss := &CompleteState[int64]{
+				ss := &CompleteStatefulFunctionOf[int64]{
 					next:        tt.fields.(fields[int64]).next,
 					step:        tt.fields.(fields[int64]).step,
 					AllComplete: tt.fields.(fields[int64]).AllComplete,
 				}
-				got = ss.Add(tt.args.(args[int64]).value)
+				got = ss.Call(tt.args.(args[int64]).value)
 			case fields[uint64]:
-				ss := &CompleteState[uint64]{
+				ss := &CompleteStatefulFunctionOf[uint64]{
 					next:        tt.fields.(fields[uint64]).next,
 					step:        tt.fields.(fields[uint64]).step,
 					AllComplete: tt.fields.(fields[uint64]).AllComplete,
 				}
-				got = ss.Add(tt.args.(args[uint64]).value)
+				got = ss.Call(tt.args.(args[uint64]).value)
 			case fields[float64]:
-				ss := &CompleteState[float64]{
+				ss := &CompleteStatefulFunctionOf[float64]{
 					next:        tt.fields.(fields[float64]).next,
 					step:        tt.fields.(fields[float64]).step,
 					AllComplete: tt.fields.(fields[float64]).AllComplete,
 				}
-				got = ss.Add(tt.args.(args[float64]).value)
+				got = ss.Call(tt.args.(args[float64]).value)
 			default:
 				t.Error("unknown type")
 				t.FailNow()
 			}
 
 			if got != tt.want {
-				t.Errorf("CompleteState.Add() = %v, want %v", got, tt.want)
+				t.Errorf("CompleteStatefulFunctionOf.Call() = %v, want %v", got, tt.want)
 			}
 		})
 	}

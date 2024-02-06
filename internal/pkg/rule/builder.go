@@ -78,29 +78,14 @@ func (rb *Builder) Build(rule string) (*Rule, error) {
 		return nil, fmt.Errorf("couldn't convert AST to CheckedExpr: %w", err)
 	}
 
-	// In case of having stateful functions, the cel environment has to be extended to add the
-	// stateful functions definitions and state management.
-	statefulFunctions := []StatefulFunction{&SequenceStatefulFunction{}, &CompleteStatefulFunction{}}
-	err = ParseStatefulFunctions(statefulFunctions, expr.Expr)
+	// Inject state to stateful functions
+	checkedExprModifier := NewCheckedExprModifier(expr)
+	statefulFunctions, err := checkedExprModifier.InjectState()
 	if err != nil {
 		return nil, err
 	}
-	var stateProvider *StateProvider
-	celEnvOptions := []cel.EnvOption{}
-	for _, statefulFunction := range statefulFunctions {
-		if statefulFunction.Enabled() {
-			if stateProvider == nil {
-				stateProvider = NewStateProvider()
-			}
-			celEnvOptions = append(celEnvOptions, statefulFunction.GetCelEnvs(stateProvider)...)
-		}
-	}
-	if len(celEnvOptions) > 0 {
-		env, err = env.Extend(celEnvOptions...)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't extend CEL environment: %w", err)
-		}
-	}
+
+	ast = cel.CheckedExprToAst(expr)
 
 	// TODO: Investigate interesting program options: e.g. cost estimation/limit
 	prg, err := env.Program(ast)
@@ -108,5 +93,5 @@ func (rb *Builder) Build(rule string) (*Rule, error) {
 		return nil, fmt.Errorf("couldn't build CEL program: %w", err)
 	}
 
-	return New(rb.schema, prg, stateProvider), nil
+	return New(rb.schema, prg, statefulFunctions), nil
 }

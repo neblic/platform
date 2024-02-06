@@ -68,48 +68,48 @@ func TestFunctions(t *testing.T) {
 		{
 			name: "sequence with int and string order",
 			celEnvOpts: celEnvOpts{
-				function:  makeSequenceInt(NewStateProvider()),
-				variables: []cel.EnvOption{},
+				function:  makeSequenceInt(),
+				variables: []cel.EnvOption{sequenceStatefulFunctionEnv, cel.Variable("state1", sequenceStatefulFunctionType)},
 			},
 			args: args{
-				expression: `sequence(1, "asc")`,
-				variables:  map[string]any{},
+				expression: `sequence(1, "asc", state1)`,
+				variables:  map[string]any{"state1": &SequenceStatefulFunction{}},
 			},
 			want: types.Bool(true),
 		},
 		{
 			name: "sequence with uint and string order",
 			celEnvOpts: celEnvOpts{
-				function:  makeSequenceUint(NewStateProvider()),
-				variables: []cel.EnvOption{},
+				function:  makeSequenceUint(),
+				variables: []cel.EnvOption{sequenceStatefulFunctionEnv, cel.Variable("state1", sequenceStatefulFunctionType)},
 			},
 			args: args{
-				expression: `sequence(1u, "asc")`,
-				variables:  map[string]any{},
+				expression: `sequence(1u, "asc", state1)`,
+				variables:  map[string]any{"state1": &SequenceStatefulFunction{}},
 			},
 			want: types.Bool(true),
 		},
 		{
-			name: "sequence with double and string order",
+			name: "sequence with double and string order returns false",
 			celEnvOpts: celEnvOpts{
-				function:  makeSequenceFloat64(NewStateProvider()),
-				variables: []cel.EnvOption{},
+				function:  makeSequenceFloat64(),
+				variables: []cel.EnvOption{sequenceStatefulFunctionEnv, cel.Variable("state1", sequenceStatefulFunctionType)},
 			},
 			args: args{
-				expression: `sequence(1.0, "asc")`,
-				variables:  map[string]any{},
+				expression: `sequence(1.0, "asc", state1)`,
+				variables:  map[string]any{"state1": &SequenceStatefulFunction{ofFloat64: &SequenceStatefulFunctionOf[float64]{last: func() *float64 { f := 1000.0; return &f }(), expectedOrder: OrderTypeAsc}}},
 			},
-			want: types.Bool(true),
+			want: types.Bool(false),
 		},
 		{
 			name: "sequence with string and string order",
 			celEnvOpts: celEnvOpts{
-				function:  makeSequenceString(NewStateProvider()),
-				variables: []cel.EnvOption{},
+				function:  makeSequenceString(),
+				variables: []cel.EnvOption{sequenceStatefulFunctionEnv, cel.Variable("state1", sequenceStatefulFunctionType)},
 			},
 			args: args{
-				expression: `sequence("1", "asc")`,
-				variables:  map[string]any{},
+				expression: `sequence("1", "asc", state1)`,
+				variables:  map[string]any{"state1": &SequenceStatefulFunction{}},
 			},
 			want: types.Bool(true),
 		},
@@ -117,36 +117,36 @@ func TestFunctions(t *testing.T) {
 		{
 			name: "complete with int and int step",
 			celEnvOpts: celEnvOpts{
-				function:  makeCompleteInt(NewStateProvider()),
-				variables: []cel.EnvOption{},
+				function:  makeCompleteInt(),
+				variables: []cel.EnvOption{completeStatefulFunctionEnv, cel.Variable("state1", completeStatefulFunctionType)},
 			},
 			args: args{
-				expression: `complete(1, 1)`,
-				variables:  map[string]any{},
+				expression: `complete(1, 1, state1)`,
+				variables:  map[string]any{"state1": &CompleteStatefulFunction{}},
 			},
 			want: types.Bool(true),
 		},
 		{
 			name: "complete with uint and int step",
 			celEnvOpts: celEnvOpts{
-				function:  makeCompleteUint(NewStateProvider()),
-				variables: []cel.EnvOption{},
+				function:  makeCompleteUint(),
+				variables: []cel.EnvOption{completeStatefulFunctionEnv, cel.Variable("state1", completeStatefulFunctionType)},
 			},
 			args: args{
-				expression: `complete(1u, 1)`,
-				variables:  map[string]any{},
+				expression: `complete(1u, 1, state1)`,
+				variables:  map[string]any{"state1": &CompleteStatefulFunction{}},
 			},
 			want: types.Bool(true),
 		},
 		{
 			name: "complete with double, double step",
 			celEnvOpts: celEnvOpts{
-				function:  makeCompleteFloat64(NewStateProvider()),
-				variables: []cel.EnvOption{},
+				function:  makeCompleteFloat64(),
+				variables: []cel.EnvOption{completeStatefulFunctionEnv, cel.Variable("state1", completeStatefulFunctionType)},
 			},
 			args: args{
-				expression: `complete(1.0, 1.0)`,
-				variables:  map[string]any{},
+				expression: `complete(1.0, 1.0, state1)`,
+				variables:  map[string]any{"state1": &CompleteStatefulFunction{}},
 			},
 			want: types.Bool(true),
 		},
@@ -163,9 +163,10 @@ func TestFunctions(t *testing.T) {
 
 			// Check iss for error in both Parse and Check.
 			ast, iss := celEnv.Compile(tt.args.expression)
-			if iss.Err() != nil {
+			if iss != nil && iss.Err() != nil {
 				t.Errorf("Expression compilation produced some issues; %v", iss.Err())
 			}
+
 			prg, err := celEnv.Program(ast)
 			if err != nil {
 				t.Errorf("Program creation error: %v", err)
