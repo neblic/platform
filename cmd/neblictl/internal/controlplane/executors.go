@@ -733,6 +733,7 @@ func (e *Executors) EventsCreate(ctx context.Context, parameters interpoler.Para
 	dataTypeParameter, _ := parameters.Get("sample-type")
 	ruleParameter, _ := parameters.Get("rule")
 	limitParameter, _ := parameters.Get("limit")
+	exportTemplateParameter, _ := parameters.Get("export-template")
 	limitInt32, err := limitParameter.AsInt32()
 	if err != nil {
 		return fmt.Errorf("limit must be an integer")
@@ -766,6 +767,7 @@ func (e *Executors) EventsCreate(ctx context.Context, parameters interpoler.Para
 						Limiter: control.LimiterConfig{
 							Limit: limitInt32,
 						},
+						ExportTemplate: exportTemplateParameter.Value,
 					},
 				},
 			},
@@ -782,6 +784,7 @@ func (e *Executors) EventsUpdate(ctx context.Context, parameters interpoler.Para
 	ruleParameter, _ := parameters.Get("rule")
 	limitParameter, _ := parameters.Get("limit")
 	limitInt32, err := limitParameter.AsInt32()
+	exportTemplateParameter, _ := parameters.Get("export-template")
 	if err != nil {
 		return fmt.Errorf("limit must be an integer")
 	}
@@ -814,6 +817,7 @@ func (e *Executors) EventsUpdate(ctx context.Context, parameters interpoler.Para
 						Limiter: control.LimiterConfig{
 							Limit: limitInt32,
 						},
+						ExportTemplate: exportTemplateParameter.Value,
 					},
 				},
 			},

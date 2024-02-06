@@ -66,12 +66,13 @@ func ParseSampleType(t string) SampleType {
 }
 
 type Event struct {
-	UID        SamplerEventUID
-	Name       string
-	StreamUID  SamplerStreamUID
-	SampleType SampleType
-	Rule       Rule
-	Limiter    LimiterConfig
+	UID            SamplerEventUID
+	Name           string
+	StreamUID      SamplerStreamUID
+	SampleType     SampleType
+	Rule           Rule
+	Limiter        LimiterConfig
+	ExportTemplate string
 }
 
 func (e Event) GetName() string {
@@ -84,25 +85,26 @@ func NewEventFromProto(protoEvent *protos.Event) Event {
 	}
 
 	return Event{
-		UID:        SamplerEventUID(protoEvent.GetUid()),
-		Name:       protoEvent.Name,
-		StreamUID:  SamplerStreamUID(protoEvent.GetStreamUid()),
-		SampleType: NewSampleTypeFromProto(protoEvent.GetSampleType()),
-		Rule:       NewRuleFromProto(protoEvent.GetRule()),
-		Limiter:    NewLimiterFromProto(protoEvent.GetLimiter()),
+		UID:            SamplerEventUID(protoEvent.GetUid()),
+		Name:           protoEvent.GetName(),
+		StreamUID:      SamplerStreamUID(protoEvent.GetStreamUid()),
+		SampleType:     NewSampleTypeFromProto(protoEvent.GetSampleType()),
+		Rule:           NewRuleFromProto(protoEvent.GetRule()),
+		Limiter:        NewLimiterFromProto(protoEvent.GetLimiter()),
+		ExportTemplate: protoEvent.GetExportTemplate(),
 	}
 }
 
 func (e *Event) ToProto() *protos.Event {
 	return &protos.Event{
-		Uid:        string(e.UID),
-		Name:       e.Name,
-		StreamUid:  string(e.StreamUID),
-		SampleType: e.SampleType.ToProto(),
-		Rule:       e.Rule.ToProto(),
-		Limiter:    e.Limiter.ToProto(),
+		Uid:            string(e.UID),
+		Name:           e.Name,
+		StreamUid:      string(e.StreamUID),
+		SampleType:     e.SampleType.ToProto(),
+		Rule:           e.Rule.ToProto(),
+		Limiter:        e.Limiter.ToProto(),
+		ExportTemplate: e.ExportTemplate,
 	}
-
 }
 
 type EventUpdateOp int
