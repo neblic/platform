@@ -25,6 +25,7 @@ type event struct {
 	rule           rule.Rule
 	ruleExpression string
 	limiter        rate.Limiter
+	metadata       *MetadataBuilder
 }
 
 type Eventor struct {
@@ -54,12 +55,18 @@ func (e *Eventor) newEventFrom(eventCfg control.Event) (*event, error) {
 		return nil, fmt.Errorf("cannot create rule: %w", err)
 	}
 
+	metadata, err := NewMetadataBuilder(eventCfg.ExportTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create metadata builder: %w", err)
+	}
+
 	return &event{
 		rule:           *rule,
 		uid:            eventCfg.UID,
 		streamUID:      eventCfg.StreamUID,
 		ruleExpression: eventCfg.Rule.Expression,
 		limiter:        *rate.NewLimiter(rate.Limit(eventCfg.Limiter.Limit), int(eventCfg.Limiter.Limit)),
+		metadata:       metadata,
 	}, nil
 }
 
@@ -125,12 +132,21 @@ func (e *Eventor) ProcessSample(samplerLogs dsample.SamplerOTLPLogs) error {
 
 				if ruleMatches {
 					if event.limiter.Allow() {
+						// given that data has already been evaluated by the rule CEL engine,
+						// while building the metadata using CEL as well it should reuse the
+						// parsing from JSON to map[string]interface{}
+						sampleMetadata, err := event.metadata.Build(context.Background(), data, rawSample.SampleKey())
+						if err != nil {
+							errs = errors.Join(fmt.Errorf("error building metadata %w", err))
+							sampleMetadata = ""
+						}
+
 						otlpLog := samplerLogs.AppendEventOTLPLog()
 						otlpLog.SetUID(event.uid)
 						otlpLog.SetTimestamp(time.Now())
 						otlpLog.SetStreams([]control.SamplerStreamUID{event.streamUID})
 						otlpLog.SetSampleKey(rawSample.SampleKey())
-						otlpLog.SetSampleRawData(rawSample.SampleEncoding(), rawSample.SampleRawData())
+						otlpLog.SetSampleRawData(dsample.Encoding(sample.JSONSampleType), []byte(sampleMetadata))
 						otlpLog.SetRuleExpression(event.ruleExpression)
 					}
 				}

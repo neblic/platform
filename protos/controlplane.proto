@@ -91,6 +91,7 @@ message Event {
   SampleType sample_type = 4;
   Rule rule = 5;
   Limiter limiter = 6;
+  string export_template = 7;
 }
 
 // Used to get and update the sampler configuration.
