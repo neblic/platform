@@ -124,7 +124,12 @@ func (e *Eventor) ProcessSample(samplerLogs dsample.SamplerOTLPLogs) error {
 					continue
 				}
 
-				ruleMatches, err := event.rule.Eval(context.Background(), data)
+				var ruleMatches bool
+				if rawSample.SampleKey() != "" {
+					ruleMatches, err = event.rule.EvalKeyed(context.Background(), rawSample.SampleKey(), data)
+				} else {
+					ruleMatches, err = event.rule.Eval(context.Background(), data)
+				}
 				if err != nil {
 					errs = errors.Join(fmt.Errorf("eval(%s) -> %w", event.ruleExpression, err))
 					continue

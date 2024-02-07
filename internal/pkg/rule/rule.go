@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/cel-go/cel"
 	"github.com/neblic/platform/internal/pkg/data"
+	"github.com/neblic/platform/internal/pkg/rule/function"
 	"github.com/neblic/platform/sampler/sample"
 )
 
@@ -18,17 +19,17 @@ const (
 )
 
 type Rule struct {
-	schema            sample.Schema
-	prg               cel.Program
-	sampleComp        sampleCompatibility
-	statefulFunctions []StatefulFunction
+	schema     sample.Schema
+	prg        cel.Program
+	sampleComp sampleCompatibility
+	providers  []*function.StatefulFunctionProvider
 }
 
-func New(schema sample.Schema, prg cel.Program, statefulFunctions []StatefulFunction) *Rule {
+func New(schema sample.Schema, prg cel.Program, providers []*function.StatefulFunctionProvider) *Rule {
 	r := &Rule{
-		schema:            schema,
-		prg:               prg,
-		statefulFunctions: statefulFunctions,
+		schema:    schema,
+		prg:       prg,
+		providers: providers,
 	}
 	r.setCompatibility(schema)
 
@@ -65,7 +66,25 @@ func (r *Rule) checkCompatibility(sampleData *data.Data) error {
 	return nil
 }
 
+func (r *Rule) EvalKeyed(ctx context.Context, key string, sampleData *data.Data) (bool, error) {
+	vars := map[string]any{}
+	for _, provider := range r.providers {
+		vars[provider.StateName] = provider.KeyedStatefulFunction(key)
+	}
+
+	return r.eval(ctx, vars, sampleData)
+}
+
 func (r *Rule) Eval(ctx context.Context, sampleData *data.Data) (bool, error) {
+	vars := map[string]any{}
+	for _, provider := range r.providers {
+		vars[provider.StateName] = provider.GlobalStatefulFunction()
+	}
+
+	return r.eval(ctx, vars, sampleData)
+}
+
+func (r *Rule) eval(ctx context.Context, vars map[string]any, sampleData *data.Data) (bool, error) {
 	if err := r.checkCompatibility(sampleData); err != nil {
 		return false, err
 	}
@@ -87,11 +106,8 @@ func (r *Rule) Eval(ctx context.Context, sampleData *data.Data) (bool, error) {
 		}
 	}
 
-	// Add state variables for the stateful functions
-	vars := map[string]interface{}{sampleKey: smpl}
-	for _, sf := range r.statefulFunctions {
-		vars[sf.StateName()] = sf
-	}
+	// Add sample to variables
+	vars[sampleKey] = smpl
 
 	val, _, err := r.prg.ContextEval(ctx, vars)
 	if err != nil {

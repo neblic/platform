@@ -80,7 +80,7 @@ func (rb *Builder) Build(rule string) (*Rule, error) {
 
 	// Inject state to stateful functions
 	checkedExprModifier := NewCheckedExprModifier(expr)
-	statefulFunctions, err := checkedExprModifier.InjectState()
+	providers, err := checkedExprModifier.InjectState()
 	if err != nil {
 		return nil, err
 	}
@@ -93,5 +93,5 @@ func (rb *Builder) Build(rule string) (*Rule, error) {
 		return nil, fmt.Errorf("couldn't build CEL program: %w", err)
 	}
 
-	return New(rb.schema, prg, statefulFunctions), nil
+	return New(rb.schema, prg, providers), nil
 }

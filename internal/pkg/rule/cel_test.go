@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/cel-go/cel"
+	"github.com/neblic/platform/internal/pkg/rule/function"
 	expr "google.golang.org/genproto/googleapis/api/expr/v1alpha1"
 )
 
@@ -31,95 +32,164 @@ func TestCheckedExprModifier_InjectState(t *testing.T) {
 	type args struct {
 		expr *expr.CheckedExpr
 	}
+	type want struct {
+		stateNames        []string
+		statefulFunctions []function.StatefulFunction
+		err               bool
+	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []StatefulFunction
-		wantErr bool
+		name string
+		args args
+		want want
 	}{
 		{
-			name: "sequence function with string field",
+			name: "ascendant sequence function with string field",
 			args: args{
 				expr: compileExpression(t, `sequence("foo", "asc")`),
 			},
-			want:    []StatefulFunction{&SequenceStatefulFunction{stateName: "state0", order: OrderTypeAsc}},
-			wantErr: false,
-		},
-		{
-			name: "sequence function with int field",
-			args: args{
-				expr: compileExpression(t, `sequence(1, "asc")`),
+			want: want{
+				stateNames: []string{"state0"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeAsc}, State: &function.SequenceState{}},
+				},
+				err: false,
 			},
-			want:    []StatefulFunction{&SequenceStatefulFunction{stateName: "state0", order: OrderTypeAsc}},
-			wantErr: false,
 		},
 		{
-			name: "sequence function with uint field",
+			name: "descendant sequence function with int field",
+			args: args{
+				expr: compileExpression(t, `sequence(1, "desc")`),
+			},
+			want: want{
+				stateNames: []string{"state0"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeDesc}, State: &function.SequenceState{}},
+				},
+				err: false,
+			},
+		},
+		{
+			name: "ascendant sequence function with uint field",
 			args: args{
 				expr: compileExpression(t, `sequence(1u, "asc")`),
 			},
-			want:    []StatefulFunction{&SequenceStatefulFunction{stateName: "state0", order: OrderTypeAsc}},
-			wantErr: false,
+			want: want{
+				stateNames: []string{"state0"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeAsc}, State: &function.SequenceState{}},
+				},
+				err: false,
+			},
 		},
 		{
-			name: "sequence function with float field",
+			name: "ascendant sequence function with float field",
 			args: args{
 				expr: compileExpression(t, `sequence(1.0, "asc")`),
 			},
-			want:    []StatefulFunction{&SequenceStatefulFunction{stateName: "state0", order: OrderTypeAsc}},
-			wantErr: false,
+			want: want{
+				stateNames: []string{"state0"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeAsc}, State: &function.SequenceState{}},
+				},
+				err: false,
+			},
 		},
 		{
 			name: "complete function with int field",
 			args: args{
 				expr: compileExpression(t, `complete(1, 1)`),
 			},
-			want:    []StatefulFunction{&CompleteStatefulFunction{stateName: "state0", step: 1}},
-			wantErr: false,
+			want: want{
+				stateNames: []string{"state0"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.CompleteStatefulFunction{Parameters: &function.CompleteParameters{Step: 1}, State: &function.CompleteState{}},
+				},
+				err: false,
+			},
 		},
 		{
 			name: "complete function with uint field",
 			args: args{
 				expr: compileExpression(t, `complete(1u, 1)`),
 			},
-			want:    []StatefulFunction{&CompleteStatefulFunction{stateName: "state0", step: 1}},
-			wantErr: false,
+			want: want{
+				stateNames: []string{"state0"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.CompleteStatefulFunction{Parameters: &function.CompleteParameters{Step: 1}, State: &function.CompleteState{}},
+				},
+				err: false,
+			},
 		},
 		{
-			name: "sequence function with float field",
+			name: "complete function with float field",
 			args: args{
 				expr: compileExpression(t, `complete(1.0, 1.0)`),
 			},
-			want:    []StatefulFunction{&CompleteStatefulFunction{stateName: "state0", step: 1}},
-			wantErr: false,
+			want: want{
+				stateNames: []string{"state0"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.CompleteStatefulFunction{Parameters: &function.CompleteParameters{Step: 1}, State: &function.CompleteState{}},
+				},
+				err: false,
+			},
 		},
 		{
 			name: "stateful function not in the root of the expression",
 			args: args{
 				expr: compileExpression(t, `sequence("foo", "asc") && "bar" == "bar"`),
 			},
-			want:    []StatefulFunction{&SequenceStatefulFunction{stateName: "state0", order: OrderTypeAsc}},
-			wantErr: false,
+			want: want{
+				stateNames: []string{"state0"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeAsc}, State: &function.SequenceState{}},
+				},
+				err: false,
+			},
 		},
 		{
 			name: "multiple stateful functions",
 			args: args{
 				expr: compileExpression(t, `sequence("foo", "asc") && sequence(1, "desc")`),
 			},
-			want:    []StatefulFunction{&SequenceStatefulFunction{stateName: "state0", order: OrderTypeAsc}, &SequenceStatefulFunction{stateName: "state1", order: OrderTypeDesc}},
-			wantErr: false,
+			want: want{
+				stateNames: []string{"state0", "state1"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeAsc}, State: &function.SequenceState{}},
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeDesc}, State: &function.SequenceState{}},
+				},
+				err: false,
+			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			checkedExprModifier := NewCheckedExprModifier(tt.args.expr)
 			got, err := checkedExprModifier.InjectState()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CheckedExprModifier.InjectState() error = %v, wantErr %v", err, tt.wantErr)
+			if (err != nil) != tt.want.err {
+				t.Errorf("CheckedExprModifier.InjectState() error = %v, wantErr %v", err, tt.want.err)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("CheckedExprModifier.InjectState() = %v, want %v", got, tt.want)
+
+			if len(got) != len(tt.want.stateNames) {
+				t.Errorf("CheckedExprModifier.InjectState() state names length = %v, want %v", len(got), len(tt.want.stateNames))
+				return
+			}
+
+			if len(got) != len(tt.want.statefulFunctions) {
+				t.Errorf("CheckedExprModifier.InjectState() stateful functions length = %v, want %v", len(got), len(tt.want.statefulFunctions))
+				return
+			}
+
+			for i, provider := range got {
+				gotStateName := provider.StateName
+				if gotStateName != tt.want.stateNames[i] {
+					t.Errorf("CheckedExprModifier.InjectState() state name = %v, want %v", gotStateName, tt.want.stateNames)
+				}
+
+				gotStatefulFunction := provider.GlobalStatefulFunction()
+				if !reflect.DeepEqual(gotStatefulFunction, tt.want.statefulFunctions[i]) {
+					t.Errorf("CheckedExprModifier.InjectState() stateful function = %v, want %v", gotStatefulFunction, tt.want.statefulFunctions)
+				}
 			}
 		})
 	}
