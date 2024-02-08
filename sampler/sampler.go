@@ -21,3 +21,25 @@ type Sampler interface {
 func New(name string, schema sample.Schema, opts ...Option) (Sampler, error) {
 	return globalProvider().Sampler(name, schema, opts...)
 }
+
+var registeredSamplers = make(map[string]Sampler)
+
+// Sample samples the given data sample using the given sampler name and schema.
+// If a sampler with the given name is not registered, it will be created.
+// Note that if there is any error creating the sampler, it wont't be reported and the sample will be silently discarded.
+func Sample(ctx context.Context, name string, schema sample.Schema, sample sample.Sample) bool {
+	var sampler Sampler
+	if s, ok := registeredSamplers[name]; ok {
+		sampler = s
+	} else {
+		var err error
+		sampler, err = New(name, schema)
+		if err != nil {
+			// unfortunately, we have no way to report the error
+			return false
+		}
+		registeredSamplers[name] = sampler
+	}
+
+	return sampler.Sample(ctx, sample)
+}
