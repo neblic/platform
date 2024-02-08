@@ -2,13 +2,81 @@ package grpc
 
 import (
 	"context"
+	"strings"
 
 	oldProto "github.com/golang/protobuf/proto"
 	"github.com/neblic/platform/sampler"
 	"github.com/neblic/platform/sampler/sample"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
+
+type options struct {
+	setKey  bool
+	keyPath string
+}
+
+func newDefaultOptions() *options {
+	return &options{
+		setKey: false,
+	}
+}
+
+type Option interface {
+	apply(*options)
+}
+
+type funcOption struct {
+	f func(*options)
+}
+
+func (fco *funcOption) apply(co *options) {
+	fco.f(co)
+}
+
+func newFuncOption(f func(*options)) *funcOption {
+	return &funcOption{
+		f: f,
+	}
+}
+
+// WithKeyField receives a path to a field in the request message that will be used as the key for the sampler.
+// The path is a dot-separated string that represents the field's path in the message.
+// The field names must be specified as defined in the proto file.
+func WithKeyField(keyPath string) Option {
+	return newFuncOption(func(po *options) {
+		po.setKey = true
+		po.keyPath = keyPath
+	})
+}
+
+func getValueFromProto(msg proto.Message, path string) protoreflect.Value {
+	parts := strings.Split(path, ".")
+	return getValueFromProtoReflect(msg.ProtoReflect(), parts)
+}
+
+func getValueFromProtoReflect(msg protoreflect.Message, parts []string) protoreflect.Value {
+	if len(parts) == 0 {
+		return protoreflect.Value{}
+	}
+
+	field := msg.Descriptor().Fields().ByTextName(parts[0])
+	if field == nil {
+		return protoreflect.Value{}
+	}
+
+	value := msg.Get(field)
+	if len(parts) == 1 {
+		return value
+	}
+
+	if field.Message() == nil {
+		return protoreflect.Value{}
+	}
+
+	return getValueFromProtoReflect(value.Message(), parts[1:])
+}
 
 func toProtoMessage(msg interface{}) proto.Message {
 	var protoMsg proto.Message
@@ -39,7 +107,12 @@ func getProtoSampler(samplers map[string]sampler.Sampler, key string, schema pro
 
 // UnaryClientInterceptor provides a gRPC unary client interceptor that lazily creates two samplers
 // per each gRPC method called by the client. The samplers capture the request and response gRPC messages.
-func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
+func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
+	options := newDefaultOptions()
+	for _, o := range opts {
+		o.apply(options)
+	}
+
 	samplerReqs := make(map[string]sampler.Sampler)
 	samplerResps := make(map[string]sampler.Sampler)
 
@@ -55,8 +128,17 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 		if reqProtoMsg != nil {
 			samplerName := method + "Req"
 			samplerReq := getProtoSampler(samplerReqs, samplerName, reqProtoMsg)
-			// TODO: allow the user to provide a way to get the determinant from the request
-			samplerReq.Sample(ctx, sample.ProtoSample(reqProtoMsg, ""))
+
+			key := ""
+			if options.setKey {
+				f := getValueFromProto(reqProtoMsg, options.keyPath)
+				val, ok := f.Interface().(string)
+				if ok {
+					key = val
+				}
+			}
+
+			samplerReq.Sample(ctx, sample.ProtoSample(reqProtoMsg, key))
 		}
 
 		err := invoker(ctx, method, req, reply, cc, callOpts...)
@@ -75,7 +157,12 @@ func UnaryClientInterceptor() grpc.UnaryClientInterceptor {
 
 // UnaryServerInterceptor provides a gRPC unary server interceptor that lazily creates two samplers
 // per each gRPC method served The samplers capture the request and response gRPC messages.
-func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
+func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
+	options := newDefaultOptions()
+	for _, o := range opts {
+		o.apply(options)
+	}
+
 	samplerReqs := make(map[string]sampler.Sampler)
 	samplerResps := make(map[string]sampler.Sampler)
 
@@ -89,8 +176,17 @@ func UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		if reqProtoMsg != nil {
 			samplerName := info.FullMethod + "Req"
 			samplerReq := getProtoSampler(samplerReqs, samplerName, reqProtoMsg)
-			// TODO: allow the user to provide a way to get the determinant from the request
-			samplerReq.Sample(ctx, sample.ProtoSample(reqProtoMsg, ""))
+			reqProtoMsg.ProtoReflect()
+
+			key := ""
+			if options.setKey {
+				f := getValueFromProto(reqProtoMsg, options.keyPath)
+				val, ok := f.Interface().(string)
+				if ok {
+					key = val
+				}
+			}
+			samplerReq.Sample(ctx, sample.ProtoSample(reqProtoMsg, key))
 		}
 
 		reply, err := handler(ctx, req)
