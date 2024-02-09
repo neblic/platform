@@ -1,6 +1,7 @@
 package sampler
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/neblic/platform/controlplane/control"
@@ -36,4 +37,10 @@ type Settings struct {
 	UpdateStatsPeriod time.Duration
 
 	ErrFwrder chan error
+}
+
+func (s *Settings) String() string {
+	redactedSettings := *s
+	redactedSettings.Auth.Bearer = AuthBearerOptions{Token: "REDACTED"}
+	return fmt.Sprintf("%+v", redactedSettings)
 }

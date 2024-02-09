@@ -47,6 +47,8 @@ func New(
 	settings *Settings,
 	logger logging.Logger,
 ) (*Sampler, error) {
+	logger.Debug("Initializing sampler", "settings", settings.String())
+
 	ruleBuilder, err := rule.NewBuilder(settings.Schema, rule.StreamFunctions)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't build CEL rule builder: %w", err)
@@ -88,7 +90,10 @@ func New(
 		EnabledDigests: initialConfig.DigestTypesByLocation(control.ComputationLocationSampler),
 		NotifyErr:      forwardError,
 		Exporter:       settings.Exporter,
+		Logger:         logger,
 	}
+
+	logger.Debug("Initializing digester with settings", digesterSettings)
 	digester := digest.NewDigester(digesterSettings)
 
 	p := &Sampler{
@@ -112,6 +117,7 @@ func New(
 
 	go p.listenControlEvents()
 
+	p.logger.Info("Connecting to control plane", "addr", settings.ControlPlaneAddr)
 	err = controlPlaneClient.Connect(settings.ControlPlaneAddr)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't connect to the control plane: %w", err)
@@ -123,6 +129,8 @@ func New(
 }
 
 func (p *Sampler) listenControlEvents() {
+	p.logger.Debug("Listening for control plane events")
+
 loop:
 	for {
 		event, more := <-p.controlPlaneClient.Events()
@@ -133,7 +141,9 @@ loop:
 
 		switch ev := event.(type) {
 		case csampler.ConfigUpdate:
+			p.logger.Debug("Received config update", "config", ev.Config)
 			p.updateConfig(ev.Config)
+
 			p.configUpdates++
 		case csampler.StateUpdate:
 			switch ev.State {
@@ -143,12 +153,14 @@ loop:
 				p.logger.Info("Sampler deregistered from server")
 			}
 		default:
-			p.logger.Info(fmt.Sprintf("Received unknown event type %T", ev))
+			p.logger.Warn(fmt.Sprintf("Received unknown event type %T", ev))
 		}
 	}
 }
 
 func (p *Sampler) updateStats(period time.Duration) {
+	p.logger.Debug("Starting periodic sampler stats update", "period", period)
+
 	if period == 0 {
 		p.logger.Warn("Sampler stats update period is 0, stats won't be sent to server")
 		return
@@ -177,6 +189,8 @@ func (p *Sampler) updateConfig(config control.SamplerConfig) {
 		if limit == -1 {
 			limit = rate.Inf
 		}
+
+		p.logger.Debug("Configuring limiter in", "limit", limit)
 		p.limiterIn = rate.NewLimiter(limit, int(config.LimiterIn.Limit))
 	}
 
@@ -184,6 +198,7 @@ func (p *Sampler) updateConfig(config control.SamplerConfig) {
 	if config.SamplingIn != nil {
 		switch config.SamplingIn.SamplingType {
 		case control.DeterministicSamplingType:
+			p.logger.Debug("Configuring deterministic sampler in", "sample_rate", config.SamplingIn.DeterministicSampling.SampleRate)
 			deterministicSampler, err := sampling.NewDeterministicSampler(
 				uint(config.SamplingIn.DeterministicSampling.SampleRate),
 				config.SamplingIn.DeterministicSampling.SampleEmptyDeterminant)
@@ -199,6 +214,8 @@ func (p *Sampler) updateConfig(config control.SamplerConfig) {
 	if config.Streams != nil {
 		newStreams := make(map[control.SamplerStreamUID]streamConfig)
 		for _, stream := range config.Streams {
+			p.logger.Debug("Configuring stream", "stream", stream)
+
 			builtRule, err := p.buildSamplingRule(stream.StreamRule)
 			if err != nil {
 				p.logger.Error(fmt.Sprintf("couldn't build sampling rule %+v: %s", stream, err))
@@ -220,10 +237,13 @@ func (p *Sampler) updateConfig(config control.SamplerConfig) {
 		if limit == -1 {
 			limit = rate.Inf
 		}
+
+		p.logger.Debug("Configuring limiter out", "limit", limit)
 		p.limiterOut = rate.NewLimiter(limit, int(config.LimiterOut.Limit))
 	}
 
 	if config.Digests != nil {
+		p.logger.Debug("Configuring digests", "digests", config.Digests)
 		p.digester.SetDigestsConfig(config.Digests)
 	}
 }
