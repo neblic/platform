@@ -10,6 +10,7 @@ import (
 	dpsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/neblic/platform/internal/pkg/exporter"
+	"github.com/neblic/platform/logging"
 	"golang.org/x/exp/slices"
 )
 
@@ -28,6 +29,7 @@ type Settings struct {
 
 	NotifyErr func(error)
 	Exporter  exporter.Exporter
+	Logger    logging.Logger
 }
 
 type Digester struct {
@@ -37,6 +39,7 @@ type Digester struct {
 
 	notifyErr func(error)
 	exporter  exporter.Exporter
+	logger    logging.Logger
 
 	digestsConfig map[control.SamplerDigestUID]control.Digest
 	workers       map[control.SamplerDigestUID]*worker
@@ -50,6 +53,7 @@ func NewDigester(settings Settings) *Digester {
 
 		notifyErr: settings.NotifyErr,
 		exporter:  settings.Exporter,
+		logger:    settings.Logger,
 
 		workers: make(map[control.SamplerDigestUID]*worker),
 	}
@@ -97,6 +101,7 @@ func (d *Digester) SetDigestsConfig(digestCfgs map[control.SamplerDigestUID]cont
 
 		// Check if the digest type is enabled. Otherwise skip digest config
 		if !slices.Contains(d.enabledDigests, digestCfg.Type) {
+			d.logger.Debug("Digest is not enabled, skipping", "config", digestCfg)
 			continue
 		}
 
@@ -114,6 +119,7 @@ func (d *Digester) SetDigestsConfig(digestCfgs map[control.SamplerDigestUID]cont
 		w := newWorker(newWorkerSettings)
 		d.workers[digestCfg.UID] = w
 
+		d.logger.Debug("Starting digest worker", "config", digestCfg)
 		go w.run()
 	}
 

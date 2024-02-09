@@ -168,6 +168,7 @@ func (p *Processor) newDigester(resource, sampler string, digestTypes []control.
 		EnabledDigests: digestTypes,
 		NotifyErr:      notifyErr,
 		Exporter:       p.exporter,
+		Logger:         logger,
 	})
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/neblic/platform/controlplane/control"
 	dpsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/internal/pkg/data"
+	"github.com/neblic/platform/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -81,6 +82,7 @@ func TestBuildWorkers(t *testing.T) {
 
 				NotifyErr: testNotifyErr(t),
 				Exporter:  &mockExporter{},
+				Logger:    logging.NewNopLogger(),
 			})
 
 			d.SetDigestsConfig(tc.oldCfg)
