@@ -174,12 +174,15 @@ func NewListStreamsView() *ListStreamsView {
 
 func (lsv *ListStreamsView) AddSampler(sampler *control.Sampler) {
 	for _, stream := range sampler.Config.Streams {
-		stream := fmt.Sprintf("Name: %s, Rule: %s, ExportRawSamples: %t",
+		streamStr := fmt.Sprintf("Name: %s, Rule: %s, ExportRawSamples: %t",
 			stream.Name,
 			stream.StreamRule,
 			stream.ExportRawSamples,
 		)
-		lsv.rows = append(lsv.rows, []string{sampler.Resource, sampler.Name, stream})
+		if stream.Keyed != nil {
+			streamStr += fmt.Sprintf(", Keyed: {TTL: %s, MaxKeys: %d}", stream.Keyed.TTL.String(), stream.Keyed.MaxKeys)
+		}
+		lsv.rows = append(lsv.rows, []string{sampler.Resource, sampler.Name, streamStr})
 	}
 }
 

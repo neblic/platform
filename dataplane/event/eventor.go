@@ -21,7 +21,7 @@ type Settings struct {
 
 type event struct {
 	uid            control.SamplerEventUID
-	streamUID      control.SamplerStreamUID
+	stream         control.Stream
 	rule           rule.Rule
 	ruleExpression string
 	limiter        rate.Limiter
@@ -49,7 +49,7 @@ func NewEventor(settings Settings) (*Eventor, error) {
 	}, nil
 }
 
-func (e *Eventor) newEventFrom(eventCfg control.Event) (*event, error) {
+func (e *Eventor) newEventFrom(eventCfg control.Event, streamsCfg control.Streams) (*event, error) {
 	rule, err := e.ruleBuilder.Build(eventCfg.Rule.Expression)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create rule: %w", err)
@@ -60,23 +60,28 @@ func (e *Eventor) newEventFrom(eventCfg control.Event) (*event, error) {
 		return nil, fmt.Errorf("cannot create metadata builder: %w", err)
 	}
 
+	stream, ok := streamsCfg[eventCfg.StreamUID]
+	if !ok {
+		return nil, fmt.Errorf("stream %s not found", eventCfg.StreamUID)
+	}
+
 	return &event{
 		rule:           *rule,
 		uid:            eventCfg.UID,
-		streamUID:      eventCfg.StreamUID,
+		stream:         stream,
 		ruleExpression: eventCfg.Rule.Expression,
 		limiter:        *rate.NewLimiter(rate.Limit(eventCfg.Limiter.Limit), int(eventCfg.Limiter.Limit)),
 		metadata:       metadata,
 	}, nil
 }
 
-func (e *Eventor) SetEventsConfig(eventsCfgs map[control.SamplerEventUID]control.Event) error {
+func (e *Eventor) SetEventsConfig(eventsCfgs control.Events, streamsCfg control.Streams) error {
 	var errs error
 
 	// Add new events
 	for eventUID, eventCfg := range eventsCfgs {
 		if _, ok := e.events[eventUID]; !ok {
-			newEvent, err := e.newEventFrom(eventCfg)
+			newEvent, err := e.newEventFrom(eventCfg, streamsCfg)
 			if err != nil {
 				errs = errors.Join(errs, err)
 				continue
@@ -89,7 +94,7 @@ func (e *Eventor) SetEventsConfig(eventsCfgs map[control.SamplerEventUID]control
 	for eventUID, eventCfg := range eventsCfgs {
 		existingEvent, ok := e.events[eventUID]
 		if ok && existingEvent.ruleExpression != eventCfg.Rule.Expression {
-			newEvent, err := e.newEventFrom(eventCfg)
+			newEvent, err := e.newEventFrom(eventCfg, streamsCfg)
 			if err != nil {
 				errs = errors.Join(errs, err)
 				continue
@@ -117,7 +122,7 @@ func (e *Eventor) ProcessSample(samplerLogs dsample.SamplerOTLPLogs) error {
 	// it's call, new events will not be visited.
 	dsample.RangeSamplerLogsWithType[dsample.RawSampleOTLPLog](samplerLogs, func(rawSample dsample.RawSampleOTLPLog) {
 		for _, event := range e.events {
-			if slices.Contains(rawSample.Streams(), event.streamUID) {
+			if slices.Contains(rawSample.Streams(), event.stream.UID) {
 				data, err := rawSample.SampleData()
 				if err != nil {
 					errs = errors.Join(errs, err)
@@ -125,7 +130,7 @@ func (e *Eventor) ProcessSample(samplerLogs dsample.SamplerOTLPLogs) error {
 				}
 
 				var ruleMatches bool
-				if rawSample.SampleKey() != "" {
+				if event.stream.Keyed != nil {
 					ruleMatches, err = event.rule.EvalKeyed(context.Background(), rawSample.SampleKey(), data)
 				} else {
 					ruleMatches, err = event.rule.Eval(context.Background(), data)
@@ -149,7 +154,7 @@ func (e *Eventor) ProcessSample(samplerLogs dsample.SamplerOTLPLogs) error {
 						otlpLog := samplerLogs.AppendEventOTLPLog()
 						otlpLog.SetUID(event.uid)
 						otlpLog.SetTimestamp(time.Now())
-						otlpLog.SetStreams([]control.SamplerStreamUID{event.streamUID})
+						otlpLog.SetStreams([]control.SamplerStreamUID{event.stream.UID})
 						otlpLog.SetSampleKey(rawSample.SampleKey())
 						otlpLog.SetSampleRawData(dsample.Encoding(sample.JSONSampleType), []byte(sampleMetadata))
 						otlpLog.SetRuleExpression(event.ruleExpression)

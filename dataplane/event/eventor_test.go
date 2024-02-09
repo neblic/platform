@@ -20,7 +20,7 @@ func TestEventor_ProcessSample(t *testing.T) {
 	// Set the configuration for the Eventor
 	event1UUID := control.SamplerEventUID(uuid.NewString())
 	event2UUID := control.SamplerEventUID(uuid.NewString())
-	err = eventor.SetEventsConfig(map[control.SamplerEventUID]control.Event{
+	events := control.Events{
 		event1UUID: {
 			UID:       event1UUID,
 			Name:      "event1",
@@ -46,7 +46,14 @@ func TestEventor_ProcessSample(t *testing.T) {
 				Limit: 0,
 			},
 		},
-	})
+	}
+	streams := control.Streams{
+		"stream1": {
+			UID:  "stream1",
+			Name: "stream1",
+		},
+	}
+	err = eventor.SetEventsConfig(events, streams)
 	if err != nil {
 		t.Fatalf("SetEventsConfig() returned an error: %v", err)
 	}

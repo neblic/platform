@@ -325,6 +325,27 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Optional: true,
 						Default:  "false",
 					},
+					{
+						Name:        "keyed",
+						Description: "Convert stream to a keyed stream. During the computation of an event in a keyed stream, each different key will have its own state",
+						Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
+							return []string{"true", "false"}
+						},
+						Optional: true,
+						Default:  "false",
+					},
+					{
+						Name:        "keyed-ttl",
+						Description: "If the stream is keyed, this parameter controls the time to live for each key. Follows golang duration format",
+						Optional:    true,
+						Default:     "1h",
+					},
+					{
+						Name:        "keyed-max-keys",
+						Description: "If the stream is keyed, this parameter controls the maximum number of keys to keep",
+						Optional:    true,
+						Default:     "1000",
+					},
 				},
 				Executor: controlPlaneExecutors.StreamsCreate,
 			},
@@ -366,6 +387,27 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						},
 						Optional: true,
 						Default:  "false",
+					},
+					{
+						Name:        "keyed",
+						Description: "Convert stream to a keyed stream. During the computation of an event in a keyed stream, each different key will have its own state",
+						Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
+							return []string{"true", "false"}
+						},
+						Optional: true,
+						Default:  "false",
+					},
+					{
+						Name:        "keyed-ttl",
+						Description: "If the stream is keyed, this parameter controls the time to live for each key. Follows golang duration format",
+						Optional:    true,
+						Default:     "1h",
+					},
+					{
+						Name:        "keyed-max-keys",
+						Description: "If the stream is keyed, this parameter controls the maximum number of keys to keep",
+						Optional:    true,
+						Default:     "1000",
 					},
 				},
 				Executor: controlPlaneExecutors.StreamsUpdate,

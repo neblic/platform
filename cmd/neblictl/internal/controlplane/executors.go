@@ -143,6 +143,24 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 		return fmt.Errorf("export-raw must be a boolean")
 	}
 
+	keyedParameter, _ := parameters.Get("keyed")
+	keyedBool, err := strconv.ParseBool(keyedParameter.Value)
+	if err != nil {
+		return fmt.Errorf("keyed must be a boolean")
+	}
+
+	keyedTTLParameter, _ := parameters.Get("keyed-ttl")
+	keyedTTL, err := time.ParseDuration(keyedTTLParameter.Value)
+	if err != nil {
+		return fmt.Errorf("keyed-ttl must be a duration")
+	}
+
+	keyedMaxKeysParameter, _ := parameters.Get("keyed-max-keys")
+	keyedMaxKeysInt32, err := keyedMaxKeysParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("keyed-max-keys must be an integer")
+	}
+
 	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, "*", false)
 	if err != nil {
@@ -158,6 +176,13 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 			continue
 		}
 
+		var keyed *control.Keyed
+		if keyedBool {
+			keyed = &control.Keyed{
+				TTL:     keyedTTL,
+				MaxKeys: keyedMaxKeysInt32,
+			}
+		}
 		update := &control.SamplerConfigUpdate{
 			StreamUpdates: []control.StreamUpdate{
 				{
@@ -170,6 +195,7 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 							Expression: streamRuleParameter.Value,
 						},
 						ExportRawSamples: exportRawBool,
+						Keyed:            keyed,
 					},
 				},
 			},
@@ -201,6 +227,24 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 		return fmt.Errorf("export-raw must be a boolean")
 	}
 
+	keyedParameter, _ := parameters.Get("keyed")
+	keyedBool, err := strconv.ParseBool(keyedParameter.Value)
+	if err != nil {
+		return fmt.Errorf("keyed must be a boolean")
+	}
+
+	keyedTTLParameter, _ := parameters.Get("keyed-ttl")
+	keyedTTL, err := time.ParseDuration(keyedTTLParameter.Value)
+	if err != nil {
+		return fmt.Errorf("keyed-ttl must be a duration")
+	}
+
+	keyedMaxKeysParameter, _ := parameters.Get("keyed-max-keys")
+	keyedMaxKeysInt32, err := keyedMaxKeysParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("keyed-max-keys must be an integer")
+	}
+
 	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, streamNameParameter.Value, false)
 	if err != nil {
@@ -218,6 +262,13 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 		}
 
 		// Modify sampling rule to existing config
+		var keyed *control.Keyed
+		if keyedBool {
+			keyed = &control.Keyed{
+				TTL:     keyedTTL,
+				MaxKeys: keyedMaxKeysInt32,
+			}
+		}
 		update := &control.SamplerConfigUpdate{
 			StreamUpdates: []control.StreamUpdate{
 				{
@@ -230,6 +281,7 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 							Expression: updatedRuleParameter.Value,
 						},
 						ExportRawSamples: exportRawBool,
+						Keyed:            keyed,
 					},
 				},
 			},
