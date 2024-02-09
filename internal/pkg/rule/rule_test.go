@@ -4,8 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/internal/pkg/data"
+	"github.com/neblic/platform/internal/pkg/rule/function"
 	"github.com/neblic/platform/sampler/sample"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -47,7 +49,7 @@ func TestEvalJSON(t *testing.T) {
 			rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.expression)
+			rule, err := rb.Build(tc.expression, control.Stream{})
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromJSON(tc.sample)
@@ -106,7 +108,7 @@ func TestEvalNative(t *testing.T) {
 			rb, err := NewBuilder(sample.NewDynamicSchema(), CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.expression)
+			rule, err := rb.Build(tc.expression, control.Stream{})
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromNative(tc.sample)
@@ -150,7 +152,7 @@ func TestEvalProto(t *testing.T) {
 			rb, err := NewBuilder(sample.NewProtoSchema(&protos.SamplerToServer{}), CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.expression)
+			rule, err := rb.Build(tc.expression, control.Stream{})
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromProto(tc.sample)
@@ -169,7 +171,7 @@ func TestEvalSequence(t *testing.T) {
 	rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
 	require.NoError(t, err)
 
-	rule, err := rb.Build(`sequence(sample.id, "asc")`)
+	rule, err := rb.Build(`sequence(sample.id, "asc")`, control.Stream{})
 	require.NoError(t, err)
 
 	gotMatch, err := rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 1}`))
@@ -189,7 +191,7 @@ func TestEvalComplete(t *testing.T) {
 	rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
 	require.NoError(t, err)
 
-	rule, err := rb.Build(`complete(sample.id, 1.0)`)
+	rule, err := rb.Build(`complete(sample.id, 1.0)`, control.Stream{})
 	require.NoError(t, err)
 
 	gotMatch, err := rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 1}`))
@@ -209,7 +211,7 @@ func TestEvalKeyedJSON(t *testing.T) {
 	rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
 	require.NoError(t, err)
 
-	rule, err := rb.Build(`sequence(sample.id, "asc")`)
+	rule, err := rb.Build(`sequence(sample.id, "asc")`, control.Stream{Keyed: &control.Keyed{MaxKeys: 2}})
 	require.NoError(t, err)
 
 	// key1 first eval is always true
@@ -241,4 +243,13 @@ func TestEvalKeyedJSON(t *testing.T) {
 	gotMatch, err = rule.EvalKeyed(context.Background(), "key2", data.NewSampleDataFromJSON(`{"id": -1}`))
 	require.NoError(t, err)
 	require.False(t, gotMatch)
+
+	// key3 first eval must return an error because the maximum number of keys was reached
+	_, err = rule.EvalKeyed(context.Background(), "key3", data.NewSampleDataFromJSON(`{"id": 20}`))
+	require.Error(t, function.ErrMaxKeys, err)
+
+	// key2 eval bigger number must be true even after reaching the macimum number of keys
+	gotMatch, err = rule.EvalKeyed(context.Background(), "key2", data.NewSampleDataFromJSON(`{"id": 2}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
 }

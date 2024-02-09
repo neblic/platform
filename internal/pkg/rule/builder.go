@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/cel-go/cel"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/sampler/sample"
 )
 
@@ -61,7 +62,7 @@ func NewBuilder(schema sample.Schema, supportedFunctions SupportedFunctions) (*B
 	}, nil
 }
 
-func (rb *Builder) Build(rule string) (*Rule, error) {
+func (rb *Builder) Build(rule string, stream control.Stream) (*Rule, error) {
 	env := rb.env
 
 	ast, iss := env.Compile(rule)
@@ -83,6 +84,13 @@ func (rb *Builder) Build(rule string) (*Rule, error) {
 	providers, err := checkedExprModifier.InjectState()
 	if err != nil {
 		return nil, err
+	}
+
+	// Configure managed keyed state if necessary
+	if stream.Keyed != nil {
+		for _, provider := range providers {
+			provider.WithManagedKeyedState(stream.Keyed.TTL, stream.Keyed.MaxKeys)
+		}
 	}
 
 	ast = cel.CheckedExprToAst(expr)

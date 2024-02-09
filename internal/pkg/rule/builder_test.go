@@ -3,6 +3,7 @@ package rule
 import (
 	"testing"
 
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/sampler/sample"
 )
 
@@ -11,7 +12,8 @@ func TestBuilder_Build(t *testing.T) {
 		schema sample.Schema
 	}
 	type args struct {
-		rule string
+		rule   string
+		stream control.Stream
 	}
 	tests := []struct {
 		name    string
@@ -25,7 +27,8 @@ func TestBuilder_Build(t *testing.T) {
 				schema: sample.NewDynamicSchema(),
 			},
 			args: args{
-				rule: `abs(-1) == 1`,
+				rule:   `abs(-1) == 1`,
+				stream: control.Stream{},
 			},
 			wantErr: false,
 		},
@@ -35,7 +38,8 @@ func TestBuilder_Build(t *testing.T) {
 				schema: sample.NewDynamicSchema(),
 			},
 			args: args{
-				rule: `sequence(-1, "asc")`,
+				rule:   `sequence(-1, "asc")`,
+				stream: control.Stream{},
 			},
 			wantErr: false,
 		},
@@ -45,7 +49,8 @@ func TestBuilder_Build(t *testing.T) {
 				schema: sample.NewDynamicSchema(),
 			},
 			args: args{
-				rule: `complete(0, 1)`,
+				rule:   `complete(0, 1)`,
+				stream: control.Stream{},
 			},
 			wantErr: false,
 		},
@@ -57,7 +62,7 @@ func TestBuilder_Build(t *testing.T) {
 				t.Errorf("Builder.NewBuilder() error = %v", err)
 				return
 			}
-			_, err = rb.Build(tt.args.rule)
+			_, err = rb.Build(tt.args.rule, tt.args.stream)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Builder.Build() error = %v, wantErr %v", err, tt.wantErr)
 				return

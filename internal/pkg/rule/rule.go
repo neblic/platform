@@ -19,6 +19,7 @@ const (
 )
 
 type Rule struct {
+	ctx        context.Context
 	schema     sample.Schema
 	prg        cel.Program
 	sampleComp sampleCompatibility
@@ -27,6 +28,7 @@ type Rule struct {
 
 func New(schema sample.Schema, prg cel.Program, providers []*function.StatefulFunctionProvider) *Rule {
 	r := &Rule{
+		ctx:       context.Background(),
 		schema:    schema,
 		prg:       prg,
 		providers: providers,
@@ -69,7 +71,11 @@ func (r *Rule) checkCompatibility(sampleData *data.Data) error {
 func (r *Rule) EvalKeyed(ctx context.Context, key string, sampleData *data.Data) (bool, error) {
 	vars := map[string]any{}
 	for _, provider := range r.providers {
-		vars[provider.StateName] = provider.KeyedStatefulFunction(key)
+		var err error
+		vars[provider.StateName], err = provider.KeyedStatefulFunction(key)
+		if err != nil {
+			return false, err
+		}
 	}
 
 	return r.eval(ctx, vars, sampleData)

@@ -9,6 +9,7 @@ import (
 	"github.com/neblic/platform/controlplane/control"
 	dsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/internal/pkg/rule"
+	"github.com/neblic/platform/internal/pkg/rule/function"
 	"github.com/neblic/platform/sampler/sample"
 	"golang.org/x/exp/slices"
 	"golang.org/x/time/rate"
@@ -50,11 +51,6 @@ func NewEventor(settings Settings) (*Eventor, error) {
 }
 
 func (e *Eventor) newEventFrom(eventCfg control.Event, streamsCfg control.Streams) (*event, error) {
-	rule, err := e.ruleBuilder.Build(eventCfg.Rule.Expression)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create rule: %w", err)
-	}
-
 	metadata, err := NewMetadataBuilder(eventCfg.ExportTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create metadata builder: %w", err)
@@ -63,6 +59,11 @@ func (e *Eventor) newEventFrom(eventCfg control.Event, streamsCfg control.Stream
 	stream, ok := streamsCfg[eventCfg.StreamUID]
 	if !ok {
 		return nil, fmt.Errorf("stream %s not found", eventCfg.StreamUID)
+	}
+
+	rule, err := e.ruleBuilder.Build(eventCfg.Rule.Expression, stream)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create rule: %w", err)
 	}
 
 	return &event{
@@ -132,6 +133,11 @@ func (e *Eventor) ProcessSample(samplerLogs dsample.SamplerOTLPLogs) error {
 				var ruleMatches bool
 				if event.stream.Keyed != nil {
 					ruleMatches, err = event.rule.EvalKeyed(context.Background(), rawSample.SampleKey(), data)
+					// In case of reaching the maximum number of keys, we continue to the next event without
+					// logging any error
+					if err != nil && err == function.ErrMaxKeys {
+						continue
+					}
 				} else {
 					ruleMatches, err = event.rule.Eval(context.Background(), data)
 				}
