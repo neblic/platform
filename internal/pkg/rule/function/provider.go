@@ -3,6 +3,7 @@ package function
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/google/cel-go/common/types/ref"
@@ -23,6 +24,7 @@ type state struct {
 
 type StatefulFunctionProvider struct {
 	StateName               string
+	mutex                   sync.RWMutex
 	ctx                     context.Context
 	ctxCancel               context.CancelFunc
 	maxKeys                 int32
@@ -36,6 +38,7 @@ func NewStatefulFunctionProvider(stateName string, statefulFunctionBuilder func(
 	ctx, cancel := context.WithCancel(context.Background())
 	return &StatefulFunctionProvider{
 		StateName:               stateName,
+		mutex:                   sync.RWMutex{},
 		ctx:                     ctx,
 		ctxCancel:               cancel,
 		statefulFunctionBuilder: statefulFunctionBuilder,
@@ -56,7 +59,9 @@ func (sfp *StatefulFunctionProvider) WithManagedKeyedState(ttl time.Duration, ma
 			case <-ticker.C:
 				for key, state := range sfp.keyedStates {
 					if time.Since(state.lastAccessed) > ttl {
+						sfp.mutex.Lock()
 						delete(sfp.keyedStates, key)
+						sfp.mutex.Unlock()
 					}
 				}
 			}
@@ -72,7 +77,9 @@ func (sfp *StatefulFunctionProvider) GlobalStatefulFunction() StatefulFunction {
 }
 
 func (sfp *StatefulFunctionProvider) KeyedStatefulFunction(key string) (StatefulFunction, error) {
+	sfp.mutex.RLock()
 	s, ok := sfp.keyedStates[key]
+	sfp.mutex.RUnlock()
 	if !ok {
 
 		// Check if the maximum number of keys has been reached
@@ -83,7 +90,9 @@ func (sfp *StatefulFunctionProvider) KeyedStatefulFunction(key string) (Stateful
 		s = state{
 			state: sfp.stateBuilder(),
 		}
+		sfp.mutex.Lock()
 		sfp.keyedStates[key] = s
+		sfp.mutex.Unlock()
 	}
 	s.lastAccessed = time.Now()
 
