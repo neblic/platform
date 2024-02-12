@@ -36,7 +36,7 @@ func NewSequenceStateOf[T constraints.Ordered](parameters *SequenceParameters) *
 	}
 }
 
-func CallSequence[T constraints.Ordered](ss *SequenceStateOf[T], parameters *SequenceParameters, value T) bool {
+func CallSequence[T constraints.Ordered](ss *SequenceStateOf[T], value T) bool {
 	if ss.Last == nil {
 		ss.Last = &value
 		return true
@@ -81,7 +81,7 @@ func NewSequenceStatefulFunction(parameters *SequenceParameters, state *Sequence
 	}
 }
 
-func (ssf *SequenceStatefulFunction) HasTrait(trait int) bool {
+func (ssf *SequenceStatefulFunction) HasTrait(_ int) bool {
 	return false
 }
 
@@ -99,7 +99,7 @@ func (ssf *SequenceStatefulFunction) ConvertToType(typeValue ref.Type) ref.Val {
 }
 
 // Equal returns true if the `other` value has the same type and content as the implementing struct.
-func (ssf *SequenceStatefulFunction) Equal(other ref.Val) ref.Val {
+func (ssf *SequenceStatefulFunction) Equal(_ ref.Val) ref.Val {
 	return types.NewErr("equal operation not supported")
 }
 
@@ -122,22 +122,22 @@ func (ssf *SequenceStatefulFunction) Call(value any) bool {
 		if ssf.State.ofInt64 == nil {
 			ssf.State.ofInt64 = NewSequenceStateOf[int64](ssf.Parameters)
 		}
-		returnValue = CallSequence[int64](ssf.State.ofInt64, ssf.Parameters, v)
+		returnValue = CallSequence[int64](ssf.State.ofInt64, v)
 	case uint64:
 		if ssf.State.ofUint64 == nil {
 			ssf.State.ofUint64 = NewSequenceStateOf[uint64](ssf.Parameters)
 		}
-		returnValue = CallSequence[uint64](ssf.State.ofUint64, ssf.Parameters, v)
+		returnValue = CallSequence[uint64](ssf.State.ofUint64, v)
 	case float64:
 		if ssf.State.ofFloat64 == nil {
 			ssf.State.ofFloat64 = NewSequenceStateOf[float64](ssf.Parameters)
 		}
-		returnValue = CallSequence[float64](ssf.State.ofFloat64, ssf.Parameters, v)
+		returnValue = CallSequence[float64](ssf.State.ofFloat64, v)
 	case string:
 		if ssf.State.ofString == nil {
 			ssf.State.ofString = NewSequenceStateOf[string](ssf.Parameters)
 		}
-		returnValue = CallSequence[string](ssf.State.ofString, ssf.Parameters, v)
+		returnValue = CallSequence[string](ssf.State.ofString, v)
 	default:
 		panic(fmt.Sprintf("sequence function requires a value of type int64, uint64, float64 or string. Type %T is not supported", value))
 	}

@@ -90,8 +90,8 @@ func getOrderFromExpression(expression *expr.Expr) (function.OrderType, error) {
 }
 
 type CheckedExprModifier struct {
-	currentStateId int64
-	currentExprId  int64
+	currentStateID int64
+	currentExprID  int64
 	CheckedExpr    *expr.CheckedExpr
 }
 
@@ -105,17 +105,17 @@ func NewCheckedExprModifier(checkedExpr *expr.CheckedExpr) *CheckedExprModifier 
 	id++
 
 	return &CheckedExprModifier{
-		currentStateId: 0,
-		currentExprId:  id,
+		currentStateID: 0,
+		currentExprID:  id,
 		CheckedExpr:    checkedExpr,
 	}
 }
 
 func (cem *CheckedExprModifier) injectStateToCall(exprID int64, callExpr *expr.Expr_Call, messageType string) string {
-	stateName := "state" + fmt.Sprintf("%d", cem.currentStateId)
+	stateName := "state" + fmt.Sprintf("%d", cem.currentStateID)
 
 	argumentExpression := &expr.Expr{
-		Id: cem.currentExprId,
+		Id: cem.currentExprID,
 		ExprKind: &expr.Expr_IdentExpr{
 			IdentExpr: &expr.Expr_Ident{
 				Name: stateName,
@@ -127,7 +127,7 @@ func (cem *CheckedExprModifier) injectStateToCall(exprID int64, callExpr *expr.E
 	callExpr.Args = append(callExpr.Args, argumentExpression)
 
 	// Add expression id to type map
-	cem.CheckedExpr.TypeMap[cem.currentExprId] = &expr.Type{
+	cem.CheckedExpr.TypeMap[cem.currentExprID] = &expr.Type{
 		TypeKind: &expr.Type_MessageType{
 			MessageType: messageType,
 		},
@@ -138,8 +138,8 @@ func (cem *CheckedExprModifier) injectStateToCall(exprID int64, callExpr *expr.E
 		cem.CheckedExpr.ReferenceMap[exprID].OverloadId[i] = overload + "_state"
 	}
 
-	cem.currentStateId++
-	cem.currentExprId++
+	cem.currentStateID++
+	cem.currentExprID++
 
 	return stateName
 }

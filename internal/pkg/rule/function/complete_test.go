@@ -8,9 +8,8 @@ func Test_CallComplete(t *testing.T) {
 	oneInt64 := int64(1)
 
 	type args[T Number] struct {
-		state      *CompleteStateOf[T]
-		parameters *CompleteParameters
-		value      T
+		state *CompleteStateOf[T]
+		value T
 	}
 	tests := []struct {
 		name string
@@ -25,8 +24,7 @@ func Test_CallComplete(t *testing.T) {
 					Step:        1,
 					AllComplete: true,
 				},
-				parameters: nil,
-				value:      1,
+				value: 1,
 			},
 			want: true,
 		},
@@ -38,8 +36,7 @@ func Test_CallComplete(t *testing.T) {
 					Step:        1,
 					AllComplete: true,
 				},
-				parameters: nil,
-				value:      1000000,
+				value: 1000000,
 			},
 			want: false,
 		},
@@ -49,11 +46,11 @@ func Test_CallComplete(t *testing.T) {
 			var got bool
 			switch v := tt.args.(type) {
 			case args[int64]:
-				got = CallComplete(v.state, v.parameters, v.value)
+				got = CallComplete(v.state, v.value)
 			case args[uint64]:
-				got = CallComplete(v.state, v.parameters, v.value)
+				got = CallComplete(v.state, v.value)
 			case args[float64]:
-				got = CallComplete(v.state, v.parameters, v.value)
+				got = CallComplete(v.state, v.value)
 			default:
 				t.Error("unknown type")
 				t.FailNow()

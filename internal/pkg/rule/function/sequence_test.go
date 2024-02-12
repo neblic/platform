@@ -10,9 +10,8 @@ func TestCallSequence(t *testing.T) {
 	zeroInt64 := int64(0)
 
 	type args[T constraints.Ordered] struct {
-		state      *SequenceStateOf[T]
-		parameters *SequenceParameters
-		value      T
+		state *SequenceStateOf[T]
+		value T
 	}
 	tests := []struct {
 		name   string
@@ -28,8 +27,7 @@ func TestCallSequence(t *testing.T) {
 					ExpectedOrder: OrderTypeAsc,
 					ResultOrder:   OrderTypeAsc,
 				},
-				parameters: nil,
-				value:      0,
+				value: 0,
 			},
 			want: true,
 		},
@@ -41,8 +39,7 @@ func TestCallSequence(t *testing.T) {
 					ExpectedOrder: OrderTypeAsc,
 					ResultOrder:   OrderTypeAsc,
 				},
-				parameters: nil,
-				value:      1,
+				value: 1,
 			},
 			want: true,
 		},
@@ -54,8 +51,7 @@ func TestCallSequence(t *testing.T) {
 					ExpectedOrder: OrderTypeAsc,
 					ResultOrder:   OrderTypeAsc,
 				},
-				parameters: nil,
-				value:      -1,
+				value: -1,
 			},
 			want: false,
 		},
@@ -67,8 +63,7 @@ func TestCallSequence(t *testing.T) {
 					ExpectedOrder: OrderTypeDesc,
 					ResultOrder:   OrderTypeDesc,
 				},
-				parameters: nil,
-				value:      0,
+				value: 0,
 			},
 			want: true,
 		},
@@ -80,8 +75,7 @@ func TestCallSequence(t *testing.T) {
 					ExpectedOrder: OrderTypeDesc,
 					ResultOrder:   OrderTypeDesc,
 				},
-				parameters: nil,
-				value:      -1,
+				value: -1,
 			},
 			want: true,
 		},
@@ -93,8 +87,7 @@ func TestCallSequence(t *testing.T) {
 					ExpectedOrder: OrderTypeDesc,
 					ResultOrder:   OrderTypeDesc,
 				},
-				parameters: nil,
-				value:      1,
+				value: 1,
 			},
 			want: false,
 		},
@@ -104,13 +97,13 @@ func TestCallSequence(t *testing.T) {
 			var got bool
 			switch v := tt.args.(type) {
 			case args[int64]:
-				got = CallSequence(v.state, v.parameters, v.value)
+				got = CallSequence(v.state, v.value)
 			case args[uint64]:
-				got = CallSequence(v.state, v.parameters, v.value)
+				got = CallSequence(v.state, v.value)
 			case args[float64]:
-				got = CallSequence(v.state, v.parameters, v.value)
+				got = CallSequence(v.state, v.value)
 			case args[string]:
-				got = CallSequence(v.state, v.parameters, v.value)
+				got = CallSequence(v.state, v.value)
 			default:
 				t.Error("unknown type")
 				t.FailNow()

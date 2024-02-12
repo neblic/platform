@@ -31,7 +31,7 @@ func NewCompleteStateOf[T Number](parameters *CompleteParameters) *CompleteState
 	}
 }
 
-func CallComplete[T Number](cs *CompleteStateOf[T], parameters *CompleteParameters, value T) bool {
+func CallComplete[T Number](cs *CompleteStateOf[T], value T) bool {
 	if cs.Next == nil {
 		cs.Next = new(T)
 		*cs.Next = value
@@ -66,7 +66,7 @@ func NewCompleteStatefulFunction(parameters *CompleteParameters, state *Complete
 	}
 }
 
-func (csf *CompleteStatefulFunction) HasTrait(trait int) bool {
+func (csf *CompleteStatefulFunction) HasTrait(_ int) bool {
 	return false
 }
 
@@ -84,7 +84,7 @@ func (csf *CompleteStatefulFunction) ConvertToType(typeValue ref.Type) ref.Val {
 }
 
 // Equal returns true if the `other` value has the same type and content as the implementing struct.
-func (csf *CompleteStatefulFunction) Equal(other ref.Val) ref.Val {
+func (csf *CompleteStatefulFunction) Equal(_ ref.Val) ref.Val {
 	return types.NewErr("equal operation not supported")
 }
 
@@ -107,17 +107,17 @@ func (csf *CompleteStatefulFunction) Call(value any) bool {
 		if csf.State.ofInt64 == nil {
 			csf.State.ofInt64 = NewCompleteStateOf[int64](csf.Parameters)
 		}
-		returnValue = CallComplete[int64](csf.State.ofInt64, csf.Parameters, v)
+		returnValue = CallComplete[int64](csf.State.ofInt64, v)
 	case uint64:
 		if csf.State.ofUint64 == nil {
 			csf.State.ofUint64 = NewCompleteStateOf[uint64](csf.Parameters)
 		}
-		returnValue = CallComplete[uint64](csf.State.ofUint64, csf.Parameters, v)
+		returnValue = CallComplete[uint64](csf.State.ofUint64, v)
 	case float64:
 		if csf.State.ofFloat64 == nil {
 			csf.State.ofFloat64 = NewCompleteStateOf[float64](csf.Parameters)
 		}
-		returnValue = CallComplete[float64](csf.State.ofFloat64, csf.Parameters, v)
+		returnValue = CallComplete[float64](csf.State.ofFloat64, v)
 	default:
 		panic(fmt.Sprintf("complete function requires a value of type int64, uint64 or float64. Type %T is not supported", value))
 	}
