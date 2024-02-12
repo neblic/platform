@@ -48,9 +48,9 @@ You can take a look at this [section](../learn/samplers.md#configuration) to lea
 
 #### Keyed stream
 
-When a stream is keyed, each `Sample` comes with a key that is used to segment the samples. From the stream point of view, being keyed or not does not change the functionality apart from annotating the generated data with the key. But it changes the functionality of the computations that are perfromed with the data in the following way:
+When a stream is keyed, each `Sample` is expected to come with an associated key. This key is used to logically divide the stream into disjoint partitions where all `Samples` with the same key are assigned to the same partition. It is then possible to perform some computations in each partition independently. Enabling keyed streams can change some functionality:
 
-- Digest: No change for now
+- Digest: No
 - Event: When using [stateful functions](../reference/rules.md#rules), each key has an independent state. 
 
 Key definition:

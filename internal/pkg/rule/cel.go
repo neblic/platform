@@ -170,7 +170,6 @@ func (cem *CheckedExprModifier) injectState(expression *expr.Expr) ([]*function.
 
 		switch callExpr.Function {
 		case "sequence":
-
 			order, err := getOrderFromExpression(callExpr.Args[1])
 			if err != nil {
 				return []*function.StatefulFunctionProvider{}, err

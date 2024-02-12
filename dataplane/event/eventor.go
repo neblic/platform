@@ -9,7 +9,6 @@ import (
 	"github.com/neblic/platform/controlplane/control"
 	dsample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/internal/pkg/rule"
-	"github.com/neblic/platform/internal/pkg/rule/function"
 	"github.com/neblic/platform/sampler/sample"
 	"golang.org/x/exp/slices"
 	"golang.org/x/time/rate"
@@ -133,11 +132,6 @@ func (e *Eventor) ProcessSample(samplerLogs dsample.SamplerOTLPLogs) error {
 				var ruleMatches bool
 				if event.stream.Keyed != nil {
 					ruleMatches, err = event.rule.EvalKeyed(context.Background(), rawSample.SampleKey(), data)
-					// In case of reaching the maximum number of keys, we continue to the next event without
-					// logging any error
-					if err != nil && err == function.ErrMaxKeys {
-						continue
-					}
 				} else {
 					ruleMatches, err = event.rule.Eval(context.Background(), data)
 				}
