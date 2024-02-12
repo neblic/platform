@@ -176,13 +176,6 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 			continue
 		}
 
-		var keyed *control.Keyed
-		if keyedBool {
-			keyed = &control.Keyed{
-				TTL:     keyedTTL,
-				MaxKeys: keyedMaxKeysInt32,
-			}
-		}
 		update := &control.SamplerConfigUpdate{
 			StreamUpdates: []control.StreamUpdate{
 				{
@@ -195,7 +188,11 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 							Expression: streamRuleParameter.Value,
 						},
 						ExportRawSamples: exportRawBool,
-						Keyed:            keyed,
+						Keyed: control.Keyed{
+							Enabled: keyedBool,
+							TTL:     keyedTTL,
+							MaxKeys: keyedMaxKeysInt32,
+						},
 					},
 				},
 			},
@@ -262,13 +259,6 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 		}
 
 		// Modify sampling rule to existing config
-		var keyed *control.Keyed
-		if keyedBool {
-			keyed = &control.Keyed{
-				TTL:     keyedTTL,
-				MaxKeys: keyedMaxKeysInt32,
-			}
-		}
 		update := &control.SamplerConfigUpdate{
 			StreamUpdates: []control.StreamUpdate{
 				{
@@ -281,7 +271,11 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 							Expression: updatedRuleParameter.Value,
 						},
 						ExportRawSamples: exportRawBool,
-						Keyed:            keyed,
+						Keyed: control.Keyed{
+							Enabled: keyedBool,
+							TTL:     keyedTTL,
+							MaxKeys: keyedMaxKeysInt32,
+						},
 					},
 				},
 			},
@@ -785,7 +779,8 @@ func (e *Executors) EventsCreate(ctx context.Context, parameters interpoler.Para
 	dataTypeParameter, _ := parameters.Get("sample-type")
 	ruleParameter, _ := parameters.Get("rule")
 	limitParameter, _ := parameters.Get("limit")
-	exportTemplateParameter, _ := parameters.Get("export-template")
+	exportTemplateParameter, ok := parameters.Get("export-template")
+	fmt.Println(exportTemplateParameter, ok)
 	limitInt32, err := limitParameter.AsInt32()
 	if err != nil {
 		return fmt.Errorf("limit must be an integer")

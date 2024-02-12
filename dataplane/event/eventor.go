@@ -130,7 +130,7 @@ func (e *Eventor) ProcessSample(samplerLogs dsample.SamplerOTLPLogs) error {
 				}
 
 				var ruleMatches bool
-				if event.stream.Keyed != nil {
+				if event.stream.Keyed.Enabled {
 					ruleMatches, err = event.rule.EvalKeyed(context.Background(), rawSample.SampleKey(), data)
 				} else {
 					ruleMatches, err = event.rule.Eval(context.Background(), data)

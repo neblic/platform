@@ -11,27 +11,26 @@ import (
 type SamplerStreamUID string
 
 type Keyed struct {
+	Enabled bool
 	TTL     time.Duration
 	MaxKeys int32
 }
 
-func NewKeyedFromProto(k *protos.Stream_Keyed) *Keyed {
+func NewKeyedFromProto(k *protos.Stream_Keyed) Keyed {
 	if k == nil {
-		return nil
+		return Keyed{}
 	}
 
-	return &Keyed{
+	return Keyed{
+		Enabled: k.Enabled,
 		TTL:     k.GetTtl().AsDuration(),
 		MaxKeys: k.GetMaxKeys(),
 	}
 }
 
-func (k *Keyed) ToProto() *protos.Stream_Keyed {
-	if k == nil {
-		return nil
-	}
-
+func (k Keyed) ToProto() *protos.Stream_Keyed {
 	return &protos.Stream_Keyed{
+		Enabled: k.Enabled,
 		Ttl:     durationpb.New(k.TTL),
 		MaxKeys: k.MaxKeys,
 	}
@@ -42,7 +41,7 @@ type Stream struct {
 	Name             string
 	StreamRule       Rule
 	ExportRawSamples bool
-	Keyed            *Keyed
+	Keyed            Keyed
 }
 
 func (s Stream) GetName() string {

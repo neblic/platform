@@ -211,7 +211,7 @@ func TestEvalKeyedJSON(t *testing.T) {
 	rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
 	require.NoError(t, err)
 
-	rule, err := rb.Build(`sequence(sample.id, "asc")`, control.Stream{Keyed: &control.Keyed{MaxKeys: 2}})
+	rule, err := rb.Build(`sequence(sample.id, "asc")`, control.Stream{Keyed: control.Keyed{Enabled: true, MaxKeys: 2}})
 	require.NoError(t, err)
 
 	// key1 first eval is always true

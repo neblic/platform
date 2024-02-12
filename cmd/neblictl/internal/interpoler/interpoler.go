@@ -39,7 +39,7 @@ func Interpolate(ctx context.Context, command *TokanizedCommand, nodes CommandNo
 				// set default value as the parameter value if the parameter has a default value
 				// it will be overwritten if the parameter is set in the command
 				// or removed is doesn't have a proper value
-				if parameter.Default != "" {
+				if parameter.Optional {
 					setParams[parameter.Name] = &ParameterWithValue{
 						Parameter:    parameter,
 						Value:        parameter.Default,

@@ -87,7 +87,7 @@ func (rb *Builder) Build(rule string, stream control.Stream) (*Rule, error) {
 	}
 
 	// Configure managed keyed state if necessary
-	if stream.Keyed != nil {
+	if stream.Keyed.Enabled {
 		for _, provider := range providers {
 			provider.WithManagedKeyedState(stream.Keyed.TTL, stream.Keyed.MaxKeys)
 		}

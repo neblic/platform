@@ -179,7 +179,7 @@ func (lsv *ListStreamsView) AddSampler(sampler *control.Sampler) {
 			stream.StreamRule,
 			stream.ExportRawSamples,
 		)
-		if stream.Keyed != nil {
+		if stream.Keyed.Enabled {
 			streamStr += fmt.Sprintf(", Keyed: {TTL: %s, MaxKeys: %d}", stream.Keyed.TTL.String(), stream.Keyed.MaxKeys)
 		}
 		lsv.rows = append(lsv.rows, []string{sampler.Resource, sampler.Name, streamStr})
