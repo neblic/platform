@@ -13,7 +13,7 @@ func TestBuilder_Build(t *testing.T) {
 	}
 	type args struct {
 		rule   string
-		stream control.Stream
+		stream control.Keyed
 	}
 	tests := []struct {
 		name    string
@@ -28,7 +28,7 @@ func TestBuilder_Build(t *testing.T) {
 			},
 			args: args{
 				rule:   `abs(-1) == 1`,
-				stream: control.Stream{},
+				stream: control.Keyed{},
 			},
 			wantErr: false,
 		},
@@ -39,7 +39,7 @@ func TestBuilder_Build(t *testing.T) {
 			},
 			args: args{
 				rule:   `sequence(-1, "asc")`,
-				stream: control.Stream{},
+				stream: control.Keyed{},
 			},
 			wantErr: false,
 		},
@@ -50,7 +50,7 @@ func TestBuilder_Build(t *testing.T) {
 			},
 			args: args{
 				rule:   `complete(0, 1)`,
-				stream: control.Stream{},
+				stream: control.Keyed{},
 			},
 			wantErr: false,
 		},

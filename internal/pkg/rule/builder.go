@@ -62,7 +62,7 @@ func NewBuilder(schema sample.Schema, supportedFunctions SupportedFunctions) (*B
 	}, nil
 }
 
-func (rb *Builder) Build(rule string, stream control.Stream) (*Rule, error) {
+func (rb *Builder) Build(rule string, keyed control.Keyed) (*Rule, error) {
 	env := rb.env
 
 	ast, iss := env.Compile(rule)
@@ -87,9 +87,9 @@ func (rb *Builder) Build(rule string, stream control.Stream) (*Rule, error) {
 	}
 
 	// Configure managed keyed state if necessary
-	if stream.Keyed.Enabled {
+	if keyed.Enabled {
 		for _, provider := range providers {
-			provider.WithManagedKeyedState(stream.Keyed.TTL, stream.Keyed.MaxKeys)
+			provider.WithManagedKeyedState(keyed.TTL, keyed.MaxKeys)
 		}
 	}
 
