@@ -42,6 +42,7 @@ type Stream struct {
 	StreamRule       Rule
 	ExportRawSamples bool
 	Keyed            Keyed
+	MaxSampleSize    int32
 }
 
 func (s Stream) GetName() string {
@@ -59,6 +60,7 @@ func NewStreamFromProto(s *protos.Stream) Stream {
 		StreamRule:       NewRuleFromProto(s.GetRule()),
 		ExportRawSamples: s.ExportRawSamples,
 		Keyed:            NewKeyedFromProto(s.GetKeyed()),
+		MaxSampleSize:    s.GetMaxSampleSize(),
 	}
 }
 
@@ -69,6 +71,7 @@ func (s Stream) ToProto() *protos.Stream {
 		Rule:             s.StreamRule.ToProto(),
 		ExportRawSamples: s.ExportRawSamples,
 		Keyed:            s.Keyed.ToProto(),
+		MaxSampleSize:    s.MaxSampleSize,
 	}
 }
 

@@ -12,43 +12,58 @@ const (
 )
 
 type Sample struct {
-	Key string
-
 	Type   Type
 	JSON   string
 	Native any
 	Proto  proto.Message
+
+	Options Options
 }
 
 // JSONSample creates a data sample encoded as a JSON string.
 // The JSON string must be a valid JSON object.
-func JSONSample(json string, key string) Sample {
-	return Sample{
-		Key: key,
+func JSONSample(json string, sampleOpts ...Option) Sample {
+	opts := Options{
+		Size: len(json),
+	}
 
-		Type: JSONSampleType,
-		JSON: json,
+	for _, opt := range sampleOpts {
+		opt.apply(&opts)
+	}
+
+	return Sample{
+		Type:    JSONSampleType,
+		JSON:    json,
+		Options: opts,
 	}
 }
 
 // NativeSample creates a data sample represented as a Go struct.
 // Only exported fields will be part of the sample.
-func NativeSample(native any, key string) Sample {
-	return Sample{
-		Key: key,
+func NativeSample(native any, sampleOpts ...Option) Sample {
+	opts := Options{}
+	for _, opt := range sampleOpts {
+		opt.apply(&opts)
+	}
 
-		Type:   NativeSampleType,
-		Native: native,
+	return Sample{
+		Type:    NativeSampleType,
+		Native:  native,
+		Options: opts,
 	}
 }
 
 // ProtoSample creates a data sample encoded as a proto message. The protoSample parameter has to be the same
 // type as the proto message provided as schema when creating the sampler.
-func ProtoSample(proto proto.Message, key string) Sample {
-	return Sample{
-		Key: key,
+func ProtoSample(proto proto.Message, sampleOpts ...Option) Sample {
+	opts := Options{}
+	for _, opt := range sampleOpts {
+		opt.apply(&opts)
+	}
 
-		Type:  ProtoSampleType,
-		Proto: proto,
+	return Sample{
+		Type:    ProtoSampleType,
+		Proto:   proto,
+		Options: opts,
 	}
 }

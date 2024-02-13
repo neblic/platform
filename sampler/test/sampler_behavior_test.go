@@ -110,7 +110,7 @@ var _ = Describe("Sampler", func() {
 					time.Second, time.Millisecond*5,
 				)
 
-				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`))
 				Expect(sampled).To(BeTrue())
 
 				Expect(s.Close()).ToNot(HaveOccurred())
@@ -145,7 +145,7 @@ var _ = Describe("Sampler", func() {
 					time.Second, time.Millisecond*5,
 				)
 
-				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`))
 				Expect(sampled).To(BeFalse())
 
 				Expect(s.Close()).ToNot(HaveOccurred())
@@ -195,7 +195,7 @@ var _ = Describe("Sampler", func() {
 					time.Second, time.Millisecond*5,
 				)
 
-				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`))
 				Expect(sampled).To(BeFalse())
 
 				Expect(s.Close()).ToNot(HaveOccurred())
@@ -258,7 +258,7 @@ var _ = Describe("Sampler", func() {
 					func() bool {
 						defer GinkgoRecover()
 
-						s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
+						s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`))
 						return receiver.TotalItems.Load() >= 1
 					},
 					time.Millisecond*500, time.Millisecond)
@@ -334,7 +334,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send samples to sampler
-				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`))
 				Expect(sampled).To(BeTrue())
 
 				// the receiver should have received the sample
@@ -364,7 +364,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send sample
-				sampled := s.Sample(context.Background(), sample.NativeSample(nativeSample{ID: 1}, ""))
+				sampled := s.Sample(context.Background(), sample.NativeSample(nativeSample{ID: 1}))
 				Expect(sampled).To(BeTrue())
 
 				// the receiver should have received the sample
@@ -394,7 +394,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send sample
-				sampled := s.Sample(context.Background(), sample.ProtoSample(&protos.SamplerToServer{SamplerUid: "1"}, ""))
+				sampled := s.Sample(context.Background(), sample.ProtoSample(&protos.SamplerToServer{SamplerUid: "1"}))
 				Expect(sampled).To(BeTrue())
 
 				// wait until the receiver has received the sample
@@ -473,7 +473,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send sample
-				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`))
 				Expect(sampled).To(BeTrue())
 
 				// wait until the receiver has received the digest
@@ -525,7 +525,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send sample
-				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`))
 				Expect(sampled).To(BeTrue())
 
 				// no digest has to be generated
@@ -594,7 +594,7 @@ var _ = Describe("Sampler", func() {
 				// send a large amount of samples so the limiter kicks in
 				numSampled := 0
 				for i := 0; i < 1000; i++ {
-					sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
+					sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`))
 
 					if sampled {
 						numSampled++
@@ -640,7 +640,7 @@ var _ = Describe("Sampler", func() {
 				// send a large amount of samples so the limiter kicks in
 				numSampled := 0
 				for i := 0; i < 1000; i++ {
-					sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, ""))
+					sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`))
 
 					if sampled {
 						numSampled++
@@ -690,7 +690,7 @@ var _ = Describe("Sampler", func() {
 					func() bool {
 						defer GinkgoRecover()
 
-						sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, "some_non_matching_key"))
+						sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, sample.WithKey("some_non_matching_key")))
 						return !sampled
 					},
 					time.Second, time.Millisecond)
@@ -698,7 +698,7 @@ var _ = Describe("Sampler", func() {
 				// should all be sampled
 				numSampled := 0
 				for i := 0; i < 100; i++ {
-					sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, "some_matching_key"))
+					sampled := s.Sample(context.Background(), sample.JSONSample(`{"id": 1}`, sample.WithKey("some_matching_key")))
 
 					if sampled {
 						numSampled++
@@ -823,7 +823,7 @@ var _ = Describe("Sampler", func() {
 				)
 
 				// send an invalid sample
-				sampled := s.Sample(context.Background(), sample.JSONSample(`invalid_json: `, ""))
+				sampled := s.Sample(context.Background(), sample.JSONSample(`invalid_json: `))
 				Expect(sampled).To(BeFalse())
 
 				/// expect an error to be received

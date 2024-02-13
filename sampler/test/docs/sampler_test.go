@@ -33,7 +33,7 @@ func sampleData(ctx context.Context) bool {
 	var dataSample string
 
 	// evaluate a `Data Sample`
-	return someSampler.Sample(ctx, sample.JSONSample(dataSample, ""))
+	return someSampler.Sample(ctx, sample.JSONSample(dataSample, sample.WithKey("key")))
 }
 
 // --8<-- [end:SampleData]
