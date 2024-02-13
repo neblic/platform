@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/cel-go/cel"
 	"github.com/neblic/platform/internal/pkg/data"
+	"github.com/neblic/platform/internal/pkg/rule/function"
 	"github.com/neblic/platform/sampler/sample"
 )
 
@@ -18,17 +19,19 @@ const (
 )
 
 type Rule struct {
-	schema        sample.Schema
-	prg           cel.Program
-	sampleComp    sampleCompatibility
-	stateProvider *StateProvider
+	ctx        context.Context
+	schema     sample.Schema
+	prg        cel.Program
+	sampleComp sampleCompatibility
+	providers  []*function.StatefulFunctionProvider
 }
 
-func New(schema sample.Schema, prg cel.Program, stateProvider *StateProvider) *Rule {
+func New(schema sample.Schema, prg cel.Program, providers []*function.StatefulFunctionProvider) *Rule {
 	r := &Rule{
-		schema:        schema,
-		prg:           prg,
-		stateProvider: stateProvider,
+		ctx:       context.Background(),
+		schema:    schema,
+		prg:       prg,
+		providers: providers,
 	}
 	r.setCompatibility(schema)
 
@@ -65,7 +68,29 @@ func (r *Rule) checkCompatibility(sampleData *data.Data) error {
 	return nil
 }
 
+func (r *Rule) EvalKeyed(ctx context.Context, key string, sampleData *data.Data) (bool, error) {
+	vars := map[string]any{}
+	for _, provider := range r.providers {
+		var err error
+		vars[provider.StateName], err = provider.KeyedStatefulFunction(key)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return r.eval(ctx, vars, sampleData)
+}
+
 func (r *Rule) Eval(ctx context.Context, sampleData *data.Data) (bool, error) {
+	vars := map[string]any{}
+	for _, provider := range r.providers {
+		vars[provider.StateName] = provider.GlobalStatefulFunction()
+	}
+
+	return r.eval(ctx, vars, sampleData)
+}
+
+func (r *Rule) eval(ctx context.Context, vars map[string]any, sampleData *data.Data) (bool, error) {
 	if err := r.checkCompatibility(sampleData); err != nil {
 		return false, err
 	}
@@ -87,15 +112,14 @@ func (r *Rule) Eval(ctx context.Context, sampleData *data.Data) (bool, error) {
 		}
 	}
 
-	val, _, err := r.prg.ContextEval(ctx, map[string]interface{}{sampleKey: smpl})
+	// Add sample to variables
+	vars[sampleKey] = smpl
+
+	val, _, err := r.prg.ContextEval(ctx, vars)
 	if err != nil {
 		return false, fmt.Errorf("failed to evaluate sample: %w", err)
 	}
 
 	// It is guaranteed to be a boolean because the rule has been checked at build time
 	return val.Value().(bool), nil
-}
-
-func (r *Rule) StateProvider() *StateProvider {
-	return r.stateProvider
 }

@@ -216,7 +216,7 @@ func (p *Sampler) updateConfig(config control.SamplerConfig) {
 		for _, stream := range config.Streams {
 			p.logger.Debug("Configuring stream", "stream", stream)
 
-			builtRule, err := p.buildSamplingRule(stream.StreamRule)
+			builtRule, err := p.buildSamplingRule(stream.StreamRule, stream)
 			if err != nil {
 				p.logger.Error(fmt.Sprintf("couldn't build sampling rule %+v: %s", stream, err))
 				continue
@@ -248,10 +248,10 @@ func (p *Sampler) updateConfig(config control.SamplerConfig) {
 	}
 }
 
-func (p *Sampler) buildSamplingRule(streamRule control.Rule) (*rule.Rule, error) {
+func (p *Sampler) buildSamplingRule(streamRule control.Rule, stream control.Stream) (*rule.Rule, error) {
 	switch streamRule.Lang {
 	case control.SrlCel:
-		builtRule, err := p.ruleBuilder.Build(streamRule.Expression)
+		builtRule, err := p.ruleBuilder.Build(streamRule.Expression, stream)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't build CEL rule %s: %s", streamRule.Expression, err)
 		}

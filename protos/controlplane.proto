@@ -44,10 +44,17 @@ message Rule {
 }
 
 message Stream {
+  message Keyed {
+    bool enabled = 1;
+    google.protobuf.Duration ttl = 2;
+    int32 max_keys = 3;
+  }
+
   string uid = 1;
   string name = 2;
   Rule rule = 3;
   bool export_raw_samples = 4;
+  Keyed keyed = 5;
 }
 
 message Digest {

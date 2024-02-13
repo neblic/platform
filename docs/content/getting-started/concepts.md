@@ -46,6 +46,19 @@ A subset of `Data Samples` selected using a sampling rule usually based on the c
 
 You can take a look at this [section](../learn/samplers.md#configuration) to learn more about how to create `Streams` and this [reference](../reference/rules.md) page to see their syntax.
 
+#### Keyed stream
+
+When a stream is keyed, each `Sample` is expected to come with an associated key. This key is used to logically divide the stream into disjoint partitions where all `Samples` with the same key are assigned to the same partition. It is then possible to perform some computations in each partition independently. Enabling keyed streams can change some functionality:
+
+- Digest: No
+- Event: When using [stateful functions](../reference/rules.md#rules), each key has an independent state. 
+
+Key definition:
+
+- Kafka sampler: Automatically uses message key
+- SDK: `key` parameter when invoking `Sample` function
+- gRPC interceptor: Not supported yet.
+
 ## Control Plane
 
 Neblic implements a protocol that allows you to configure at runtime, how `Samplers` behave. For example, you can create new `Streams` to decide which `Data Samples` should be processed, or you can set a new maximum sampling rate to limit the amount of `Data Samples` that a `Stream` can export per second.

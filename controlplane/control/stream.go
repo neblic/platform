@@ -2,17 +2,46 @@ package control
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/neblic/platform/controlplane/protos"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 type SamplerStreamUID string
+
+type Keyed struct {
+	Enabled bool
+	TTL     time.Duration
+	MaxKeys int32
+}
+
+func NewKeyedFromProto(k *protos.Stream_Keyed) Keyed {
+	if k == nil {
+		return Keyed{}
+	}
+
+	return Keyed{
+		Enabled: k.Enabled,
+		TTL:     k.GetTtl().AsDuration(),
+		MaxKeys: k.GetMaxKeys(),
+	}
+}
+
+func (k Keyed) ToProto() *protos.Stream_Keyed {
+	return &protos.Stream_Keyed{
+		Enabled: k.Enabled,
+		Ttl:     durationpb.New(k.TTL),
+		MaxKeys: k.MaxKeys,
+	}
+}
 
 type Stream struct {
 	UID              SamplerStreamUID
 	Name             string
 	StreamRule       Rule
 	ExportRawSamples bool
+	Keyed            Keyed
 }
 
 func (s Stream) GetName() string {
@@ -29,6 +58,7 @@ func NewStreamFromProto(s *protos.Stream) Stream {
 		Name:             s.Name,
 		StreamRule:       NewRuleFromProto(s.GetRule()),
 		ExportRawSamples: s.ExportRawSamples,
+		Keyed:            NewKeyedFromProto(s.GetKeyed()),
 	}
 }
 
@@ -38,6 +68,7 @@ func (s Stream) ToProto() *protos.Stream {
 		Name:             s.Name,
 		Rule:             s.StreamRule.ToProto(),
 		ExportRawSamples: s.ExportRawSamples,
+		Keyed:            s.Keyed.ToProto(),
 	}
 }
 

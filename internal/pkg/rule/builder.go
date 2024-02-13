@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/cel-go/cel"
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/sampler/sample"
 )
 
@@ -61,7 +62,7 @@ func NewBuilder(schema sample.Schema, supportedFunctions SupportedFunctions) (*B
 	}, nil
 }
 
-func (rb *Builder) Build(rule string) (*Rule, error) {
+func (rb *Builder) Build(rule string, stream control.Stream) (*Rule, error) {
 	env := rb.env
 
 	ast, iss := env.Compile(rule)
@@ -78,29 +79,21 @@ func (rb *Builder) Build(rule string) (*Rule, error) {
 		return nil, fmt.Errorf("couldn't convert AST to CheckedExpr: %w", err)
 	}
 
-	// In case of having stateful functions, the cel environment has to be extended to add the
-	// stateful functions definitions and state management.
-	statefulFunctions := []StatefulFunction{&SequenceStatefulFunction{}, &CompleteStatefulFunction{}}
-	err = ParseStatefulFunctions(statefulFunctions, expr.Expr)
+	// Inject state to stateful functions
+	checkedExprModifier := NewCheckedExprModifier(expr)
+	providers, err := checkedExprModifier.InjectState()
 	if err != nil {
 		return nil, err
 	}
-	var stateProvider *StateProvider
-	celEnvOptions := []cel.EnvOption{}
-	for _, statefulFunction := range statefulFunctions {
-		if statefulFunction.Enabled() {
-			if stateProvider == nil {
-				stateProvider = NewStateProvider()
-			}
-			celEnvOptions = append(celEnvOptions, statefulFunction.GetCelEnvs(stateProvider)...)
+
+	// Configure managed keyed state if necessary
+	if stream.Keyed.Enabled {
+		for _, provider := range providers {
+			provider.WithManagedKeyedState(stream.Keyed.TTL, stream.Keyed.MaxKeys)
 		}
 	}
-	if len(celEnvOptions) > 0 {
-		env, err = env.Extend(celEnvOptions...)
-		if err != nil {
-			return nil, fmt.Errorf("couldn't extend CEL environment: %w", err)
-		}
-	}
+
+	ast = cel.CheckedExprToAst(expr)
 
 	// TODO: Investigate interesting program options: e.g. cost estimation/limit
 	prg, err := env.Program(ast)
@@ -108,5 +101,5 @@ func (rb *Builder) Build(rule string) (*Rule, error) {
 		return nil, fmt.Errorf("couldn't build CEL program: %w", err)
 	}
 
-	return New(rb.schema, prg, stateProvider), nil
+	return New(rb.schema, prg, providers), nil
 }

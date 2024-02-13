@@ -4,8 +4,10 @@ import (
 	"context"
 	"testing"
 
+	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/internal/pkg/data"
+	"github.com/neblic/platform/internal/pkg/rule/function"
 	"github.com/neblic/platform/sampler/sample"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -30,12 +32,24 @@ func TestEvalJSON(t *testing.T) {
 			sample:     `{"id": 1}`,
 			wantMatch:  false,
 		},
+		{
+			name:       "sequence check",
+			expression: `sequence(sample.id, "asc")`,
+			sample:     `{"id": 1}`,
+			wantMatch:  true,
+		},
+		{
+			name:       "complete check",
+			expression: `complete(sample.id, 1.0)`,
+			sample:     `{"id": 1}`,
+			wantMatch:  true,
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.expression)
+			rule, err := rb.Build(tc.expression, control.Stream{})
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromJSON(tc.sample)
@@ -65,22 +79,36 @@ func TestEvalNative(t *testing.T) {
 		expression string
 		sample     sampleStruct
 		wantMatch  bool
-	}{{
-		name:       "simple match",
-		expression: `sample.SubStruct.ID == 11`,
-		sample:     sampleStruct{ID: 1, SubStruct: sampleSubStruct{ID: 11}},
-		wantMatch:  true,
-	}, {
-		name:       "simple mismatch",
-		expression: `sample.ID == 2`,
-		sample:     sampleStruct{ID: 1},
-		wantMatch:  false,
-	}} {
+	}{
+		{
+			name:       "simple match",
+			expression: `sample.SubStruct.ID == 11`,
+			sample:     sampleStruct{ID: 1, SubStruct: sampleSubStruct{ID: 11}},
+			wantMatch:  true,
+		}, {
+			name:       "simple mismatch",
+			expression: `sample.ID == 2`,
+			sample:     sampleStruct{ID: 1},
+			wantMatch:  false,
+		},
+		{
+			name:       "sequence check",
+			expression: `sequence(sample.ID, "asc")`,
+			sample:     sampleStruct{ID: 1},
+			wantMatch:  true,
+		},
+		{
+			name:       "complete check",
+			expression: `complete(sample.ID, 1)`,
+			sample:     sampleStruct{ID: 1},
+			wantMatch:  true,
+		},
+	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rb, err := NewBuilder(sample.NewDynamicSchema(), CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.expression)
+			rule, err := rb.Build(tc.expression, control.Stream{})
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromNative(tc.sample)
@@ -112,7 +140,8 @@ func TestEvalProto(t *testing.T) {
 					RegisterReq: &protos.SamplerRegisterReq{},
 				}},
 			wantMatch: true,
-		}, {
+		},
+		{
 			name:       "simple mismatch",
 			expression: `sample.sampler_uid == "non_matching_value"`,
 			sample:     &protos.SamplerToServer{SamplerUid: "sampler_uid_value"},
@@ -123,7 +152,7 @@ func TestEvalProto(t *testing.T) {
 			rb, err := NewBuilder(sample.NewProtoSchema(&protos.SamplerToServer{}), CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.expression)
+			rule, err := rb.Build(tc.expression, control.Stream{})
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromProto(tc.sample)
@@ -136,4 +165,91 @@ func TestEvalProto(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEvalSequence(t *testing.T) {
+	rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
+	require.NoError(t, err)
+
+	rule, err := rb.Build(`sequence(sample.id, "asc")`, control.Stream{})
+	require.NoError(t, err)
+
+	gotMatch, err := rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 1}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	gotMatch, err = rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 2}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	gotMatch, err = rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": -1}`))
+	require.NoError(t, err)
+	require.False(t, gotMatch)
+}
+
+func TestEvalComplete(t *testing.T) {
+	rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
+	require.NoError(t, err)
+
+	rule, err := rb.Build(`complete(sample.id, 1.0)`, control.Stream{})
+	require.NoError(t, err)
+
+	gotMatch, err := rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 1}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	gotMatch, err = rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 2}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	gotMatch, err = rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 1000}`))
+	require.NoError(t, err)
+	require.False(t, gotMatch)
+}
+
+func TestEvalKeyedJSON(t *testing.T) {
+	rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
+	require.NoError(t, err)
+
+	rule, err := rb.Build(`sequence(sample.id, "asc")`, control.Stream{Keyed: control.Keyed{Enabled: true, MaxKeys: 2}})
+	require.NoError(t, err)
+
+	// key1 first eval is always true
+	gotMatch, err := rule.EvalKeyed(context.Background(), "key1", data.NewSampleDataFromJSON(`{"id": 10}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	// key1 eval bigger number is true
+	gotMatch, err = rule.EvalKeyed(context.Background(), "key1", data.NewSampleDataFromJSON(`{"id": 11}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	// key2 first eval is always true. A smaller number than key1 was set to state isolation
+	gotMatch, err = rule.EvalKeyed(context.Background(), "key2", data.NewSampleDataFromJSON(`{"id": 0}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	// key2 eval bigger number is true
+	gotMatch, err = rule.EvalKeyed(context.Background(), "key2", data.NewSampleDataFromJSON(`{"id": 1}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
+
+	// key1 eval smaller number is false
+	gotMatch, err = rule.EvalKeyed(context.Background(), "key1", data.NewSampleDataFromJSON(`{"id": 9}`))
+	require.NoError(t, err)
+	require.False(t, gotMatch)
+
+	// key2 eval smaller number is false
+	gotMatch, err = rule.EvalKeyed(context.Background(), "key2", data.NewSampleDataFromJSON(`{"id": -1}`))
+	require.NoError(t, err)
+	require.False(t, gotMatch)
+
+	// key3 first eval must return an error because the maximum number of keys was reached
+	_, err = rule.EvalKeyed(context.Background(), "key3", data.NewSampleDataFromJSON(`{"id": 20}`))
+	require.Error(t, function.ErrMaxKeys, err)
+
+	// key2 eval bigger number must be true even after reaching the macimum number of keys
+	gotMatch, err = rule.EvalKeyed(context.Background(), "key2", data.NewSampleDataFromJSON(`{"id": 2}`))
+	require.NoError(t, err)
+	require.True(t, gotMatch)
 }

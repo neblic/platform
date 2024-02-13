@@ -143,6 +143,24 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 		return fmt.Errorf("export-raw must be a boolean")
 	}
 
+	keyedParameter, _ := parameters.Get("keyed")
+	keyedBool, err := strconv.ParseBool(keyedParameter.Value)
+	if err != nil {
+		return fmt.Errorf("keyed must be a boolean")
+	}
+
+	keyedTTLParameter, _ := parameters.Get("keyed-ttl")
+	keyedTTL, err := time.ParseDuration(keyedTTLParameter.Value)
+	if err != nil {
+		return fmt.Errorf("keyed-ttl must be a duration")
+	}
+
+	keyedMaxKeysParameter, _ := parameters.Get("keyed-max-keys")
+	keyedMaxKeysInt32, err := keyedMaxKeysParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("keyed-max-keys must be an integer")
+	}
+
 	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, "*", false)
 	if err != nil {
@@ -170,6 +188,11 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 							Expression: streamRuleParameter.Value,
 						},
 						ExportRawSamples: exportRawBool,
+						Keyed: control.Keyed{
+							Enabled: keyedBool,
+							TTL:     keyedTTL,
+							MaxKeys: keyedMaxKeysInt32,
+						},
 					},
 				},
 			},
@@ -201,6 +224,24 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 		return fmt.Errorf("export-raw must be a boolean")
 	}
 
+	keyedParameter, _ := parameters.Get("keyed")
+	keyedBool, err := strconv.ParseBool(keyedParameter.Value)
+	if err != nil {
+		return fmt.Errorf("keyed must be a boolean")
+	}
+
+	keyedTTLParameter, _ := parameters.Get("keyed-ttl")
+	keyedTTL, err := time.ParseDuration(keyedTTLParameter.Value)
+	if err != nil {
+		return fmt.Errorf("keyed-ttl must be a duration")
+	}
+
+	keyedMaxKeysParameter, _ := parameters.Get("keyed-max-keys")
+	keyedMaxKeysInt32, err := keyedMaxKeysParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("keyed-max-keys must be an integer")
+	}
+
 	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, streamNameParameter.Value, false)
 	if err != nil {
@@ -230,6 +271,11 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 							Expression: updatedRuleParameter.Value,
 						},
 						ExportRawSamples: exportRawBool,
+						Keyed: control.Keyed{
+							Enabled: keyedBool,
+							TTL:     keyedTTL,
+							MaxKeys: keyedMaxKeysInt32,
+						},
 					},
 				},
 			},
@@ -733,7 +779,8 @@ func (e *Executors) EventsCreate(ctx context.Context, parameters interpoler.Para
 	dataTypeParameter, _ := parameters.Get("sample-type")
 	ruleParameter, _ := parameters.Get("rule")
 	limitParameter, _ := parameters.Get("limit")
-	exportTemplateParameter, _ := parameters.Get("export-template")
+	exportTemplateParameter, ok := parameters.Get("export-template")
+	fmt.Println(exportTemplateParameter, ok)
 	limitInt32, err := limitParameter.AsInt32()
 	if err != nil {
 		return fmt.Errorf("limit must be an integer")
