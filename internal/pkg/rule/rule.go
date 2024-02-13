@@ -23,12 +23,11 @@ type Rule struct {
 	schema     sample.Schema
 	sampleComp sampleCompatibility
 
-	prg        cel.Program
+	prg              cel.Program
 	returnsStaticRes bool
 	staticRes        bool
 
-
-	providers  []*function.StatefulFunctionProvider
+	providers []*function.StatefulFunctionProvider
 }
 
 func New(schema sample.Schema, prg cel.Program, providers []*function.StatefulFunctionProvider) *Rule {

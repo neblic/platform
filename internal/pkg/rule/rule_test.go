@@ -50,7 +50,7 @@ func TestEvalJSON(t *testing.T) {
 			rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.expression, control.Stream{})
+			rule, err := rb.Build(tc.expression, control.Keyed{})
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromJSON(tc.sample)
@@ -109,7 +109,7 @@ func TestEvalNative(t *testing.T) {
 			rb, err := NewBuilder(sample.NewDynamicSchema(), CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.expression, control.Stream{})
+			rule, err := rb.Build(tc.expression, control.Keyed{})
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromNative(tc.sample)
@@ -153,7 +153,7 @@ func TestEvalProto(t *testing.T) {
 			rb, err := NewBuilder(sample.NewProtoSchema(&protos.SamplerToServer{}), CheckFunctions)
 			require.NoError(t, err)
 
-			rule, err := rb.Build(tc.expression, control.Stream{})
+			rule, err := rb.Build(tc.expression, control.Keyed{})
 			require.NoError(t, err)
 
 			s := data.NewSampleDataFromProto(tc.sample)
@@ -172,7 +172,7 @@ func TestEvalSequence(t *testing.T) {
 	rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
 	require.NoError(t, err)
 
-	rule, err := rb.Build(`sequence(sample.id, "asc")`, control.Stream{})
+	rule, err := rb.Build(`sequence(sample.id, "asc")`, control.Keyed{})
 	require.NoError(t, err)
 
 	gotMatch, err := rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 1}`))
@@ -192,7 +192,7 @@ func TestEvalComplete(t *testing.T) {
 	rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
 	require.NoError(t, err)
 
-	rule, err := rb.Build(`complete(sample.id, 1.0)`, control.Stream{})
+	rule, err := rb.Build(`complete(sample.id, 1.0)`, control.Keyed{})
 	require.NoError(t, err)
 
 	gotMatch, err := rule.Eval(context.Background(), data.NewSampleDataFromJSON(`{"id": 1}`))
@@ -212,7 +212,7 @@ func TestEvalKeyedJSON(t *testing.T) {
 	rb, err := NewBuilder(sample.DynamicSchema{}, CheckFunctions)
 	require.NoError(t, err)
 
-	rule, err := rb.Build(`sequence(sample.id, "asc")`, control.Stream{Keyed: control.Keyed{Enabled: true, MaxKeys: 2}})
+	rule, err := rb.Build(`sequence(sample.id, "asc")`, control.Keyed{Enabled: true, MaxKeys: 2})
 	require.NoError(t, err)
 
 	// key1 first eval is always true
@@ -305,7 +305,7 @@ func TestEvaluateEvalTrue(t *testing.T) {
 	for _, tc := range tcs {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			rule, err := rb.Build(tc.rule, control.Stream{})
+			rule, err := rb.Build(tc.rule, control.Keyed{})
 			require.NoError(t, err)
 			require.Equal(t, tc.wantReturnStaticRes, rule.returnsStaticRes)
 			assert.Equal(t, tc.staticRes, rule.staticRes)

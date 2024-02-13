@@ -251,7 +251,7 @@ func (p *Sampler) updateConfig(config control.SamplerConfig) {
 func (p *Sampler) buildSamplingRule(streamRule control.Rule, stream control.Stream) (*rule.Rule, error) {
 	switch streamRule.Lang {
 	case control.SrlCel:
-		builtRule, err := p.ruleBuilder.Build(streamRule.Expression, stream)
+		builtRule, err := p.ruleBuilder.Build(streamRule.Expression, stream.Keyed)
 		if err != nil {
 			return nil, fmt.Errorf("couldn't build CEL rule %s: %s", streamRule.Expression, err)
 		}

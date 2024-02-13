@@ -60,7 +60,7 @@ func (e *Eventor) newEventFrom(eventCfg control.Event, streamsCfg control.Stream
 		return nil, fmt.Errorf("stream %s not found", eventCfg.StreamUID)
 	}
 
-	rule, err := e.ruleBuilder.Build(eventCfg.Rule.Expression, stream)
+	rule, err := e.ruleBuilder.Build(eventCfg.Rule.Expression, stream.Keyed)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create rule: %w", err)
 	}
