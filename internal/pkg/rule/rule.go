@@ -19,7 +19,6 @@ const (
 )
 
 type Rule struct {
-	ctx        context.Context
 	schema     sample.Schema
 	sampleComp sampleCompatibility
 
@@ -32,7 +31,6 @@ type Rule struct {
 
 func New(schema sample.Schema, prg cel.Program, providers []*function.StatefulFunctionProvider) *Rule {
 	r := &Rule{
-		ctx:       context.Background(),
 		schema:    schema,
 		prg:       prg,
 		providers: providers,
