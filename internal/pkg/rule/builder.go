@@ -96,7 +96,7 @@ func (rb *Builder) Build(rule string, stream control.Stream) (*Rule, error) {
 	ast = cel.CheckedExprToAst(expr)
 
 	// TODO: Investigate interesting program options: e.g. cost estimation/limit
-	prg, err := env.Program(ast)
+	prg, err := env.Program(ast, cel.EvalOptions(cel.OptOptimize))
 	if err != nil {
 		return nil, fmt.Errorf("couldn't build CEL program: %w", err)
 	}
