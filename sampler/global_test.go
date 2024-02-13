@@ -45,7 +45,7 @@ func TestSetSamplerProvider(t *testing.T) {
 	assert.IsType(t, &samplerPlaceholder{}, pp)
 
 	// by default, placeholder samplers return false
-	match := pp.Sample(context.Background(), sample.JSONSample("", ""))
+	match := pp.Sample(context.Background(), sample.JSONSample(""))
 	assert.Equal(t, false, match)
 
 	// set mock provider
@@ -53,7 +53,7 @@ func TestSetSamplerProvider(t *testing.T) {
 	require.NoError(t, err)
 
 	// after setting the mock provider, samplers should have been replaced by mock samplers and return true
-	match = pp.Sample(context.Background(), sample.JSONSample("", ""))
+	match = pp.Sample(context.Background(), sample.JSONSample(""))
 	assert.Equal(t, true, match)
 
 	// new samplers should be mocks since it is what the mock provider returns

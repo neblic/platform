@@ -76,7 +76,7 @@ func (h *SamplerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim
 			if !ok {
 				return fmt.Errorf("received a message from an unexpected topic: %s. There isn't an initialized sampler for this topic.", message.Topic)
 			}
-			sampler.Sample(session.Context(), sample.JSONSample(string(message.Value), string(message.Key)))
+			sampler.Sample(session.Context(), sample.JSONSample(string(message.Value), sample.WithKey(string(message.Key))))
 
 			session.MarkMessage(message, "")
 

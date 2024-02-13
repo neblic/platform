@@ -167,6 +167,12 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 		return err
 	}
 
+	maxSampleSizeParameter, _ := parameters.Get("max-sample-size")
+	maxSampleSizeInt32, err := maxSampleSizeParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("max-sample-size must be an integer")
+	}
+
 	// Create rules one by one
 	for resourceAndSamplerEntry, samplerControl := range resourceAndSamplers {
 		// Check that the stream does not exist
@@ -193,6 +199,7 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 							TTL:     keyedTTL,
 							MaxKeys: keyedMaxKeysInt32,
 						},
+						MaxSampleSize: maxSampleSizeInt32,
 					},
 				},
 			},
@@ -242,6 +249,12 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 		return fmt.Errorf("keyed-max-keys must be an integer")
 	}
 
+	maxSampleSizeParameter, _ := parameters.Get("max-sample-size")
+	maxSampleSizeInt32, err := maxSampleSizeParameter.AsInt32()
+	if err != nil {
+		return fmt.Errorf("max-sample-size must be an integer")
+	}
+
 	// Compute list of targeted resources and samplers
 	resourceAndSamplers, err := e.controlPlaneClient.getSamplers(ctx, resourceParameter.Value, samplerParameter.Value, streamNameParameter.Value, false)
 	if err != nil {
@@ -276,6 +289,7 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 							TTL:     keyedTTL,
 							MaxKeys: keyedMaxKeysInt32,
 						},
+						MaxSampleSize: maxSampleSizeInt32,
 					},
 				},
 			},

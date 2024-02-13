@@ -21,6 +21,7 @@ import (
 type streamConfig struct {
 	rule            *rule.Rule
 	exportRawSample bool
+	maxSampleSize   int32
 }
 
 type Sampler struct {
@@ -225,6 +226,7 @@ func (p *Sampler) updateConfig(config control.SamplerConfig) {
 			newStreams[stream.UID] = streamConfig{
 				rule:            builtRule,
 				exportRawSample: stream.ExportRawSamples,
+				maxSampleSize:   stream.MaxSampleSize,
 			}
 		}
 
@@ -294,7 +296,7 @@ func (p *Sampler) exportRawSample(ctx context.Context, streams []control.Sampler
 	return nil
 }
 
-func (p *Sampler) sample(ctx context.Context, key string, sampleData *data.Data) (bool, error) {
+func (p *Sampler) sample(ctx context.Context, sampleOpts sample.Options, sampleData *data.Data) (bool, error) {
 	p.samplingStats.SamplesEvaluated++
 
 	if p.limiterIn != nil && !p.limiterIn.Allow() {
@@ -302,7 +304,7 @@ func (p *Sampler) sample(ctx context.Context, key string, sampleData *data.Data)
 	}
 
 	// key acts as the deterministic sampler determinant
-	if p.samplerIn != nil && !p.samplerIn.Sample(key) {
+	if p.samplerIn != nil && !p.samplerIn.Sample(sampleOpts.Key) {
 		return false, nil
 	}
 
@@ -315,6 +317,11 @@ func (p *Sampler) sample(ctx context.Context, key string, sampleData *data.Data)
 	var streams []control.SamplerStreamUID
 	var exportRawSample bool
 	for streamUID, stream := range p.streams {
+		if sampleOpts.Size > 0 && sampleOpts.Size > int(stream.maxSampleSize) {
+			p.forwardError(fmt.Errorf("sample dropepd due to be over the maximum allowed size %d>%d", sampleOpts.Size, stream.maxSampleSize))
+			continue
+		}
+
 		if match, err := stream.rule.Eval(ctx, sampleData); err != nil {
 			p.forwardError(err)
 		} else if match {
@@ -338,7 +345,7 @@ func (p *Sampler) sample(ctx context.Context, key string, sampleData *data.Data)
 
 		// export raw sample
 		if exportRawSample {
-			err := p.exportRawSample(ctx, streams, key, sampleData)
+			err := p.exportRawSample(ctx, streams, sampleOpts.Key, sampleData)
 			if err != nil {
 				return false, err
 			}
@@ -373,7 +380,7 @@ func (p *Sampler) Sample(ctx context.Context, smpl sample.Sample) bool {
 		return false
 	}
 
-	sampled, err := p.sample(ctx, smpl.Key, sampleData)
+	sampled, err := p.sample(ctx, smpl.Options, sampleData)
 	if err != nil {
 		p.forwardError(err)
 		return false
