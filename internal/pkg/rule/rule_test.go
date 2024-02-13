@@ -9,6 +9,7 @@ import (
 	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/neblic/platform/internal/pkg/rule/function"
 	"github.com/neblic/platform/sampler/sample"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -252,4 +253,62 @@ func TestEvalKeyedJSON(t *testing.T) {
 	gotMatch, err = rule.EvalKeyed(context.Background(), "key2", data.NewSampleDataFromJSON(`{"id": 2}`))
 	require.NoError(t, err)
 	require.True(t, gotMatch)
+}
+
+func TestEvaluateEvalTrue(t *testing.T) {
+	tcs := []struct {
+		name                string
+		rule                string
+		wantReturnStaticRes bool
+		staticRes           bool
+	}{
+		{
+			name:                "simplest true rule",
+			rule:                `true`,
+			wantReturnStaticRes: true,
+			staticRes:           true,
+		},
+		{
+			name:                "simplest false rule",
+			rule:                `false`,
+			wantReturnStaticRes: true,
+			staticRes:           false,
+		},
+		{
+			name:                "static true expression",
+			rule:                `1 == 1`,
+			wantReturnStaticRes: true,
+			staticRes:           true,
+		},
+		{
+			name:                "static false expression",
+			rule:                `1 != 1`,
+			wantReturnStaticRes: true,
+			staticRes:           false,
+		},
+		{
+			name:                "true expression with vars",
+			rule:                `sample.id == 1 || 1 == 1`,
+			wantReturnStaticRes: true,
+			staticRes:           true,
+		},
+		{
+			name:                "non static expression",
+			rule:                `sample.id == 1 || 1 != 1`,
+			wantReturnStaticRes: false,
+		},
+	}
+
+	rb, err := NewBuilder(sample.NewDynamicSchema(), StreamFunctions)
+	require.NoError(t, err)
+
+	for _, tc := range tcs {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			rule, err := rb.Build(tc.rule, control.Stream{})
+			require.NoError(t, err)
+			require.Equal(t, tc.wantReturnStaticRes, rule.returnsStaticRes)
+			assert.Equal(t, tc.staticRes, rule.staticRes)
+		})
+	}
 }

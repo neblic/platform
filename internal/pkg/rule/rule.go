@@ -21,8 +21,13 @@ const (
 type Rule struct {
 	ctx        context.Context
 	schema     sample.Schema
-	prg        cel.Program
 	sampleComp sampleCompatibility
+
+	prg        cel.Program
+	returnsStaticRes bool
+	staticRes        bool
+
+
 	providers  []*function.StatefulFunctionProvider
 }
 
@@ -34,6 +39,7 @@ func New(schema sample.Schema, prg cel.Program, providers []*function.StatefulFu
 		providers: providers,
 	}
 	r.setCompatibility(schema)
+	r.setStaticRes()
 
 	return r
 }
@@ -68,6 +74,20 @@ func (r *Rule) checkCompatibility(sampleData *data.Data) error {
 	return nil
 }
 
+func (r *Rule) setStaticRes() {
+	var mapVal = map[string]interface{}{
+		sampleKey: nil,
+	}
+
+	val, _, err := r.prg.Eval(mapVal)
+	if err == nil {
+		res, isBool := val.Value().(bool)
+		if isBool {
+			r.returnsStaticRes = true
+			r.staticRes = res
+		}
+	}
+}
 func (r *Rule) EvalKeyed(ctx context.Context, key string, sampleData *data.Data) (bool, error) {
 	vars := map[string]any{}
 	for _, provider := range r.providers {
