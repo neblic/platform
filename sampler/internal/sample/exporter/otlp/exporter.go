@@ -27,8 +27,8 @@ func New(ctx context.Context, logger logging.Logger, exportServerAddr string, op
 
 	factory := otlpexporter.NewFactory()
 	cfg := factory.CreateDefaultConfig().(*otlpexporter.Config)
-	cfg.GRPCClientSettings.Endpoint = exportServerAddr
-	cfg.GRPCClientSettings.TLSSetting = configtls.TLSClientSetting{
+	cfg.Endpoint = exportServerAddr
+	cfg.TLSSetting = configtls.TLSClientSetting{
 		Insecure: !opts.TLSEnable,
 	}
 
