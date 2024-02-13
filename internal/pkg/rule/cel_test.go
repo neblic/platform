@@ -160,6 +160,47 @@ func TestCheckedExprModifier_InjectState(t *testing.T) {
 				err: false,
 			},
 		},
+		{
+			name: "list expression",
+			args: args{
+				expr: compileExpression(t, `[sequence(1.0, "asc"), sequence(1.0, "desc")]`),
+			},
+			want: want{
+				stateNames: []string{"state0", "state1"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeAsc}, State: &function.SequenceState{}},
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeDesc}, State: &function.SequenceState{}},
+				},
+				err: false,
+			},
+		},
+		{
+			name: "struct expression",
+			args: args{
+				expr: compileExpression(t, `{"foo": sequence(1.0, "asc"), "bar": sequence(1.0, "desc")}`),
+			},
+			want: want{
+				stateNames: []string{"state0", "state1"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeAsc}, State: &function.SequenceState{}},
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeDesc}, State: &function.SequenceState{}},
+				},
+				err: false,
+			},
+		},
+		{
+			name: "comprhension expression",
+			args: args{
+				expr: compileExpression(t, `[1, 2, 3].map(x, sequence(x, "asc")).exists_one(x, x)`),
+			},
+			want: want{
+				stateNames: []string{"state0"},
+				statefulFunctions: []function.StatefulFunction{
+					&function.SequenceStatefulFunction{Parameters: &function.SequenceParameters{Order: function.OrderTypeAsc}, State: &function.SequenceState{}},
+				},
+				err: false,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
