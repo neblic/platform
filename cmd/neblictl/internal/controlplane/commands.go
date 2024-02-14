@@ -327,7 +327,7 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 					},
 					{
 						Name:        "keyed",
-						Description: "Convert stream to a keyed stream. During the computation of an event in a keyed stream, each different key will have its own state",
+						Description: "Define as a keyed stream. During the computation of an event in a keyed stream, each different key will have its own state",
 						Completer: func(ctx context.Context, funcOptions interpoler.ParametersWithValue) []string {
 							return []string{"true", "false"}
 						},
