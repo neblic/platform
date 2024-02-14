@@ -1,4 +1,4 @@
-FROM alpine:3.18
+FROM alpine:3.19
 
 RUN apk --update add ca-certificates sudo
 RUN addgroup -S otelcol && adduser -D -S otelcol -G otelcol
