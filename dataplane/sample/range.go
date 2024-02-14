@@ -11,28 +11,23 @@ func RangeSamplers(otlpLogs OTLPLogs, fn func(resource, sampler string, samplerL
 	for i := 0; i < resourceLogsLen; i++ {
 		rLog := otlpLogs.logs.ResourceLogs().At(i)
 
-		var sampler string
-		if samplerValue, ok := rLog.Resource().Attributes().Get(rlSamplerNameKey); ok {
-			sampler = samplerValue.Str()
-		}
-
 		var resource string
 		if resourceValue, ok := rLog.Resource().Attributes().Get(conventions.AttributeServiceName); ok {
 			resource = resourceValue.Str()
 		}
 
-		if rLog.ScopeLogs().Len() != 1 {
-			panic("expected only one scope log")
+		for j := 0; j < rLog.ScopeLogs().Len(); j++ {
+			sLog := rLog.ScopeLogs().At(j)
+
+			sampler := sLog.Scope().Name()
+
+			samplerLogs := SamplerOTLPLogs{
+				resourceLogs: rLog,
+				scopeLogs:    sLog,
+			}
+
+			fn(resource, sampler, samplerLogs)
 		}
-
-		slogs := rLog.ScopeLogs().At(0)
-
-		samplerLogs := SamplerOTLPLogs{
-			resourceLogs: rLog,
-			scopeLogs:    slogs,
-		}
-
-		fn(resource, sampler, samplerLogs)
 	}
 }
 

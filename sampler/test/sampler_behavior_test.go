@@ -12,6 +12,7 @@ import (
 	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/controlplane/server/mock"
+	dataplaneSample "github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/logging"
 	"github.com/neblic/platform/sampler"
 	otlpmock "github.com/neblic/platform/sampler/internal/sample/exporter/otlp/mock"
@@ -495,7 +496,7 @@ var _ = Describe("Sampler", func() {
 				require.Equal(GinkgoT(), scopeLogs.Len(), 1)
 				logRecords := scopeLogs.At(0).LogRecords()
 				require.Equal(GinkgoT(), logRecords.Len(), 1)
-				sampleTypeVal, ok := logRecords.At(0).Attributes().Get("sample_type")
+				sampleTypeVal, ok := logRecords.At(0).Attributes().Get(dataplaneSample.OTLPLogSampleTypeKey)
 				require.True(GinkgoT(), ok)
 				assert.Equal(GinkgoT(), sampleTypeVal.AsString(), "struct-digest")
 			})

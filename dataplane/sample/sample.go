@@ -7,13 +7,11 @@ import (
 )
 
 const (
-	// resource attributes
-	rlSamplerNameKey = "sampler_name"
 	// sample attributes
-	lrSampleStreamsUIDsKey = "stream_uids"
-	lrSampleKey            = "sample_key"
-	lrSampleTypeKey        = "sample_type"
-	lrSampleEncodingKey    = "sample_encoding"
+	OTLPLogStreamsUIDsKey    = "com.neblic.streams"
+	OTLPLogSampleKey         = "com.neblic.sample.key"
+	OTLPLogSampleTypeKey     = "com.neblic.sample.type"
+	OTLPLogSampleEncodingKey = "com.neblic.sample.encoding"
 )
 
 type Encoding uint8
@@ -46,9 +44,9 @@ func ParseSampleEncoding(enc string) Encoding {
 type MetadataKey string
 
 const (
-	EventUID  MetadataKey = "event_uid"
-	EventRule MetadataKey = "event_rule"
-	DigestUID MetadataKey = "digest_uid"
+	EventUID  MetadataKey = "com.neblic.event.uid"
+	EventRule MetadataKey = "com.neblic.digest.rule"
+	DigestUID MetadataKey = "com.neblic.digest.uid"
 )
 
 // Sample defines a sample to be exported
