@@ -62,7 +62,7 @@ func OTLPLogToSampleType[T OTLPLog]() control.SampleType {
 }
 
 func getSampleType(logRecord plog.LogRecord) control.SampleType {
-	value, ok := logRecord.Attributes().Get(lrSampleTypeKey)
+	value, ok := logRecord.Attributes().Get(OTLPLogSampleTypeKey)
 	if !ok {
 		return control.UnknownSampleType
 	}
@@ -76,7 +76,7 @@ type baseOTLPLog struct {
 }
 
 func newBaseOTLPLog(logRecord plog.LogRecord, sampleType control.SampleType) baseOTLPLog {
-	logRecord.Attributes().PutStr(lrSampleTypeKey, sampleType.String())
+	logRecord.Attributes().PutStr(OTLPLogSampleTypeKey, sampleType.String())
 
 	return baseOTLPLog{
 		logRecord: logRecord,
@@ -92,7 +92,7 @@ func (b baseOTLPLog) SetTimestamp(ts time.Time) {
 }
 
 func (b baseOTLPLog) StreamsStr() []string {
-	value, ok := b.logRecord.Attributes().Get(lrSampleStreamsUIDsKey)
+	value, ok := b.logRecord.Attributes().Get(OTLPLogStreamsUIDsKey)
 	if !ok {
 		return []string{}
 	}
@@ -106,7 +106,7 @@ func (b baseOTLPLog) StreamsStr() []string {
 }
 
 func (b baseOTLPLog) Streams() []control.SamplerStreamUID {
-	value, ok := b.logRecord.Attributes().Get(lrSampleStreamsUIDsKey)
+	value, ok := b.logRecord.Attributes().Get(OTLPLogStreamsUIDsKey)
 	if !ok {
 		return []control.SamplerStreamUID{}
 	}
@@ -120,7 +120,7 @@ func (b baseOTLPLog) Streams() []control.SamplerStreamUID {
 }
 
 func (b baseOTLPLog) SetStreams(streams []control.SamplerStreamUID) {
-	lrStreamUIDs := b.logRecord.Attributes().PutEmptySlice(lrSampleStreamsUIDsKey)
+	lrStreamUIDs := b.logRecord.Attributes().PutEmptySlice(OTLPLogStreamsUIDsKey)
 	lrStreamUIDs.EnsureCapacity(len(streams))
 	for _, stream := range streams {
 		lrStreamUIDs.AppendEmpty().SetStr(string(stream))
@@ -132,7 +132,7 @@ func (b baseOTLPLog) SampleType() control.SampleType {
 }
 
 func (b baseOTLPLog) SampleKey() string {
-	value, ok := b.logRecord.Attributes().Get(lrSampleKey)
+	value, ok := b.logRecord.Attributes().Get(OTLPLogSampleKey)
 	if !ok {
 		return ""
 	}
@@ -141,11 +141,11 @@ func (b baseOTLPLog) SampleKey() string {
 }
 
 func (b baseOTLPLog) SetSampleKey(key string) {
-	b.logRecord.Attributes().PutStr(lrSampleKey, key)
+	b.logRecord.Attributes().PutStr(OTLPLogSampleKey, key)
 }
 
 func (b baseOTLPLog) SampleEncoding() Encoding {
-	value, ok := b.logRecord.Attributes().Get(lrSampleEncodingKey)
+	value, ok := b.logRecord.Attributes().Get(OTLPLogSampleEncodingKey)
 	if !ok {
 		return UnknownEncoding
 	}
@@ -162,7 +162,7 @@ func (b baseOTLPLog) SampleRawData() []byte {
 }
 
 func (b baseOTLPLog) SetSampleRawData(encoding Encoding, data []byte) {
-	b.logRecord.Attributes().PutStr(lrSampleEncodingKey, encoding.String())
+	b.logRecord.Attributes().PutStr(OTLPLogSampleEncodingKey, encoding.String())
 
 	if encoding == JSONEncoding {
 		b.logRecord.Body().SetStr(string(data))
@@ -369,9 +369,9 @@ func OTLPLogsFrom(plogs plog.Logs) OTLPLogs {
 func (l *OTLPLogs) AppendSamplerOTLPLogs(resource string, sampler string) SamplerOTLPLogs {
 	resourceLogs := l.logs.ResourceLogs().AppendEmpty()
 	resourceLogs.Resource().Attributes().PutStr(conventions.AttributeServiceName, resource)
-	resourceLogs.Resource().Attributes().PutStr(rlSamplerNameKey, sampler)
 
 	scopeLogs := resourceLogs.ScopeLogs().AppendEmpty()
+	scopeLogs.Scope().SetName(sampler)
 
 	return SamplerOTLPLogs{
 		resourceLogs: resourceLogs,
