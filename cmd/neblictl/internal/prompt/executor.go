@@ -83,6 +83,9 @@ func generateTargetHelp(parents interpoler.CommandNodes, target *interpoler.Comm
 		writer.WriteString("\nParameters\n")
 		for _, parameter := range target.Parameters {
 			writer.WriteStringf("\t%s: %s", parameter.Name, parameter.Description)
+			if parameter.Default != "" {
+				writer.WriteStringf(" (default: %s)", parameter.Default)
+			}
 			if parameter.Optional {
 				writer.WriteString(" (optional)")
 			}
