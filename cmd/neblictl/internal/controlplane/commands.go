@@ -519,6 +519,15 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Optional:    true,
 						Default:     "*",
 					},
+					{
+						Name:        "computation-location",
+						Description: "Where is the digest computed, valid options: sampler, collector.",
+						Completer: func(_ context.Context, _ interpoler.ParametersWithValue) []string {
+							return []string{"sampler", "collector"}
+						},
+						Optional: true,
+						Default:  "sampler",
+					},
 				},
 				Executor: controlPlaneExecutors.DigestsStructureCreate,
 			},
@@ -565,6 +574,15 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Optional:    true,
 						Default:     "*",
 					},
+					{
+						Name:        "computation-location",
+						Description: "Where is the digest computed, valid options: sampler, collector.",
+						Completer: func(_ context.Context, _ interpoler.ParametersWithValue) []string {
+							return []string{"sampler", "collector"}
+						},
+						Optional: true,
+						Default:  "sampler",
+					},
 				},
 				Executor: controlPlaneExecutors.DigestsStructureUpdate,
 			},
@@ -606,6 +624,15 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Completer:   controlPlaneCompleters.ListSamplersUID,
 						Optional:    true,
 						Default:     "*",
+					},
+					{
+						Name:        "computation-location",
+						Description: "Where is the digest computed, valid options: sampler, collector.",
+						Completer: func(_ context.Context, _ interpoler.ParametersWithValue) []string {
+							return []string{"sampler", "collector"}
+						},
+						Optional: true,
+						Default:  "sampler",
 					},
 				},
 				Executor: controlPlaneExecutors.DigestsValueCreate,
@@ -649,6 +676,15 @@ func NewCommands(controlPlaneExecutors *Executors, controlPlaneCompleters *Compl
 						Completer:   controlPlaneCompleters.ListSamplersUID,
 						Optional:    true,
 						Default:     "*",
+					},
+					{
+						Name:        "computation-location",
+						Description: "Where is the digest computed, valid options: sampler, collector.",
+						Completer: func(_ context.Context, _ interpoler.ParametersWithValue) []string {
+							return []string{"sampler", "collector"}
+						},
+						Optional: true,
+						Default:  "sampler",
 					},
 				},
 				Executor: controlPlaneExecutors.DigestsValueUpdate,
