@@ -14,7 +14,7 @@ gotest:
 	for gomod in $(GOMODULES); do \
 		echo "Testing $$gomod" && \
 			cd $$gomod && \
-			go test ./... && \
+			go test ./... || exit 1 && \
 			cd -; \
 	done
 
