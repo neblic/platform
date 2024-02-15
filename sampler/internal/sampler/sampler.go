@@ -317,7 +317,7 @@ func (p *Sampler) sample(ctx context.Context, sampleOpts sample.Options, sampleD
 	var streams []control.SamplerStreamUID
 	var exportRawSample bool
 	for streamUID, stream := range p.streams {
-		if sampleOpts.Size > 0 && sampleOpts.Size > int(stream.maxSampleSize) {
+		if int(stream.maxSampleSize) > 0 && sampleOpts.Size > int(stream.maxSampleSize) {
 			p.forwardError(fmt.Errorf("sample dropepd due to be over the maximum allowed size %d>%d", sampleOpts.Size, stream.maxSampleSize))
 			continue
 		}
