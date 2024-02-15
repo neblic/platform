@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync/atomic"
 	"time"
 
 	"github.com/neblic/platform/controlplane/control"
@@ -23,10 +24,26 @@ type samplerIdentifier struct {
 }
 
 type transformer struct {
-	eventor  *event.Eventor
-	digester *digest.Digester
+	collectedSamples atomic.Int64
+	eventor          *event.Eventor
+	digester         *digest.Digester
 
 	logger logging.Logger
+}
+
+func newTransformer(logger logging.Logger, resource string, sampler string) *transformer {
+	return &transformer{
+		collectedSamples: atomic.Int64{},
+		// each transformer has its own rate limited logger to avoid spamming the logs
+		logger: logging.FromZapLogger(
+			zap.New(
+				zapcore.NewSamplerWithOptions(
+					logger.With("resource", resource, "sampler", sampler).ZapLogger().Core(),
+					time.Minute, 1, 0,
+				),
+			),
+		),
+	}
 }
 
 type Processor struct {
@@ -75,6 +92,31 @@ func (p *Processor) configUpdater() {
 	}
 }
 
+func (p *Processor) samplerStatsUpdater() {
+	p.logger.Debug("Starting sampler stats updater routine")
+
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-p.ctx.Done():
+			return
+		case <-ticker.C:
+			for samplerIdentifier, transformer := range p.transformers {
+				collectedSamples := transformer.collectedSamples.Swap(0)
+				if collectedSamples == 0 {
+					continue
+				}
+
+				err := p.cpServer.UpdateSamplerStats(samplerIdentifier.resource, samplerIdentifier.name, collectedSamples)
+				if err != nil {
+					p.logger.Error("Error updating sampler stats", "error", err)
+				}
+			}
+		}
+	}
+}
+
 func (p *Processor) getTransformer(resource string, sampler string) (*transformer, bool) {
 	samplerIdentifier := samplerIdentifier{
 		resource: resource,
@@ -83,6 +125,26 @@ func (p *Processor) getTransformer(resource string, sampler string) (*transforme
 	transformer, ok := p.transformers[samplerIdentifier]
 
 	return transformer, ok
+}
+
+func (p *Processor) setTransformer(resource string, sampler string, transformer *transformer) {
+	samplerIdentifier := samplerIdentifier{
+		resource: resource,
+		name:     sampler,
+	}
+	p.transformers[samplerIdentifier] = transformer
+}
+
+func (p *Processor) propagateSamplerStats(otlpLogs sample.OTLPLogs) {
+	sample.Range(otlpLogs, func(resource, sampler string, _ any) {
+		transformer, ok := p.getTransformer(resource, sampler)
+		if !ok {
+			// create transformer
+			transformer = newTransformer(p.logger, resource, sampler)
+			p.setTransformer(resource, sampler, transformer)
+		}
+		transformer.collectedSamples.Add(1)
+	})
 }
 
 // computeDigests asynchronous computes the digests for the input samples, generated digests are exported
@@ -129,6 +191,7 @@ func (p *Processor) Start() error {
 
 	p.ctx, p.ctxCancel = context.WithCancel(context.Background())
 	go p.configUpdater()
+	go p.samplerStatsUpdater()
 
 	return nil
 }
@@ -205,17 +268,7 @@ func (p *Processor) UpdateConfig(resource, sampler string, config *control.Sampl
 
 	tr, ok := p.transformers[samplerIdentifier]
 	if !ok {
-		tr = &transformer{
-			// each transformer has its own rate limited logger to avoid spamming the logs
-			logger: logging.FromZapLogger(
-				zap.New(
-					zapcore.NewSamplerWithOptions(
-						logger.ZapLogger().Core(),
-						time.Minute, 1, 0,
-					),
-				),
-			),
-		}
+		tr = newTransformer(p.logger, resource, sampler)
 	}
 
 	// Update eventor
@@ -267,14 +320,11 @@ func (p *Processor) UpdateConfig(resource, sampler string, config *control.Sampl
 	}
 
 	// Update transformers
-	if tr.digester != nil || tr.eventor != nil {
-		p.transformers[samplerIdentifier] = tr
-	} else {
-		delete(p.transformers, samplerIdentifier)
-	}
+	p.transformers[samplerIdentifier] = tr
 }
 
 func (p *Processor) Process(ctx context.Context, logs sample.OTLPLogs) error {
+	p.propagateSamplerStats(logs)
 	p.computeDigests(logs)
 	p.computeEvents(logs)
 

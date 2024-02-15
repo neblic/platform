@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/event"
 	"github.com/neblic/platform/controlplane/server/internal/defs"
@@ -175,6 +177,82 @@ func (sr *SamplerRegistry) GetRegisteredInstances() []*defs.SamplerInstance {
 	return instances
 }
 
+func (sr *SamplerRegistry) createSampler(resource string, name string, tags []control.Tag, config control.SamplerConfig) *defs.Sampler {
+	// Create sampler
+	sampler := defs.NewSampler(resource, name)
+	sampler.Tags = tags
+	sampler.Config = config
+
+	return sampler
+}
+
+func (sr *SamplerRegistry) UpdateSamplerStats(resource string, name string, collectedSamples int64) error {
+	sr.m.Lock()
+	defer sr.m.Unlock()
+
+	sampler, err := sr.getSampler(resource, name)
+	if err != nil {
+		if err != ErrUnknownSampler {
+			return fmt.Errorf("unknown error happened when getting the sampler")
+		}
+
+		// We received data from a sampler that does not exist in the registry. Create an
+		// implicit sampler.
+		initialConfig := control.NewSamplerConfig()
+		streamUID := control.SamplerStreamUID(uuid.NewString())
+		initialConfig.Streams = control.Streams{
+			streamUID: control.Stream{
+				UID:  streamUID,
+				Name: "all",
+				StreamRule: control.Rule{
+					Lang:       control.SrlUnknown,
+					Expression: "",
+				},
+				ExportRawSamples: true,
+				MaxSampleSize:    10240,
+			},
+		}
+		structDigestUID := control.SamplerDigestUID(uuid.NewString())
+		valueDigestUID := control.SamplerDigestUID(uuid.NewString())
+		initialConfig.Digests = control.Digests{
+			structDigestUID: control.Digest{
+				UID:                 structDigestUID,
+				StreamUID:           streamUID,
+				FlushPeriod:         time.Minute,
+				ComputationLocation: control.ComputationLocationCollector,
+				Type:                control.DigestTypeSt,
+				St: &control.DigestSt{
+					MaxProcessedFields: 100,
+				},
+			},
+			valueDigestUID: control.Digest{
+				UID:                 valueDigestUID,
+				StreamUID:           streamUID,
+				FlushPeriod:         time.Minute,
+				ComputationLocation: control.ComputationLocationCollector,
+				Type:                control.DigestTypeValue,
+				Value: &control.DigestValue{
+					MaxProcessedFields: 100,
+				},
+			},
+		}
+
+		sampler = sr.createSampler(resource, name, []control.Tag{}, *initialConfig)
+	}
+
+	sampler.Stats.Add(collectedSamples)
+
+	// Store sampler
+	err = sr.setSampler(resource, name, sampler)
+
+	return err
+}
+
+func (sr *SamplerRegistry) updateSampler(sampler *defs.Sampler, tags []control.Tag) {
+	// Update sampler tags
+	sampler.Tags = tags
+}
+
 func (sr *SamplerRegistry) Register(resource string, name string,
 	tags []control.Tag, initialConfig control.SamplerConfig,
 	uid control.SamplerUID, conn defs.SamplerConn,
@@ -189,10 +267,9 @@ func (sr *SamplerRegistry) Register(resource string, name string,
 			return fmt.Errorf("unknown error happened when getting the sampler")
 		}
 
-		sampler = defs.NewSampler(resource, name)
-		sampler.Tags = tags
-		sampler.Config = initialConfig
+		sampler = sr.createSampler(resource, name, tags, initialConfig)
 	}
+	sr.updateSampler(sampler, tags)
 
 	// Get instance if exists, create it otherwise
 	instance, ok := sampler.GetInstance(uid)
