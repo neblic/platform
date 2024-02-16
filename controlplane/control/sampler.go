@@ -590,20 +590,20 @@ func (t Tags) ToProto() []*protos.Sampler_Tag {
 }
 
 type Sampler struct {
-	Name          string
-	Resource      string
-	Tags          []Tag
 	UID           SamplerUID
+	Resource      string
+	Name          string
 	Tags          Tags
+	Capabilities  Capabilities
 	Config        SamplerConfig
 	SamplingStats SamplerSamplingStats
 }
 
 func NewSampler(name, resource string, uid SamplerUID) *Sampler {
 	return &Sampler{
-		Name:     name,
-		Resource: resource,
 		UID:      uid,
+		Resource: resource,
+		Name:     name,
 	}
 }
 
@@ -617,6 +617,7 @@ func NewSamplerFromProto(sampler *protos.Sampler) *Sampler {
 		Resource:      sampler.GetResource(),
 		Name:          sampler.GetName(),
 		Tags:          NewTagsFromProto(sampler.GetTags()),
+		Capabilities:  NewCapabilitiesFromProto(sampler.GetCapabilities()),
 		Config:        NewSamplerConfigFromProto(sampler.Config),
 		SamplingStats: NewSamplerSamplingStatsFromProto(sampler.GetSamplingStats()),
 	}
@@ -628,6 +629,7 @@ func (p Sampler) ToProto() *protos.Sampler {
 		Name:          p.Name,
 		Resource:      p.Resource,
 		Tags:          p.Tags.ToProto(),
+		Capabilities:  p.Capabilities.ToProto(),
 		Config:        p.Config.ToProto(),
 		SamplingStats: p.SamplingStats.ToProto(),
 	}

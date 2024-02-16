@@ -80,15 +80,17 @@ type SamplerHandler struct {
 	name            string
 	resource        string
 	tags            control.Tags
+	capabilities    control.Capabilities
 	recvServerReqCb func(*protos.ServerToSampler) (bool, *protos.SamplerToServer, error)
 	initialConfig   *protos.ClientSamplerConfigUpdate
 }
 
-func NewSamplerHandler(name, resource string, tags []control.Tag, recvServerReqCb func(*protos.ServerToSampler) (bool, *protos.SamplerToServer, error), initialConfig *protos.ClientSamplerConfigUpdate) Handler[*protos.ServerToSampler, *protos.SamplerToServer] {
+func NewSamplerHandler(name, resource string, tags control.Tags, capablities control.Capabilities, recvServerReqCb func(*protos.ServerToSampler) (bool, *protos.SamplerToServer, error), initialConfig *protos.ClientSamplerConfigUpdate) Handler[*protos.ServerToSampler, *protos.SamplerToServer] {
 	return &SamplerHandler{
 		name:            name,
 		resource:        resource,
 		tags:            tags,
+		capabilities:    capablities,
 		recvServerReqCb: recvServerReqCb,
 		initialConfig:   initialConfig,
 	}
@@ -117,6 +119,7 @@ func (ch SamplerHandler) regReqMsg(uid string) *protos.SamplerToServer {
 		RegisterReq: &protos.SamplerRegisterReq{
 			InitialConfig: ch.initialConfig,
 			Tags:          ch.tags.ToProto(),
+			Capabilities:  ch.capabilities.ToProto(),
 		},
 	}
 
