@@ -558,7 +558,16 @@ func NewTagFromProto(tag *protos.Sampler_Tag) Tag {
 	}
 }
 
-func NewTagsFromProto(protoTags []*protos.Sampler_Tag) []Tag {
+func (t Tag) ToProto() *protos.Sampler_Tag {
+	return &protos.Sampler_Tag{
+		Name:  t.Name,
+		Attrs: t.Attrs,
+	}
+}
+
+type Tags []Tag
+
+func NewTagsFromProto(protoTags []*protos.Sampler_Tag) Tags {
 	if protoTags == nil {
 		return nil
 	}
@@ -571,11 +580,13 @@ func NewTagsFromProto(protoTags []*protos.Sampler_Tag) []Tag {
 	return tags
 }
 
-func (t Tag) ToProto() *protos.Sampler_Tag {
-	return &protos.Sampler_Tag{
-		Name:  t.Name,
-		Attrs: t.Attrs,
+func (t Tags) ToProto() []*protos.Sampler_Tag {
+	protoTags := []*protos.Sampler_Tag{}
+	for _, tag := range t {
+		protoTags = append(protoTags, tag.ToProto())
 	}
+
+	return protoTags
 }
 
 type Sampler struct {
@@ -583,6 +594,7 @@ type Sampler struct {
 	Resource      string
 	Tags          []Tag
 	UID           SamplerUID
+	Tags          Tags
 	Config        SamplerConfig
 	SamplingStats SamplerSamplingStats
 }
@@ -611,16 +623,11 @@ func NewSamplerFromProto(sampler *protos.Sampler) *Sampler {
 }
 
 func (p Sampler) ToProto() *protos.Sampler {
-	protoTags := []*protos.Sampler_Tag{}
-	for _, tag := range p.Tags {
-		protoTags = append(protoTags, tag.ToProto())
-	}
-
 	return &protos.Sampler{
 		Uid:           string(p.UID),
 		Name:          p.Name,
 		Resource:      p.Resource,
-		Tags:          protoTags,
+		Tags:          p.Tags.ToProto(),
 		Config:        p.Config.ToProto(),
 		SamplingStats: p.SamplingStats.ToProto(),
 	}

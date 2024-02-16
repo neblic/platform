@@ -59,10 +59,10 @@ func (s *SamplerStats) Add(collectedSamples int64) {
 type Sampler struct {
 	Resource  string
 	Name      string
-	Stats     SamplerStats
-	Tags      []control.Tag
+	Tags      control.Tags
 	Config    control.SamplerConfig
 	Instances map[control.SamplerUID]*SamplerInstance
+	Stats     SamplerStats
 }
 
 func NewSampler(resource string, name string) *Sampler {

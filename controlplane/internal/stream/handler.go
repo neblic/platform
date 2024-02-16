@@ -79,7 +79,7 @@ var _ Handler[*protos.ServerToSampler, *protos.SamplerToServer] = (*SamplerHandl
 type SamplerHandler struct {
 	name            string
 	resource        string
-	tags            []control.Tag
+	tags            control.Tags
 	recvServerReqCb func(*protos.ServerToSampler) (bool, *protos.SamplerToServer, error)
 	initialConfig   *protos.ClientSamplerConfigUpdate
 }
@@ -113,15 +113,10 @@ func (ch SamplerHandler) toServerMsg(uid string) *protos.SamplerToServer {
 
 func (ch SamplerHandler) regReqMsg(uid string) *protos.SamplerToServer {
 	toServerMsg := ch.toServerMsg(uid)
-	protoTags := []*protos.Sampler_Tag{}
-	for _, tag := range ch.tags {
-		protoTags = append(protoTags, tag.ToProto())
-	}
-
 	toServerMsg.Message = &protos.SamplerToServer_RegisterReq{
 		RegisterReq: &protos.SamplerRegisterReq{
 			InitialConfig: ch.initialConfig,
-			Tags:          protoTags,
+			Tags:          ch.tags.ToProto(),
 		},
 	}
 

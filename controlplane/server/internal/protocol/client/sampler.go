@@ -20,6 +20,7 @@ func (c *Client) handleListSamplersReq(_ *protos.ClientListSamplersReq) (*protos
 			Name:          sampler.Name,
 			Resource:      sampler.Resource,
 			Uid:           string(instance.UID),
+			Tags:          sampler.Tags.ToProto(),
 			Config:        sampler.Config.ToProto(),
 			SamplingStats: instance.Stats.ToProto(),
 		})

@@ -345,7 +345,7 @@ var _ = Describe("ControlPlane", func() {
 						},
 					}
 
-					tags := []control.Tag{{Name: "some_tag_name", Attrs: map[string]string{"some_attr_name": "some_attr_value"}}}
+					tags := control.Tags{{Name: "some_tag_name", Attrs: map[string]string{"some_attr_name": "some_attr_value"}}}
 					p := sampler.New("sampler1", "resource1",
 						sampler.WithLogger(logger),
 						sampler.WithTags(tags...),
