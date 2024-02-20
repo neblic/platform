@@ -274,7 +274,7 @@ func (p *Sampler) buildRawSample(streams []control.SamplerStreamUID, key string,
 	samplerOtlpLogs := otlpLogs.AppendSamplerOTLPLogs(p.resourceName, p.name)
 	rawSample := samplerOtlpLogs.AppendRawSampleOTLPLog()
 	rawSample.SetTimestamp(time.Now())
-	rawSample.SetStreams(streams)
+	rawSample.SetStreamUIDs(streams)
 	rawSample.SetSampleKey(key)
 	rawSample.SetSampleRawData(dpsample.JSONEncoding, []byte(dataJSON))
 

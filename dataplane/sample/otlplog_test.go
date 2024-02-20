@@ -72,10 +72,10 @@ func TestStreams(t *testing.T) {
 
 	// set streams using setStreams function
 	streams := []control.SamplerStreamUID{"stream1", "stream2"}
-	b.SetStreams(streams)
+	b.SetStreamUIDs(streams)
 
 	// get streams using Streams function
-	gotStreams := b.Streams()
+	gotStreams := b.StreamUIDs()
 
 	// check if the returned streams are equal to the expected streams
 	if !reflect.DeepEqual(gotStreams, streams) {

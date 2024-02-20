@@ -33,7 +33,7 @@ func RangeSamplers(otlpLogs OTLPLogs, fn func(resource, sampler string, samplerL
 
 // RangeSamplerLogs iterates over the logs and runs the callback for each log. Logs added to
 // the SamplerOTLPLogs after this function is called will not be visited
-func RangeSamplerLogs(samplerOtlpLogs SamplerOTLPLogs, fn func(otlpLog interface{})) {
+func RangeSamplerLogs(samplerOtlpLogs SamplerOTLPLogs, fn func(otlpLog OTLPLog)) {
 	scopeLogsLen := samplerOtlpLogs.scopeLogs.LogRecords().Len()
 	for j := 0; j < scopeLogsLen; j++ {
 		logRecord := samplerOtlpLogs.scopeLogs.LogRecords().At(j)
@@ -41,7 +41,7 @@ func RangeSamplerLogs(samplerOtlpLogs SamplerOTLPLogs, fn func(otlpLog interface
 	}
 }
 
-func RangeSamplerLogsWithType[T OTLPLog](samplerOtlpLogs SamplerOTLPLogs, fn func(otlpLog T)) {
+func RangeSamplerLogsWithType[T OTLPLogContraint](samplerOtlpLogs SamplerOTLPLogs, fn func(otlpLog T)) {
 	targetSampleType := OTLPLogToSampleType[T]()
 
 	scopeLogsLen := samplerOtlpLogs.scopeLogs.LogRecords().Len()
@@ -62,7 +62,7 @@ func RangeSamplerLogsWithType[T OTLPLog](samplerOtlpLogs SamplerOTLPLogs, fn fun
 
 // Range iterates over the logs and runs the callback for each log record that matches the type provided.
 // Logs added to the SamplerOTLPLogs after this function is called will not be visited.
-func RangeWithType[T OTLPLog](otlpLogs OTLPLogs, fn func(resource, sampler string, otlpLog T)) {
+func RangeWithType[T OTLPLogContraint](otlpLogs OTLPLogs, fn func(resource, sampler string, otlpLog T)) {
 	RangeSamplers(otlpLogs, func(resource, sample string, samplerLogs SamplerOTLPLogs) {
 		RangeSamplerLogsWithType[T](samplerLogs, func(otlpLog T) {
 			fn(resource, sample, otlpLog)
@@ -72,9 +72,9 @@ func RangeWithType[T OTLPLog](otlpLogs OTLPLogs, fn func(resource, sampler strin
 
 // Range iterates over the logs and runs the callback for each log.
 // Logs added to the SamplerOTLPLogs after this function is called will not be visited.
-func Range(otlpLogs OTLPLogs, fn func(resource, sampler string, otlpLog interface{})) {
+func Range(otlpLogs OTLPLogs, fn func(resource, sampler string, otlpLog OTLPLog)) {
 	RangeSamplers(otlpLogs, func(resource, sample string, samplerLogs SamplerOTLPLogs) {
-		RangeSamplerLogs(samplerLogs, func(otlpLog any) {
+		RangeSamplerLogs(samplerLogs, func(otlpLog OTLPLog) {
 			fn(resource, sample, otlpLog)
 		})
 	})

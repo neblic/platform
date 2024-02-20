@@ -122,7 +122,7 @@ func TestWorkerRun(t *testing.T) {
 				otlpLogs := dpsample.NewOTLPLogs()
 				samplerOtlpLogs := otlpLogs.AppendSamplerOTLPLogs(testResourceName, testSamplerName)
 				structDigest := samplerOtlpLogs.AppendStructDigestOTLPLog()
-				structDigest.SetStreams([]control.SamplerStreamUID{"stream_uid"})
+				structDigest.SetStreamUIDs([]control.SamplerStreamUID{"stream_uid"})
 				structDigest.SetSampleRawData(dpsample.JSONEncoding, []byte(`{"obj":{"count":"2","fields":{"field_double":{"number":{"floatNum":{"count":"1"}}},"field_string":{"string":{"count":"1"}}}}}`))
 
 				return otlpLogs
@@ -166,7 +166,7 @@ func TestWorkerRun(t *testing.T) {
 
 			assert.Equal(t, wantResource, gotResource)
 			assert.Equal(t, wantSampler, gotSampler)
-			assert.Equal(t, want.Streams(), got.Streams())
+			assert.Equal(t, want.StreamUIDs(), got.StreamUIDs())
 			diff := cmp.Diff(want.SampleRawData(), got.SampleRawData(), cmp.Transformer("ParseJSON", func(in []byte) (out any) {
 				if err := json.Unmarshal(in, &out); err != nil {
 					return err

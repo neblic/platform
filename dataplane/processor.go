@@ -25,6 +25,7 @@ type samplerIdentifier struct {
 
 type transformer struct {
 	collectedSamples atomic.Int64
+	streamUIDs       map[string]control.SamplerStreamUID
 	eventor          *event.Eventor
 	digester         *digest.Digester
 
@@ -136,7 +137,7 @@ func (p *Processor) setTransformer(resource string, sampler string, transformer 
 }
 
 func (p *Processor) propagateSamplerStats(otlpLogs sample.OTLPLogs) {
-	sample.Range(otlpLogs, func(resource, sampler string, _ any) {
+	sample.Range(otlpLogs, func(resource, sampler string, _ sample.OTLPLog) {
 		transformer, ok := p.getTransformer(resource, sampler)
 		if !ok {
 			// create transformer
@@ -163,7 +164,7 @@ func (p *Processor) computeDigests(otlpLogs sample.OTLPLogs) {
 			return
 		}
 
-		transformer.digester.ProcessSample(log.Streams(), data)
+		transformer.digester.ProcessSample(log.StreamUIDs(), data)
 	})
 }
 
@@ -271,6 +272,17 @@ func (p *Processor) UpdateConfig(resource, sampler string, config *control.Sampl
 		tr = newTransformer(p.logger, resource, sampler)
 	}
 
+	// Update stream uids map
+	if config != nil && len(config.Streams) > 0 {
+		tr.streamUIDs = make(map[string]control.SamplerStreamUID, len(config.Streams))
+		for _, stream := range config.Streams {
+			tr.streamUIDs[stream.Name] = stream.UID
+		}
+	} else {
+		logger.Debug("No streams configuration found")
+		tr.streamUIDs = map[string]control.SamplerStreamUID{}
+	}
+
 	// Update eventor
 	if config != nil && len(config.Events) > 0 {
 		logger.Debug("Setting event configuration", "config", config.Events)
@@ -324,6 +336,35 @@ func (p *Processor) UpdateConfig(resource, sampler string, config *control.Sampl
 }
 
 func (p *Processor) Process(ctx context.Context, logs sample.OTLPLogs) error {
+	// Translate sample names to uids
+	sample.Range(logs, func(resource, sampler string, otlpLog sample.OTLPLog) {
+		// If there is no configured transformer, do nothing
+		transformer, ok := p.getTransformer(resource, sampler)
+		if !ok {
+			return
+		}
+
+		// If stream names is empty or stream uids is already populated, do nothing.
+		streamNames := otlpLog.StreamNames()
+		if len(streamNames) == 0 || len(otlpLog.StreamUIDs()) > 0 {
+			return
+		}
+
+		// Translate stream names to stream uids and clear stream names.
+		streamUIDs := make([]control.SamplerStreamUID, 0, len(streamNames))
+		for _, streamName := range streamNames {
+			streamUID, ok := transformer.streamUIDs[streamName]
+			if !ok {
+				transformer.logger.Error("Stream name not found when translating from stream name to stream uid", "stream", streamName)
+				continue
+			}
+			streamUIDs = append(streamUIDs, streamUID)
+		}
+		otlpLog.SetStreamNames([]string{})
+		otlpLog.SetStreamUIDs(streamUIDs)
+
+	})
+
 	p.propagateSamplerStats(logs)
 	p.computeDigests(logs)
 	p.computeEvents(logs)

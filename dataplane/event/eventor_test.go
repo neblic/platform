@@ -64,13 +64,13 @@ func TestEventor_ProcessSample(t *testing.T) {
 
 	rawSample1 := samplerLogs.AppendRawSampleOTLPLog()
 	rawSample1.SetTimestamp(time.Now())
-	rawSample1.SetStreams([]control.SamplerStreamUID{"stream1"})
+	rawSample1.SetStreamUIDs([]control.SamplerStreamUID{"stream1"})
 	rawSample1.SetSampleKey("key1")
 	rawSample1.SetSampleRawData(sample.JSONEncoding, []byte(`{"foo":"bar"}`))
 
 	rawSample2 := samplerLogs.AppendRawSampleOTLPLog()
 	rawSample2.SetTimestamp(time.Now())
-	rawSample2.SetStreams([]control.SamplerStreamUID{"stream1"})
+	rawSample2.SetStreamUIDs([]control.SamplerStreamUID{"stream1"})
 	rawSample2.SetSampleKey("key2")
 	rawSample2.SetSampleRawData(sample.JSONEncoding, []byte(`{"foo":"baz"}`))
 
@@ -108,8 +108,8 @@ func TestEventor_ProcessSample(t *testing.T) {
 		if otlpLog.UID() != expectedEventSample.UID {
 			t.Errorf("Event %s has incorrect UID: got %s, want %s", otlpLog.UID(), otlpLog.UID(), expectedEventSample.UID)
 		}
-		if !reflect.DeepEqual(otlpLog.Streams(), expectedEventSample.Streams) {
-			t.Errorf("Event %s has incorrect streams: got %v, want %v", otlpLog.UID(), otlpLog.Streams(), expectedEventSample.Streams)
+		if !reflect.DeepEqual(otlpLog.StreamUIDs(), expectedEventSample.Streams) {
+			t.Errorf("Event %s has incorrect streams: got %v, want %v", otlpLog.UID(), otlpLog.StreamUIDs(), expectedEventSample.Streams)
 		}
 		if otlpLog.SampleKey() != expectedEventSample.SampleKey {
 			t.Errorf("Event %s has incorrect sample key: got %s, want %s", otlpLog.UID(), otlpLog.SampleKey(), expectedEventSample.SampleKey)

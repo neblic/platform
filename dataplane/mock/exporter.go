@@ -24,7 +24,7 @@ func NewExporter() *Exporter {
 
 // Export mocks base method.
 func (m *Exporter) Export(_ context.Context, logs sample.OTLPLogs) error {
-	sample.Range(logs, func(resourceName string, sampleName string, log any) {
+	sample.Range(logs, func(resourceName string, sampleName string, log sample.OTLPLog) {
 		switch v := log.(type) {
 		case sample.ConfigOTLPLog:
 			m.Configs = append(m.Configs, v)

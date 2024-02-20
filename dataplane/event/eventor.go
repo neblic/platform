@@ -122,7 +122,7 @@ func (e *Eventor) ProcessSample(samplerLogs dsample.SamplerOTLPLogs) error {
 	// it's call, new events will not be visited.
 	dsample.RangeSamplerLogsWithType[dsample.RawSampleOTLPLog](samplerLogs, func(rawSample dsample.RawSampleOTLPLog) {
 		for _, event := range e.events {
-			if slices.Contains(rawSample.Streams(), event.stream.UID) {
+			if slices.Contains(rawSample.StreamUIDs(), event.stream.UID) {
 				data, err := rawSample.SampleData()
 				if err != nil {
 					errs = errors.Join(errs, err)
@@ -154,7 +154,7 @@ func (e *Eventor) ProcessSample(samplerLogs dsample.SamplerOTLPLogs) error {
 						otlpLog := samplerLogs.AppendEventOTLPLog()
 						otlpLog.SetUID(event.uid)
 						otlpLog.SetTimestamp(time.Now())
-						otlpLog.SetStreams([]control.SamplerStreamUID{event.stream.UID})
+						otlpLog.SetStreamUIDs([]control.SamplerStreamUID{event.stream.UID})
 						otlpLog.SetSampleKey(rawSample.SampleKey())
 						otlpLog.SetSampleRawData(dsample.Encoding(sample.JSONSampleType), []byte(sampleMetadata))
 						otlpLog.SetRuleExpression(event.ruleExpression)

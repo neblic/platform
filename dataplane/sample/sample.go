@@ -8,10 +8,11 @@ import (
 
 const (
 	// sample attributes
-	OTLPLogStreamsUIDsKey    = "com.neblic.streams"
-	OTLPLogSampleKey         = "com.neblic.sample.key"
-	OTLPLogSampleTypeKey     = "com.neblic.sample.type"
-	OTLPLogSampleEncodingKey = "com.neblic.sample.encoding"
+	OTLPLogSampleStreamUIDsKey  = "com.neblic.sample.stream.uids"
+	OTLPLogSampleStreamNamesKey = "com.neblic.sample.stream.names"
+	OTLPLogSampleKey            = "com.neblic.sample.key"
+	OTLPLogSampleTypeKey        = "com.neblic.sample.type"
+	OTLPLogSampleEncodingKey    = "com.neblic.sample.encoding"
 )
 
 type Encoding uint8
