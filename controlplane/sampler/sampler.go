@@ -116,6 +116,10 @@ func (p *Sampler) Events() chan Event {
 	return p.events
 }
 
+func (p *Sampler) Resource() string {
+	return p.data.Resource
+}
+
 func (p *Sampler) Name() string {
 	return p.data.Name
 }
