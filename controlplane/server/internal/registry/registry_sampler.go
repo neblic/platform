@@ -218,6 +218,7 @@ func (sr *SamplerRegistry) UpdateSamplerStats(resource string, name string, coll
 		initialConfig.Digests = control.Digests{
 			structDigestUID: control.Digest{
 				UID:                 structDigestUID,
+				Name:                "struct",
 				StreamUID:           streamUID,
 				FlushPeriod:         time.Minute,
 				ComputationLocation: control.ComputationLocationCollector,
@@ -228,6 +229,7 @@ func (sr *SamplerRegistry) UpdateSamplerStats(resource string, name string, coll
 			},
 			valueDigestUID: control.Digest{
 				UID:                 valueDigestUID,
+				Name:                "value",
 				StreamUID:           streamUID,
 				FlushPeriod:         time.Minute,
 				ComputationLocation: control.ComputationLocationCollector,
