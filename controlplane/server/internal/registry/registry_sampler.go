@@ -143,19 +143,17 @@ func (sr *SamplerRegistry) RangeSamplers(fn func(sampler *defs.Sampler) (carryon
 	}
 }
 
-// RangeRegisteredInstances locks the registry until all the instances have been processed
+// RangeInstances locks the registry until all the instances have been processed
 // CAUTION: do not perform any action that may require registry access or it may cause a deadlock
-func (sr *SamplerRegistry) RangeRegisteredInstances(fn func(sampler *defs.Sampler, instance *defs.SamplerInstance) (carryon bool)) {
+func (sr *SamplerRegistry) RangeInstances(fn func(sampler *defs.Sampler, instance *defs.SamplerInstance) (carryon bool)) {
 	sr.m.Lock()
 	defer sr.m.Unlock()
 
 	for _, sampler := range sr.samplers {
 		for _, instance := range sampler.Instances {
-			if instance.Status == defs.RegisteredStatus {
-				carryon := fn(sampler, instance)
-				if !carryon {
-					return
-				}
+			carryon := fn(sampler, instance)
+			if !carryon {
+				return
 			}
 		}
 	}
@@ -187,7 +185,7 @@ func (sr *SamplerRegistry) createSampler(resource string, name string, tags cont
 	return sampler
 }
 
-func (sr *SamplerRegistry) UpdateSamplerStats(resource string, name string, collectedSamples int64) error {
+func (sr *SamplerRegistry) UpdateSamplerStats(resource string, name string, SamplesCollected uint64) error {
 	sr.m.Lock()
 	defer sr.m.Unlock()
 
@@ -262,7 +260,7 @@ func (sr *SamplerRegistry) UpdateSamplerStats(resource string, name string, coll
 		sampler = sr.createSampler(resource, name, tags, capabilities, *initialConfig)
 	}
 
-	sampler.Stats.Add(collectedSamples)
+	sampler.CollectorStats.Add(SamplesCollected)
 
 	// Store sampler
 	err = sr.setSampler(resource, name, sampler)

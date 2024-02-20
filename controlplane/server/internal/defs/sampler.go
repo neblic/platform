@@ -1,8 +1,6 @@
 package defs
 
 import (
-	"time"
-
 	"github.com/neblic/platform/controlplane/control"
 )
 
@@ -39,31 +37,14 @@ func NewSamplerInstance(uid control.SamplerUID, sampler *Sampler) *SamplerInstan
 	}
 }
 
-type SamplerStats struct {
-	UpdatedAt        time.Time
-	CollectedSamples int64
-}
-
-func NewSamplerStats() SamplerStats {
-	return SamplerStats{
-		UpdatedAt:        time.Time{},
-		CollectedSamples: 0,
-	}
-}
-
-func (s *SamplerStats) Add(collectedSamples int64) {
-	s.UpdatedAt = time.Now()
-	s.CollectedSamples += collectedSamples
-}
-
 type Sampler struct {
-	Resource     string
-	Name         string
-	Tags         control.Tags
-	Capabilities control.Capabilities
-	Config       control.SamplerConfig
-	Instances    map[control.SamplerUID]*SamplerInstance
-	Stats        SamplerStats
+	Resource       string
+	Name           string
+	Tags           control.Tags
+	Capabilities   control.Capabilities
+	Config         control.SamplerConfig
+	Instances      map[control.SamplerUID]*SamplerInstance
+	CollectorStats control.CollectorStats
 }
 
 func NewSampler(resource string, name string) *Sampler {

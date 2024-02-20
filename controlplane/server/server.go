@@ -161,8 +161,8 @@ func (s *Server) Events() chan event.Event {
 	return s.samplerRegistry.Events()
 }
 
-func (s *Server) UpdateSamplerStats(resourceName, samplerName string, collectedSamples int64) error {
-	return s.samplerRegistry.UpdateSamplerStats(resourceName, samplerName, collectedSamples)
+func (s *Server) UpdateSamplerStats(resourceName, samplerName string, samplesCollected uint64) error {
+	return s.samplerRegistry.UpdateSamplerStats(resourceName, samplerName, samplesCollected)
 }
 
 func (s *Server) SamplerConn(stream protos.ControlPlane_SamplerConnServer) error {

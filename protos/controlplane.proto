@@ -162,6 +162,8 @@ message Sampler {
     map<string, string> attrs = 2;
   }
 
+  message CollectorStats { uint64 samples_collected = 1; }
+
   // Identifies a single Sampler
   string uid = 1;
   // User-friendly and user-defined name to identify a Sampler.
@@ -184,6 +186,8 @@ message Sampler {
   SamplerConfig config = 5;
   // Statistics related to the Sampler sampling.
   SamplerSamplingStats sampling_stats = 6;
+  // Statistics related to the sampler in the collector context
+  CollectorStats collector_stats = 9;
 }
 
 /** service **/

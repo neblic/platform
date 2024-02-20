@@ -531,6 +531,30 @@ func (s SamplerSamplingStats) ToProto() *protos.SamplerSamplingStats {
 	}
 }
 
+type CollectorStats struct {
+	SamplesCollected uint64
+}
+
+func NewCollectorStatsFromProto(stats *protos.Sampler_CollectorStats) CollectorStats {
+	if stats == nil {
+		return CollectorStats{}
+	}
+
+	return CollectorStats{
+		SamplesCollected: stats.GetSamplesCollected(),
+	}
+}
+
+func (s *CollectorStats) Add(SamplesCollected uint64) {
+	s.SamplesCollected += SamplesCollected
+}
+
+func (s CollectorStats) ToProto() *protos.Sampler_CollectorStats {
+	return &protos.Sampler_CollectorStats{
+		SamplesCollected: s.SamplesCollected,
+	}
+}
+
 type SamplerUID string
 
 // if updated, remember to update the exported tags in the public sampler API
@@ -590,13 +614,14 @@ func (t Tags) ToProto() []*protos.Sampler_Tag {
 }
 
 type Sampler struct {
-	UID           SamplerUID
-	Resource      string
-	Name          string
-	Tags          Tags
-	Capabilities  Capabilities
-	Config        SamplerConfig
-	SamplingStats SamplerSamplingStats
+	UID            SamplerUID
+	Resource       string
+	Name           string
+	Tags           Tags
+	Capabilities   Capabilities
+	Config         SamplerConfig
+	SamplingStats  SamplerSamplingStats
+	CollectorStats CollectorStats
 }
 
 func NewSampler(name, resource string, uid SamplerUID) *Sampler {
@@ -613,24 +638,26 @@ func NewSamplerFromProto(sampler *protos.Sampler) *Sampler {
 	}
 
 	return &Sampler{
-		UID:           SamplerUID(sampler.GetUid()),
-		Resource:      sampler.GetResource(),
-		Name:          sampler.GetName(),
-		Tags:          NewTagsFromProto(sampler.GetTags()),
-		Capabilities:  NewCapabilitiesFromProto(sampler.GetCapabilities()),
-		Config:        NewSamplerConfigFromProto(sampler.Config),
-		SamplingStats: NewSamplerSamplingStatsFromProto(sampler.GetSamplingStats()),
+		UID:            SamplerUID(sampler.GetUid()),
+		Resource:       sampler.GetResource(),
+		Name:           sampler.GetName(),
+		Tags:           NewTagsFromProto(sampler.GetTags()),
+		Capabilities:   NewCapabilitiesFromProto(sampler.GetCapabilities()),
+		Config:         NewSamplerConfigFromProto(sampler.Config),
+		SamplingStats:  NewSamplerSamplingStatsFromProto(sampler.GetSamplingStats()),
+		CollectorStats: NewCollectorStatsFromProto(sampler.GetCollectorStats()),
 	}
 }
 
 func (p Sampler) ToProto() *protos.Sampler {
 	return &protos.Sampler{
-		Uid:           string(p.UID),
-		Name:          p.Name,
-		Resource:      p.Resource,
-		Tags:          p.Tags.ToProto(),
-		Capabilities:  p.Capabilities.ToProto(),
-		Config:        p.Config.ToProto(),
-		SamplingStats: p.SamplingStats.ToProto(),
+		Uid:            string(p.UID),
+		Name:           p.Name,
+		Resource:       p.Resource,
+		Tags:           p.Tags.ToProto(),
+		Capabilities:   p.Capabilities.ToProto(),
+		Config:         p.Config.ToProto(),
+		SamplingStats:  p.SamplingStats.ToProto(),
+		CollectorStats: p.CollectorStats.ToProto(),
 	}
 }

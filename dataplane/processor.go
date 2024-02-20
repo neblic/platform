@@ -24,7 +24,7 @@ type samplerIdentifier struct {
 }
 
 type transformer struct {
-	collectedSamples atomic.Int64
+	samplesCollected atomic.Uint64
 	streamUIDs       map[string]control.SamplerStreamUID
 	eventor          *event.Eventor
 	digester         *digest.Digester
@@ -34,7 +34,7 @@ type transformer struct {
 
 func newTransformer(logger logging.Logger, resource string, sampler string) *transformer {
 	return &transformer{
-		collectedSamples: atomic.Int64{},
+		samplesCollected: atomic.Uint64{},
 		// each transformer has its own rate limited logger to avoid spamming the logs
 		logger: logging.FromZapLogger(
 			zap.New(
@@ -104,12 +104,12 @@ func (p *Processor) samplerStatsUpdater() {
 			return
 		case <-ticker.C:
 			for samplerIdentifier, transformer := range p.transformers {
-				collectedSamples := transformer.collectedSamples.Swap(0)
-				if collectedSamples == 0 {
+				samplesCollected := transformer.samplesCollected.Swap(0)
+				if samplesCollected == 0 {
 					continue
 				}
 
-				err := p.cpServer.UpdateSamplerStats(samplerIdentifier.resource, samplerIdentifier.name, collectedSamples)
+				err := p.cpServer.UpdateSamplerStats(samplerIdentifier.resource, samplerIdentifier.name, samplesCollected)
 				if err != nil {
 					p.logger.Error("Error updating sampler stats", "error", err)
 				}
@@ -144,7 +144,7 @@ func (p *Processor) propagateSamplerStats(otlpLogs sample.OTLPLogs) {
 			transformer = newTransformer(p.logger, resource, sampler)
 			p.setTransformer(resource, sampler, transformer)
 		}
-		transformer.collectedSamples.Add(1)
+		transformer.samplesCollected.Add(1)
 	})
 }
 

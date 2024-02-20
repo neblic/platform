@@ -65,19 +65,21 @@ type ListSamplersView struct {
 
 func NewListSamplersView() *ListSamplersView {
 	return &ListSamplersView{
-		header: []string{"Resource", "Sampler", "Stats"},
+		header: []string{"Resource", "Sampler", "Sampler Stats", "Collector Stats"},
 		rows:   [][]string{},
 	}
 }
 
 func (lsv *ListSamplersView) AddSampler(sampler *control.Sampler) {
-	stats := sampler.SamplingStats
+	samplingStats := sampler.SamplingStats
 
 	lsv.rows = append(lsv.rows,
 		[]string{
 			sampler.Resource,
 			sampler.Name,
-			fmt.Sprintf("Evaluated: %d, Exported: %d, Digested: %d", stats.SamplesEvaluated, stats.SamplesExported, stats.SamplesDigested)})
+			fmt.Sprintf("Evaluated: %d, Exported: %d, Digested: %d", samplingStats.SamplesEvaluated, samplingStats.SamplesExported, samplingStats.SamplesDigested),
+			fmt.Sprintf("Collected: %d", sampler.CollectorStats.SamplesCollected),
+		})
 }
 
 func (lsv *ListSamplersView) Render(writer io.Writer) {
