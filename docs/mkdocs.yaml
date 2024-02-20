@@ -4,6 +4,11 @@ docs_dir: content
 strict: true
 nav:
     - 'What is Neblic': index.md
+    - 'Use cases':
+      - 'Event-driven applications': 'use-cases/event-driven.md'
+        # - 'Event sourcing': 'use-cases/event-sourcing.md'
+      - 'Real-time data streaming': 'use-cases/real-time-data-streaming.md'
+      - 'API monitoring': 'use-cases/api-monitoring.md'
     - 'Quickstart':
         - 'How does Neblic work': 'quickstart/how-does-neblic-work.md'
     - 'Getting started': 
@@ -55,6 +60,7 @@ extra_css:
   - assets/extra.css
 markdown_extensions:
   - admonition
+  - footnotes
   - toc:
       permalink: true
   - pymdownx.details
