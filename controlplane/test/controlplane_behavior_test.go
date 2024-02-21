@@ -522,10 +522,12 @@ var _ = Describe("ControlPlane", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(len(samplers)).To(Equal(2))
-					Expect(samplers[0].Resource).To(Equal(p0.Resource()))
-					Expect(samplers[0].Name).To(Equal(p0.Name()))
-					Expect(samplers[1].Resource).To(Equal(p1.Resource()))
-					Expect(samplers[1].Name).To(Equal(p1.Name()))
+					samplersMap := map[string]string{}
+					for _, s := range samplers {
+						samplersMap[s.Resource] = s.Name
+					}
+					Expect(samplersMap[p0.Resource()]).To(Equal(p0.Name()))
+					Expect(samplersMap[p1.Resource()]).To(Equal(p1.Name()))
 
 					Expect(c.Close(condTimeout)).ToNot(HaveOccurred())
 				})
