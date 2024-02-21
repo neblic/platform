@@ -50,12 +50,13 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 
 	// Populate registry data using storage data
 	samplers := map[defs.SamplerIdentifier]*defs.Sampler{}
-	err := storageInstance.RangeSamplers(func(resource string, sampler string, config control.SamplerConfig) {
-		samplers[defs.NewSamplerIdentifier(resource, sampler)] = &defs.Sampler{
-			Resource:  resource,
-			Name:      sampler,
-			Config:    config,
-			Instances: map[control.SamplerUID]*defs.SamplerInstance{},
+	err := storageInstance.RangeSamplers(func(entry storage.SamplerEntry) {
+		samplers[defs.NewSamplerIdentifier(entry.Resource, entry.Name)] = &defs.Sampler{
+			Resource:     entry.Resource,
+			Name:         entry.Name,
+			Capabilities: entry.Capabilities,
+			Config:       entry.Config,
+			Instances:    map[control.SamplerUID]*defs.SamplerInstance{},
 		}
 	})
 	if err != nil {
@@ -86,7 +87,12 @@ func (sr *SamplerRegistry) setSampler(resource string, name string, sampler *def
 	sr.samplers[samplerIdentifier] = sampler
 
 	// Store sampler in the storage
-	err := sr.storage.SetSampler(resource, name, sampler.Config)
+	err := sr.storage.SetSampler(storage.SamplerEntry{
+		Resource:     resource,
+		Name:         name,
+		Config:       sampler.Config,
+		Capabilities: sampler.Capabilities,
+	})
 
 	return err
 }

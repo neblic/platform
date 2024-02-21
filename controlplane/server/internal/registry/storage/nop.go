@@ -1,7 +1,5 @@
 package storage
 
-import "github.com/neblic/platform/controlplane/control"
-
 type Nop struct {
 }
 
@@ -9,15 +7,15 @@ func NewNop() *Nop {
 	return &Nop{}
 }
 
-func (d *Nop) GetSampler(_ string, _ string) (control.SamplerConfig, error) {
-	return control.SamplerConfig{}, nil
+func (d *Nop) GetSampler(resource string, sampler string) (SamplerEntry, error) {
+	return SamplerEntry{Resource: resource, Name: sampler}, nil
 }
 
-func (d *Nop) RangeSamplers(_ func(resource string, sampler string, config control.SamplerConfig)) error {
+func (d *Nop) RangeSamplers(_ func(entry SamplerEntry)) error {
 	return nil
 }
 
-func (d *Nop) SetSampler(_ string, _ string, _ control.SamplerConfig) error {
+func (d *Nop) SetSampler(_ SamplerEntry) error {
 	return nil
 }
 
