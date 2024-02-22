@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/protos"
 	"github.com/neblic/platform/controlplane/server/mock"
 	dataplaneSample "github.com/neblic/platform/dataplane/sample"
@@ -412,54 +411,62 @@ var _ = Describe("Sampler", func() {
 	})
 
 	Describe("Exporting digests", func() {
-		var settings sampler.Settings
+		var (
+			init     func(protos.Digest_Location)
+			settings sampler.Settings
+		)
 
 		BeforeEach(func() {
-			// configure and run a control plane server that registers the sampler and sends a configuration
-			streamUID := uuid.NewString()
-			controlPlaneServer.SetSamplerHandlers(
-				mock.RegisterSamplerHandler,
-				sendSamplerConfigHandler(&protos.SamplerConfig{
-					Streams: []*protos.Stream{
-						{
-							Uid: streamUID,
-							Rule: &protos.Rule{
-								Language: protos.Rule_CEL, Expression: "sample.id==1",
-							},
-						},
-					},
-					Digests: []*protos.Digest{
-						{
-							Uid:         uuid.NewString(),
-							StreamUid:   streamUID,
-							FlushPeriod: durationpb.New(200 * time.Millisecond),
-							Type: &protos.Digest_St_{
-								St: &protos.Digest_St{},
-							},
-						},
-					},
-				}),
-			)
-			controlPlaneServer.Start(GinkgoT())
+			init = func(location protos.Digest_Location) {
 
-			// common provider settings
-			settings = sampler.Settings{
-				ResourceName:      "sampled_service",
-				ControlServerAddr: controlPlaneServer.Addr(),
-				DataServerAddr:    logsReceiverLn.Addr().String(),
+				// configure and run a control plane server that registers the sampler and sends a configuration
+				streamUID := uuid.NewString()
+				controlPlaneServer.SetSamplerHandlers(
+					mock.RegisterSamplerHandler,
+					sendSamplerConfigHandler(&protos.SamplerConfig{
+						Streams: []*protos.Stream{
+							{
+								Uid: streamUID,
+								Rule: &protos.Rule{
+									Language: protos.Rule_CEL, Expression: "sample.id==1",
+								},
+							},
+						},
+						Digests: []*protos.Digest{
+							{
+								Uid:         uuid.NewString(),
+								StreamUid:   streamUID,
+								FlushPeriod: durationpb.New(200 * time.Millisecond),
+								Type: &protos.Digest_St_{
+									St: &protos.Digest_St{},
+								},
+								ComputationLocation: location,
+							},
+						},
+					}),
+				)
+				controlPlaneServer.Start(GinkgoT())
+
+				// common provider settings
+				settings = sampler.Settings{
+					ResourceName:      "sampled_service",
+					ControlServerAddr: controlPlaneServer.Addr(),
+					DataServerAddr:    logsReceiverLn.Addr().String(),
+				}
 			}
 		})
 
 		When("there is a structure digest with sampler computation location", func() {
 			It("should export structure digest samples", func() {
-				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
+				init(protos.Digest_SAMPLER)
+
+				provider, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
 				Expect(err).ToNot(HaveOccurred())
 
 				// create a sampler
-				s, err := providerLimitedOut.Sampler("sampler1", sample.DynamicSchema{},
+				s, err := provider.Sampler("sampler1", sample.DynamicSchema{},
 					sampler.WithInitialLimiterOutLimit(10),
 					sampler.WithoutDefaultInitialConfig(),
-					sampler.WithInitialStructDigest(control.ComputationLocationSampler),
 				)
 				Expect(err).ToNot(HaveOccurred())
 
@@ -504,6 +511,8 @@ var _ = Describe("Sampler", func() {
 
 		When("there is a structure digest with collector computation location", func() {
 			It("should never export structure digest samples", func() {
+				init(protos.Digest_COLLECTOR)
+
 				providerLimitedOut, err := sampler.NewProvider(context.Background(), settings, sampler.WithLogger(logger))
 				Expect(err).ToNot(HaveOccurred())
 
@@ -511,7 +520,6 @@ var _ = Describe("Sampler", func() {
 				s, err := providerLimitedOut.Sampler("sampler1", sample.DynamicSchema{},
 					sampler.WithInitialLimiterOutLimit(10),
 					sampler.WithoutDefaultInitialConfig(),
-					sampler.WithInitialStructDigest(control.ComputationLocationCollector),
 				)
 				Expect(err).ToNot(HaveOccurred())
 

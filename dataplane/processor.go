@@ -222,18 +222,19 @@ func (p *Processor) newEventor(resource, sampler string) (*event.Eventor, error)
 	return event.NewEventor(settings)
 }
 
-func (p *Processor) newDigester(resource, sampler string, digestTypes []control.DigestType, logger logging.Logger) *digest.Digester {
+func (p *Processor) newDigester(resource, sampler string, logger logging.Logger) *digest.Digester {
 	// the digester performs async operations, so we need to make sure that errors are logged
 	notifyErr := func(err error) { logger.Error("error digesting sample", "error", err) }
 
-	return digest.NewDigester(digest.Settings{
-		ResourceName:   resource,
-		SamplerName:    sampler,
-		EnabledDigests: digestTypes,
-		NotifyErr:      notifyErr,
-		Exporter:       p.exporter,
-		Logger:         logger,
-	})
+	return digest.NewDigester(
+		digest.Settings{
+			ResourceName:        resource,
+			SamplerName:         sampler,
+			ComputationLocation: control.ComputationLocationCollector,
+			NotifyErr:           notifyErr,
+			Exporter:            p.exporter,
+			Logger:              logger,
+		})
 }
 
 func (p *Processor) UpdateConfig(resource, sampler string, config *control.SamplerConfig, logger logging.Logger) {
@@ -315,7 +316,6 @@ func (p *Processor) UpdateConfig(resource, sampler string, config *control.Sampl
 			tr.digester = p.newDigester(
 				resource,
 				sampler,
-				config.DigestTypesByLocation(control.ComputationLocationCollector),
 				tr.logger,
 			)
 		}
