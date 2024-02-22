@@ -18,6 +18,9 @@ gotest:
 			cd -; \
 	done
 
+alltest: gotest
+	cd sampler/test/docs/java/sampler_example && ./gradlew build
+
 .PHONY: gomod-update-all
 gomod-update-all:
 	for gomod in $(GOMODULES); do \
