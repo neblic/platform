@@ -110,19 +110,15 @@ func New(
 		}
 	}
 
-	initialConfig := control.NewSamplerConfig()
-	initialConfig.Merge(settings.InitialConfig)
-
 	digesterSettings := digest.Settings{
-		ResourceName:   settings.Resource,
-		SamplerName:    settings.Name,
-		EnabledDigests: initialConfig.DigestTypesByLocation(control.ComputationLocationSampler),
-		NotifyErr:      forwardError,
-		Exporter:       settings.Exporter,
-		Logger:         logger,
+		ResourceName:        settings.Resource,
+		SamplerName:         settings.Name,
+		ComputationLocation: control.ComputationLocationSampler,
+		NotifyErr:           forwardError,
+		Exporter:            settings.Exporter,
+		Logger:              logger,
 	}
 
-	logger.Debug("Initializing digester with settings", digesterSettings)
 	digester := digest.NewDigester(digesterSettings)
 
 	p := &Sampler{
@@ -172,8 +168,6 @@ loop:
 		case csampler.ConfigUpdate:
 			p.logger.Debug("Received config update", "config", ev.Config)
 			p.updateConfig(ev.Config)
-
-			p.configUpdates++
 		case csampler.StateUpdate:
 			switch ev.State {
 			case csampler.Registered:
@@ -212,6 +206,8 @@ func (p *Sampler) updateStats(period time.Duration) {
 }
 
 func (p *Sampler) updateConfig(config control.SamplerConfig) {
+	p.configUpdates++
+
 	// configure limiter in
 	if config.LimiterIn != nil {
 		limit := rate.Limit(config.LimiterIn.Limit)

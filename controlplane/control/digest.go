@@ -55,28 +55,28 @@ func (dt *DigestType) UnmarshalYAML(value *yaml.Node) error {
 type ComputationLocation uint8
 
 const (
-	ComputationLocationUnknown ComputationLocation = iota
+	ComputationLocationUndefined ComputationLocation = iota
 	ComputationLocationSampler
 	ComputationLocationCollector
 )
 
 func NewComputationLocationFromString(t string) ComputationLocation {
 	switch t {
-	case "unknown":
-		return ComputationLocationUnknown
+	case "undefined":
+		return ComputationLocationUndefined
 	case "sampler":
 		return ComputationLocationSampler
 	case "collector":
 		return ComputationLocationCollector
 	default:
-		return ComputationLocationUnknown
+		return ComputationLocationUndefined
 	}
 }
 
 func (cl ComputationLocation) String() string {
 	switch cl {
-	case ComputationLocationUnknown:
-		return "unknown"
+	case ComputationLocationUndefined:
+		return "undefined"
 	case ComputationLocationSampler:
 		return "sampler"
 	case ComputationLocationCollector:
@@ -174,7 +174,7 @@ func NewDigestFromProto(protoDigest *protos.Digest) Digest {
 	case protos.Digest_COLLECTOR:
 		digest.ComputationLocation = ComputationLocationCollector
 	default:
-		digest.ComputationLocation = ComputationLocationUnknown
+		digest.ComputationLocation = ComputationLocationUndefined
 	}
 
 	switch t := protoDigest.GetType().(type) {

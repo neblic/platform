@@ -11,7 +11,6 @@ import (
 	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/neblic/platform/internal/pkg/exporter"
 	"github.com/neblic/platform/logging"
-	"golang.org/x/exp/slices"
 )
 
 // // Move to data package
@@ -23,9 +22,9 @@ const defaultDigestBufferSize = 1000
 /////
 
 type Settings struct {
-	ResourceName   string
-	SamplerName    string
-	EnabledDigests []control.DigestType
+	ResourceName        string
+	SamplerName         string
+	ComputationLocation control.ComputationLocation
 
 	NotifyErr func(error)
 	Exporter  exporter.Exporter
@@ -33,9 +32,9 @@ type Settings struct {
 }
 
 type Digester struct {
-	resourceName   string
-	samplerName    string
-	enabledDigests []control.DigestType
+	resourceName        string
+	samplerName         string
+	computationLocation control.ComputationLocation
 
 	notifyErr func(error)
 	exporter  exporter.Exporter
@@ -47,13 +46,12 @@ type Digester struct {
 
 func NewDigester(settings Settings) *Digester {
 	return &Digester{
-		resourceName:   settings.ResourceName,
-		samplerName:    settings.SamplerName,
-		enabledDigests: settings.EnabledDigests,
-
-		notifyErr: settings.NotifyErr,
-		exporter:  settings.Exporter,
-		logger:    settings.Logger,
+		resourceName:        settings.ResourceName,
+		samplerName:         settings.SamplerName,
+		computationLocation: settings.ComputationLocation,
+		notifyErr:           settings.NotifyErr,
+		exporter:            settings.Exporter,
+		logger:              settings.Logger,
 
 		workers: make(map[control.SamplerDigestUID]*worker),
 	}
@@ -98,10 +96,8 @@ func (d *Digester) buildWorkerSettings(digestCfg control.Digest) (workerSettings
 
 func (d *Digester) SetDigestsConfig(digestCfgs map[control.SamplerDigestUID]control.Digest) {
 	for _, digestCfg := range digestCfgs {
-
-		// Check if the digest type is enabled. Otherwise skip digest config
-		if !slices.Contains(d.enabledDigests, digestCfg.Type) {
-			d.logger.Debug("Digest is not enabled, skipping", "config", digestCfg)
+		if digestCfg.ComputationLocation != d.computationLocation {
+			d.logger.Debug("Skipping digest worker", "config", digestCfg, "reason", "computation location mismatch")
 			continue
 		}
 
