@@ -1,10 +1,10 @@
 package data
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
+	"github.com/goccy/go-json"
 	"github.com/mitchellh/mapstructure"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
