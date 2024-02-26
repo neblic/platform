@@ -18,6 +18,7 @@ gotest:
 			cd -; \
 	done
 
+.PHONY: alltest
 alltest: gotest
 	cd sampler/test/docs/java/sampler_example && ./gradlew build
 
