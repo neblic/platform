@@ -178,7 +178,7 @@ message Sampler {
   // and may be used by the platform to provide additional functionality.
   repeated Tag tags = 7;
   // Sampler capabilities defines what features can be performed by the
-  // sampler.bool
+  // sampler
   Capabilities capabilities = 8;
   // Sampler schema information.
   Schema schema = 4;
