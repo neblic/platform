@@ -116,6 +116,26 @@ type Capabilities struct {
 	Digest     DigestCapabilities
 }
 
+func NewImplicitSamplerCapabilities() Capabilities {
+	return Capabilities{
+		Stream: StreamCapabilities{
+			Enabled: false,
+		},
+		LimiterIn: LimiterCapabilities{
+			Enabled: false,
+		},
+		SamplingIn: SamplingCapabilities{
+			Enabled: false,
+		},
+		LimiterOut: LimiterCapabilities{
+			Enabled: false,
+		},
+		Digest: DigestCapabilities{
+			Enabled: false,
+		},
+	}
+}
+
 func NewCapabilitiesFromProto(capabilities *protos.Capabilities) Capabilities {
 	if capabilities == nil {
 		return Capabilities{}

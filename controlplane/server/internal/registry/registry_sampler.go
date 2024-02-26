@@ -200,25 +200,7 @@ func (sr *SamplerRegistry) UpdateSamplerStats(resource string, name string, Samp
 		}
 
 		tags := []control.Tag{}
-
-		capabilities := control.Capabilities{
-			Stream: control.StreamCapabilities{
-				Enabled: false,
-			},
-			LimiterIn: control.LimiterCapabilities{
-				Enabled: false,
-			},
-			SamplingIn: control.SamplingCapabilities{
-				Enabled: false,
-			},
-			LimiterOut: control.LimiterCapabilities{
-				Enabled: false,
-			},
-			Digest: control.DigestCapabilities{
-				Enabled: false,
-			},
-		}
-
+		capabilities := control.NewImplicitSamplerCapabilities()
 		implicitConfig := control.NewImplicitSamplerConfig()
 
 		sampler = sr.createSampler(resource, name, tags, capabilities, *implicitConfig)
