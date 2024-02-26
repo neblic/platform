@@ -23,7 +23,7 @@ type samplerIdentifier struct {
 	name     string
 }
 
-type transformer struct {
+type handler struct {
 	samplesCollected atomic.Uint64
 	streamUIDs       map[string]control.SamplerStreamUID
 	eventor          *event.Eventor
@@ -32,10 +32,10 @@ type transformer struct {
 	logger logging.Logger
 }
 
-func newTransformer(logger logging.Logger, resource string, sampler string) *transformer {
-	return &transformer{
+func newHandler(logger logging.Logger, resource string, sampler string) *handler {
+	return &handler{
 		samplesCollected: atomic.Uint64{},
-		// each transformer has its own rate limited logger to avoid spamming the logs
+		// each handler has its own rate limited logger to avoid spamming the logs
 		logger: logging.FromZapLogger(
 			zap.New(
 				zapcore.NewSamplerWithOptions(
@@ -48,21 +48,21 @@ func newTransformer(logger logging.Logger, resource string, sampler string) *tra
 }
 
 type Processor struct {
-	ctx          context.Context
-	ctxCancel    context.CancelFunc
-	logger       logging.Logger
-	exporter     Exporter
-	cpServer     *server.Server
-	transformers map[samplerIdentifier]*transformer
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+	logger    logging.Logger
+	exporter  Exporter
+	cpServer  *server.Server
+	handlers  map[samplerIdentifier]*handler
 }
 
 func NewProcessor(logger logging.Logger, cpServer *server.Server, exporter Exporter) *Processor {
 	return &Processor{
-		ctx:          nil,
-		logger:       logger,
-		exporter:     exporter,
-		cpServer:     cpServer,
-		transformers: make(map[samplerIdentifier]*transformer),
+		ctx:      nil,
+		logger:   logger,
+		exporter: exporter,
+		cpServer: cpServer,
+		handlers: make(map[samplerIdentifier]*handler),
 	}
 }
 
@@ -103,8 +103,8 @@ func (p *Processor) statsUpdater() {
 		case <-p.ctx.Done():
 			return
 		case <-ticker.C:
-			for samplerIdentifier, transformer := range p.transformers {
-				samplesCollected := transformer.samplesCollected.Swap(0)
+			for samplerIdentifier, handler := range p.handlers {
+				samplesCollected := handler.samplesCollected.Swap(0)
 				if samplesCollected == 0 {
 					continue
 				}
@@ -118,33 +118,33 @@ func (p *Processor) statsUpdater() {
 	}
 }
 
-func (p *Processor) getTransformer(resource string, sampler string) (*transformer, bool) {
+func (p *Processor) getHandler(resource string, sampler string) (*handler, bool) {
 	samplerIdentifier := samplerIdentifier{
 		resource: resource,
 		name:     sampler,
 	}
-	transformer, ok := p.transformers[samplerIdentifier]
+	handler, ok := p.handlers[samplerIdentifier]
 
-	return transformer, ok
+	return handler, ok
 }
 
-func (p *Processor) setTransformer(resource string, sampler string, transformer *transformer) {
+func (p *Processor) setHandler(resource string, sampler string, handler *handler) {
 	samplerIdentifier := samplerIdentifier{
 		resource: resource,
 		name:     sampler,
 	}
-	p.transformers[samplerIdentifier] = transformer
+	p.handlers[samplerIdentifier] = handler
 }
 
 func (p *Processor) updateStats(otlpLogs sample.OTLPLogs) {
 	sample.Range(otlpLogs, func(resource, sampler string, _ sample.OTLPLog) {
-		transformer, ok := p.getTransformer(resource, sampler)
+		handler, ok := p.getHandler(resource, sampler)
 		if !ok {
-			// create transformer
-			transformer = newTransformer(p.logger, resource, sampler)
-			p.setTransformer(resource, sampler, transformer)
+			// create handler
+			handler = newHandler(p.logger, resource, sampler)
+			p.setHandler(resource, sampler, handler)
 		}
-		transformer.samplesCollected.Add(1)
+		handler.samplesCollected.Add(1)
 	})
 }
 
@@ -152,19 +152,19 @@ func (p *Processor) updateStats(otlpLogs sample.OTLPLogs) {
 // in the background
 func (p *Processor) computeDigests(otlpLogs sample.OTLPLogs) {
 	sample.RangeWithType[sample.RawSampleOTLPLog](otlpLogs, func(resource, sampler string, log sample.RawSampleOTLPLog) {
-		transformer, ok := p.getTransformer(resource, sampler)
-		if !ok || transformer.digester == nil {
+		handler, ok := p.getHandler(resource, sampler)
+		if !ok || handler.digester == nil {
 			return
 		}
 
 		data, err := log.SampleData()
 		if err != nil {
-			// we use the transformer logger here because it is rate limited and has context keys
-			transformer.logger.Error("Error getting sample data", "error", err)
+			// we use the handler logger here because it is rate limited and has context keys
+			handler.logger.Error("Error getting sample data", "error", err)
 			return
 		}
 
-		transformer.digester.ProcessSample(log.StreamUIDs(), data)
+		handler.digester.ProcessSample(log.StreamUIDs(), data)
 	})
 }
 
@@ -172,15 +172,15 @@ func (p *Processor) computeDigests(otlpLogs sample.OTLPLogs) {
 func (p *Processor) computeEvents(otlpLogs sample.OTLPLogs) {
 	// TODO: append to the events information about the sampler that matched it
 	sample.RangeSamplers(otlpLogs, func(resource, sampler string, samplerLogs sample.SamplerOTLPLogs) {
-		transformer, ok := p.getTransformer(resource, sampler)
-		if !ok || transformer.eventor == nil {
+		handler, ok := p.getHandler(resource, sampler)
+		if !ok || handler.eventor == nil {
 			return
 		}
 
-		err := transformer.eventor.ProcessSample(samplerLogs)
+		err := handler.eventor.ProcessSample(samplerLogs)
 		if err != nil {
-			// we use the transformer logger here because it is rate limited and has context keys
-			transformer.logger.Error("Error processing sample", "error", err)
+			// we use the handler logger here because it is rate limited and has context keys
+			handler.logger.Error("Error processing sample", "error", err)
 		}
 	})
 }
@@ -202,12 +202,12 @@ func (p *Processor) Stop() error {
 		p.ctxCancel()
 	}
 
-	for _, transformer := range p.transformers {
-		if transformer.digester != nil {
-			transformer.digester.Close()
+	for _, handler := range p.handlers {
+		if handler.digester != nil {
+			handler.digester.Close()
 		}
-		if transformer.eventor != nil {
-			transformer.eventor.Close()
+		if handler.eventor != nil {
+			handler.eventor.Close()
 		}
 	}
 
@@ -261,15 +261,15 @@ func (p *Processor) UpdateConfig(resource, sampler string, config *control.Sampl
 		}
 	}
 
-	// Get transformer
+	// Get handler
 	samplerIdentifier := samplerIdentifier{
 		resource: resource,
 		name:     sampler,
 	}
 
-	tr, ok := p.transformers[samplerIdentifier]
+	tr, ok := p.handlers[samplerIdentifier]
 	if !ok {
-		tr = newTransformer(p.logger, resource, sampler)
+		tr = newHandler(p.logger, resource, sampler)
 	}
 
 	// Update stream uids map
@@ -331,15 +331,15 @@ func (p *Processor) UpdateConfig(resource, sampler string, config *control.Sampl
 		tr.digester = nil
 	}
 
-	// Update transformers
-	p.transformers[samplerIdentifier] = tr
+	// Update handlers
+	p.handlers[samplerIdentifier] = tr
 }
 
 func (p *Processor) Process(ctx context.Context, logs sample.OTLPLogs) error {
 	// Translate sample names to uids
 	sample.Range(logs, func(resource, sampler string, otlpLog sample.OTLPLog) {
-		// If there is no configured transformer, do nothing
-		transformer, ok := p.getTransformer(resource, sampler)
+		// If there is no configured handler, do nothing
+		handler, ok := p.getHandler(resource, sampler)
 		if !ok {
 			return
 		}
@@ -353,9 +353,9 @@ func (p *Processor) Process(ctx context.Context, logs sample.OTLPLogs) error {
 		// Translate stream names to stream uids and clear stream names.
 		streamUIDs := make([]control.SamplerStreamUID, 0, len(streamNames))
 		for _, streamName := range streamNames {
-			streamUID, ok := transformer.streamUIDs[streamName]
+			streamUID, ok := handler.streamUIDs[streamName]
 			if !ok {
-				transformer.logger.Error("Stream name not found when translating from stream name to stream uid", "stream", streamName)
+				handler.logger.Error("Stream name not found when translating from stream name to stream uid", "stream", streamName)
 				continue
 			}
 			streamUIDs = append(streamUIDs, streamUID)
