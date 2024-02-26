@@ -189,6 +189,8 @@ func (sr *SamplerRegistry) createSampler(resource string, name string, tags cont
 	return sampler
 }
 
+// UpdateSamplerStats updates the statistics of a sampler. If the sampler does not exist, a new
+// one will be auomatically created with the default implict sampler configuration and capabilities.
 func (sr *SamplerRegistry) UpdateSamplerStats(resource string, name string, SamplesCollected uint64) error {
 	sr.m.Lock()
 	defer sr.m.Unlock()
