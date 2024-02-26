@@ -4,9 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/neblic/platform/controlplane/control"
 	"github.com/neblic/platform/controlplane/event"
 	"github.com/neblic/platform/controlplane/server/internal/defs"
@@ -201,49 +199,6 @@ func (sr *SamplerRegistry) UpdateSamplerStats(resource string, name string, Samp
 			return fmt.Errorf("unknown error happened when getting the sampler")
 		}
 
-		// We received data from a sampler that does not exist in the registry. Create an
-		// implicit sampler.
-		initialConfig := control.NewSamplerConfig()
-		streamUID := control.SamplerStreamUID(uuid.NewString())
-		initialConfig.Streams = control.Streams{
-			streamUID: control.Stream{
-				UID:  streamUID,
-				Name: "all",
-				StreamRule: control.Rule{
-					Lang:       control.SrlUnknown,
-					Expression: "",
-				},
-				ExportRawSamples: true,
-				MaxSampleSize:    10240,
-			},
-		}
-		structDigestUID := control.SamplerDigestUID(uuid.NewString())
-		valueDigestUID := control.SamplerDigestUID(uuid.NewString())
-		initialConfig.Digests = control.Digests{
-			structDigestUID: control.Digest{
-				UID:                 structDigestUID,
-				Name:                "struct",
-				StreamUID:           streamUID,
-				FlushPeriod:         time.Minute,
-				ComputationLocation: control.ComputationLocationCollector,
-				Type:                control.DigestTypeSt,
-				St: &control.DigestSt{
-					MaxProcessedFields: 100,
-				},
-			},
-			valueDigestUID: control.Digest{
-				UID:                 valueDigestUID,
-				Name:                "value",
-				StreamUID:           streamUID,
-				FlushPeriod:         time.Minute,
-				ComputationLocation: control.ComputationLocationCollector,
-				Type:                control.DigestTypeValue,
-				Value: &control.DigestValue{
-					MaxProcessedFields: 100,
-				},
-			},
-		}
-
 		tags := []control.Tag{}
 
 		capabilities := control.Capabilities{
@@ -263,7 +218,10 @@ func (sr *SamplerRegistry) UpdateSamplerStats(resource string, name string, Samp
 				Enabled: false,
 			},
 		}
-		sampler = sr.createSampler(resource, name, tags, capabilities, *initialConfig)
+
+		implicitConfig := control.NewImplicitSamplerConfig()
+
+		sampler = sr.createSampler(resource, name, tags, capabilities, *implicitConfig)
 	}
 
 	sampler.CollectorStats.Add(SamplesCollected)
