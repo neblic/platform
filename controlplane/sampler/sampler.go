@@ -12,33 +12,6 @@ import (
 	"github.com/neblic/platform/logging"
 )
 
-var (
-	capabilities = control.Capabilities{
-		Stream: control.StreamCapabilities{
-			Enabled: true,
-		},
-		LimiterIn: control.LimiterCapabilities{
-			Enabled: true,
-		},
-		SamplingIn: control.SamplingCapabilities{
-			Enabled: true,
-			Types: []control.SamplingType{
-				control.DeterministicSamplingType,
-			},
-		},
-		LimiterOut: control.LimiterCapabilities{
-			Enabled: true,
-		},
-		Digest: control.DigestCapabilities{
-			Enabled: true,
-			Types: []control.DigestType{
-				control.DigestTypeSt,
-				control.DigestTypeValue,
-			},
-		},
-	}
-)
-
 type Sampler struct {
 	data *control.Sampler
 	opts *options
@@ -72,7 +45,7 @@ func New(name, resource string, options ...Option) *Sampler {
 		stream.NewSamplerHandler(p.data.Name,
 			p.data.Resource,
 			opts.tags,
-			capabilities,
+			opts.capabilities,
 			p.recvServerReqCb,
 			opts.initialConfig.ToProto(),
 		),

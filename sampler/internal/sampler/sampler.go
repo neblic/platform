@@ -18,6 +18,33 @@ import (
 	"golang.org/x/time/rate"
 )
 
+var (
+	capabilities = control.Capabilities{
+		Stream: control.StreamCapabilities{
+			Enabled: true,
+		},
+		LimiterIn: control.LimiterCapabilities{
+			Enabled: true,
+		},
+		SamplingIn: control.SamplingCapabilities{
+			Enabled: true,
+			Types: []control.SamplingType{
+				control.DeterministicSamplingType,
+			},
+		},
+		LimiterOut: control.LimiterCapabilities{
+			Enabled: true,
+		},
+		Digest: control.DigestCapabilities{
+			Enabled: true,
+			Types: []control.DigestType{
+				control.DigestTypeSt,
+				control.DigestTypeValue,
+			},
+		},
+	}
+)
+
 type streamConfig struct {
 	rule            *rule.Rule
 	exportRawSample bool
@@ -58,6 +85,7 @@ func New(
 	var clientOpts []csampler.Option
 	clientOpts = append(clientOpts, csampler.WithLogger(logger))
 	clientOpts = append(clientOpts, csampler.WithInitialConfig(settings.InitialConfig))
+	clientOpts = append(clientOpts, csampler.WithCapabilities(capabilities))
 	clientOpts = append(clientOpts, csampler.WithTags(settings.Tags...))
 	if settings.EnableTLS {
 		clientOpts = append(clientOpts, csampler.WithTLS())
