@@ -99,6 +99,10 @@ func (r *Rule) EvalKeyed(ctx context.Context, key string, sampleData *data.Data)
 }
 
 func (r *Rule) Eval(ctx context.Context, sampleData *data.Data) (bool, error) {
+	if r.returnsStaticRes {
+		return r.staticRes, nil
+	}
+
 	vars := map[string]any{}
 	for _, provider := range r.providers {
 		vars[provider.StateName] = provider.GlobalStatefulFunction()
