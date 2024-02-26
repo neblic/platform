@@ -148,6 +148,7 @@ func (s *Server) GetSamplers(resourceName, samplerName string) ([]*control.Sampl
 	for _, instance := range serverSampler.Instances {
 		sampler := control.NewSampler(serverSampler.Name, serverSampler.Resource, instance.UID)
 		sampler.Tags = serverSampler.Tags
+		sampler.Capabilities = serverSampler.Capabilities
 		sampler.Config = instance.Sampler.Config
 		sampler.SamplingStats = instance.Stats
 		samplers = append(samplers, sampler)
@@ -158,6 +159,10 @@ func (s *Server) GetSamplers(resourceName, samplerName string) ([]*control.Sampl
 
 func (s *Server) Events() chan event.Event {
 	return s.samplerRegistry.Events()
+}
+
+func (s *Server) UpdateSamplerStats(resourceName, samplerName string, samplesCollected uint64) error {
+	return s.samplerRegistry.UpdateSamplerStats(resourceName, samplerName, samplesCollected)
 }
 
 func (s *Server) SamplerConn(stream protos.ControlPlane_SamplerConnServer) error {

@@ -45,6 +45,7 @@ func New(name, resource string, options ...Option) *Sampler {
 		stream.NewSamplerHandler(p.data.Name,
 			p.data.Resource,
 			opts.tags,
+			opts.capabilities,
 			p.recvServerReqCb,
 			opts.initialConfig.ToProto(),
 		),
@@ -86,6 +87,10 @@ func (p *Sampler) Events() chan Event {
 	}()
 
 	return p.events
+}
+
+func (p *Sampler) Resource() string {
+	return p.data.Resource
 }
 
 func (p *Sampler) Name() string {

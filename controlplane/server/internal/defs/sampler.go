@@ -20,37 +20,40 @@ func NewSamplerIdentifier(resource string, name string) SamplerIdentifier {
 type SamplerInstance struct {
 	UID     control.SamplerUID
 	Sampler *Sampler
-	Stats   control.SamplerSamplingStats
 	Conn    SamplerConn
 	Dirty   bool
 	Status  Status
+	Stats   control.SamplerSamplingStats
 }
 
 func NewSamplerInstance(uid control.SamplerUID, sampler *Sampler) *SamplerInstance {
 	return &SamplerInstance{
 		UID:     uid,
 		Sampler: sampler,
-		Stats:   control.SamplerSamplingStats{},
 		Conn:    nil,
 		Dirty:   true,
 		Status:  UnknownStatus,
+		Stats:   control.SamplerSamplingStats{},
 	}
 }
 
 type Sampler struct {
-	Resource  string
-	Name      string
-	Tags      []control.Tag
-	Config    control.SamplerConfig
-	Instances map[control.SamplerUID]*SamplerInstance
+	Resource       string
+	Name           string
+	Tags           control.Tags
+	Capabilities   control.Capabilities
+	Config         control.SamplerConfig
+	Instances      map[control.SamplerUID]*SamplerInstance
+	CollectorStats control.CollectorStats
 }
 
 func NewSampler(resource string, name string) *Sampler {
 	return &Sampler{
-		Resource:  resource,
-		Name:      name,
-		Config:    *control.NewSamplerConfig(),
-		Instances: map[control.SamplerUID]*SamplerInstance{},
+		Resource:     resource,
+		Name:         name,
+		Config:       *control.NewSamplerConfig(),
+		Capabilities: control.Capabilities{},
+		Instances:    map[control.SamplerUID]*SamplerInstance{},
 	}
 }
 

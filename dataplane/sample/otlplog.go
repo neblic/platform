@@ -12,6 +12,23 @@ import (
 )
 
 type OTLPLog interface {
+	Timestamp() time.Time
+	SetTimestamp(ts time.Time)
+	StreamUIDs() []control.SamplerStreamUID
+	SetStreamUIDs(streams []control.SamplerStreamUID)
+	StreamNames() []string
+	SetStreamNames(streams []string)
+	SampleType() control.SampleType
+	SampleKey() string
+	SetSampleKey(key string)
+	SampleEncoding() Encoding
+	SampleRawData() []byte
+	SetSampleRawData(encoding Encoding, data []byte)
+	SampleData() (*data.Data, error)
+	Record() plog.LogRecord
+}
+
+type OTLPLogContraint interface {
 	RawSampleOTLPLog |
 		StructDigestOTLPLog |
 		ValueDigestOTLPLog |
@@ -19,8 +36,8 @@ type OTLPLog interface {
 		ConfigOTLPLog
 }
 
-func OTLPLogFrom(logRecord plog.LogRecord) any {
-	var otlpLog any
+func OTLPLogFrom(logRecord plog.LogRecord) OTLPLog {
+	var otlpLog OTLPLog
 	switch getSampleType(logRecord) {
 	case control.RawSampleType:
 		otlpLog = RawSampleOTLPLogFrom(logRecord)
@@ -33,13 +50,13 @@ func OTLPLogFrom(logRecord plog.LogRecord) any {
 	case control.ConfigSampleType:
 		otlpLog = ConfigOTLPLogFrom(logRecord)
 	default:
-		panic(fmt.Errorf("unknown OTLPLog type %T", otlpLog))
+		panic(fmt.Errorf("unknown OTLPLogContraint type %T", otlpLog))
 	}
 
 	return otlpLog
 }
 
-func OTLPLogToSampleType[T OTLPLog]() control.SampleType {
+func OTLPLogToSampleType[T OTLPLogContraint]() control.SampleType {
 	var targetSampleType control.SampleType
 	var otlpLog T
 
@@ -55,7 +72,7 @@ func OTLPLogToSampleType[T OTLPLog]() control.SampleType {
 	case ConfigOTLPLog:
 		targetSampleType = control.ConfigSampleType
 	default:
-		panic(fmt.Errorf("unknown OTLPLog type %T", otlpLog))
+		panic(fmt.Errorf("unknown OTLPLogContraint type %T", otlpLog))
 	}
 
 	return targetSampleType
@@ -91,22 +108,8 @@ func (b baseOTLPLog) SetTimestamp(ts time.Time) {
 	b.logRecord.SetTimestamp(pcommon.Timestamp(ts.UTC().UnixNano()))
 }
 
-func (b baseOTLPLog) StreamsStr() []string {
-	value, ok := b.logRecord.Attributes().Get(OTLPLogStreamsUIDsKey)
-	if !ok {
-		return []string{}
-	}
-
-	streams := make([]string, value.Slice().Len())
-	for i := 0; i < value.Slice().Len(); i++ {
-		streams[i] = value.Slice().At(i).Str()
-	}
-
-	return streams
-}
-
-func (b baseOTLPLog) Streams() []control.SamplerStreamUID {
-	value, ok := b.logRecord.Attributes().Get(OTLPLogStreamsUIDsKey)
+func (b baseOTLPLog) StreamUIDs() []control.SamplerStreamUID {
+	value, ok := b.logRecord.Attributes().Get(OTLPLogSampleStreamUIDsKey)
 	if !ok {
 		return []control.SamplerStreamUID{}
 	}
@@ -119,11 +122,33 @@ func (b baseOTLPLog) Streams() []control.SamplerStreamUID {
 	return streams
 }
 
-func (b baseOTLPLog) SetStreams(streams []control.SamplerStreamUID) {
-	lrStreamUIDs := b.logRecord.Attributes().PutEmptySlice(OTLPLogStreamsUIDsKey)
+func (b baseOTLPLog) SetStreamUIDs(streams []control.SamplerStreamUID) {
+	lrStreamUIDs := b.logRecord.Attributes().PutEmptySlice(OTLPLogSampleStreamUIDsKey)
 	lrStreamUIDs.EnsureCapacity(len(streams))
 	for _, stream := range streams {
 		lrStreamUIDs.AppendEmpty().SetStr(string(stream))
+	}
+}
+
+func (b baseOTLPLog) StreamNames() []string {
+	value, ok := b.logRecord.Attributes().Get(OTLPLogSampleStreamNamesKey)
+	if !ok {
+		return []string{}
+	}
+
+	streamNames := make([]string, value.Slice().Len())
+	for i := 0; i < value.Slice().Len(); i++ {
+		streamNames[i] = value.Slice().At(i).Str()
+	}
+
+	return streamNames
+}
+
+func (b baseOTLPLog) SetStreamNames(streams []string) {
+	streamNames := b.logRecord.Attributes().PutEmptySlice(OTLPLogSampleStreamNamesKey)
+	streamNames.EnsureCapacity(len(streams))
+	for _, stream := range streams {
+		streamNames.AppendEmpty().SetStr(stream)
 	}
 }
 

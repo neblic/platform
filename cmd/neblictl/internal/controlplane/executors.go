@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
@@ -175,6 +176,11 @@ func (e *Executors) StreamsCreate(ctx context.Context, parameters interpoler.Par
 
 	// Create rules one by one
 	for resourceAndSamplerEntry, samplerControl := range resourceAndSamplers {
+		if !samplerControl.Capabilities.Stream.Enabled {
+			writer.WriteStringf("%s.%s: Could not create the stream. Capability not supported\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+			continue
+		}
+
 		// Check that the stream does not exist
 		_, ok := getEntryByName[control.SamplerStreamUID](samplerControl.Config.Streams, streamNameParameter.Value)
 		if ok {
@@ -263,6 +269,10 @@ func (e *Executors) StreamsUpdate(ctx context.Context, parameters interpoler.Par
 
 	// Update streams one by one
 	for resourceAndSamplerEntry, samplerControl := range resourceAndSamplers {
+		if !samplerControl.Capabilities.Stream.Enabled {
+			writer.WriteStringf("%s.%s: Could not update the stream. Capability not supported\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+			continue
+		}
 
 		// Find stream UID
 		stream, ok := getEntryByName(samplerControl.Config.Streams, streamNameParameter.Value)
@@ -323,6 +333,10 @@ func (e *Executors) StreamsDelete(ctx context.Context, parameters interpoler.Par
 
 	// Delete streams one by one
 	for resourceAndSamplerEntry, samplerControl := range resourceAndSamplers {
+		if !samplerControl.Capabilities.Stream.Enabled {
+			writer.WriteStringf("%s.%s: Could not delete the stream. Capability not supported\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
+			continue
+		}
 
 		stream, ok := getEntryByName(samplerControl.Config.Streams, streamNameParameter.Value)
 		if !ok {
@@ -356,7 +370,7 @@ func (e *Executors) StreamsDelete(ctx context.Context, parameters interpoler.Par
 	return nil
 }
 
-func (e *Executors) setMultipleSamplersConfig(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer, updateGen func(*control.Sampler) (*control.SamplerConfigUpdate, error)) error {
+func (e *Executors) setMultipleSamplersConfig(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer, capabilityCheck func(*control.Sampler) error, updateGen func(*control.Sampler) (*control.SamplerConfigUpdate, error)) error {
 	samplerParameter, _ := parameters.Get("sampler-name")
 	resourceParameter, _ := parameters.Get("resource-name")
 	streamNameValue := "*"
@@ -371,6 +385,11 @@ func (e *Executors) setMultipleSamplersConfig(ctx context.Context, parameters in
 	}
 
 	for resourceAndSamplerEntry, sampler := range resourceAndSamplers {
+		err := capabilityCheck(sampler)
+		if err != nil {
+			writer.WriteStringf("%s.%s: Could not update the sampler config. %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
+			continue
+		}
 		update, err := updateGen(sampler)
 		if err != nil {
 			writer.WriteStringf("%s.%s: Could not update sampler config. %v\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler, err)
@@ -385,6 +404,13 @@ func (e *Executors) setMultipleSamplersConfig(ctx context.Context, parameters in
 		writer.WriteStringf("%s.%s: Sampler configuration successfully updated\n", resourceAndSamplerEntry.resource, resourceAndSamplerEntry.sampler)
 	}
 
+	return nil
+}
+
+func limiterInCapabilityCheck(sampler *control.Sampler) error {
+	if !sampler.Capabilities.LimiterIn.Enabled {
+		return fmt.Errorf("Capability not supported")
+	}
 	return nil
 }
 
@@ -403,7 +429,7 @@ func (e *Executors) SamplersLimiterInSet(ctx context.Context, parameters interpo
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, limiterInCapabilityCheck, updateGen)
 }
 
 func (e *Executors) SamplersLimiterInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -415,7 +441,14 @@ func (e *Executors) SamplersLimiterInUnset(ctx context.Context, parameters inter
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, limiterInCapabilityCheck, updateGen)
+}
+
+func limiterOutCapabilityCheck(sampler *control.Sampler) error {
+	if !sampler.Capabilities.LimiterOut.Enabled {
+		return fmt.Errorf("Capability not supported")
+	}
+	return nil
 }
 
 func (e *Executors) SamplersLimiterOutSet(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -433,7 +466,7 @@ func (e *Executors) SamplersLimiterOutSet(ctx context.Context, parameters interp
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, limiterOutCapabilityCheck, updateGen)
 }
 
 func (e *Executors) SamplersLimiterOutUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -445,7 +478,26 @@ func (e *Executors) SamplersLimiterOutUnset(ctx context.Context, parameters inte
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, limiterOutCapabilityCheck, updateGen)
+}
+
+func samplerInCapabilityCheck(sampler *control.Sampler) error {
+	if !sampler.Capabilities.SamplingIn.Enabled {
+		return fmt.Errorf("Capability not supported")
+	}
+	return nil
+}
+
+func samplerInDeterministicCapabilityCheck(sampler *control.Sampler) error {
+	if err := samplerInCapabilityCheck(sampler); err != nil {
+		return err
+	}
+
+	if !slices.Contains(sampler.Capabilities.SamplingIn.Types, control.DeterministicSamplingType) {
+		return fmt.Errorf("Capability supported but not for deterministic sampling")
+	}
+
+	return nil
 }
 
 func (e *Executors) SamplersSamplerInSetDeterministic(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -473,7 +525,7 @@ func (e *Executors) SamplersSamplerInSetDeterministic(ctx context.Context, param
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, samplerInDeterministicCapabilityCheck, updateGen)
 }
 
 func (e *Executors) SamplersSamplerInUnset(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -485,7 +537,7 @@ func (e *Executors) SamplersSamplerInUnset(ctx context.Context, parameters inter
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, samplerInCapabilityCheck, updateGen)
 }
 
 func (e *Executors) DigestsList(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -574,7 +626,23 @@ func (e *Executors) DigestsStructureCreate(ctx context.Context, parameters inter
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	digestsStructureCapabilityCheck := func(sampler *control.Sampler) error {
+		if computationLocation == control.ComputationLocationCollector {
+			return nil
+		}
+
+		if !sampler.Capabilities.Digest.Enabled {
+			return fmt.Errorf("Capability not supported at sampler level. Change location parameter to collector")
+		}
+
+		if !slices.Contains(sampler.Capabilities.Digest.Types, control.DigestTypeSt) {
+			return fmt.Errorf("Capability supported at sampler level, but not for struct digests")
+		}
+
+		return nil
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, digestsStructureCapabilityCheck, updateGen)
 }
 
 func (e *Executors) DigestsStructureUpdate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -640,7 +708,23 @@ func (e *Executors) DigestsStructureUpdate(ctx context.Context, parameters inter
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	digestsStructureCapabilityCheck := func(sampler *control.Sampler) error {
+		if computationLocation == control.ComputationLocationCollector {
+			return nil
+		}
+
+		if !sampler.Capabilities.Digest.Enabled {
+			return fmt.Errorf("Capability not supported at sampler level. Change location parameter to collector")
+		}
+
+		if !slices.Contains(sampler.Capabilities.Digest.Types, control.DigestTypeSt) {
+			return fmt.Errorf("Capability supported at sampler level, but not for struct digests")
+		}
+
+		return nil
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, digestsStructureCapabilityCheck, updateGen)
 }
 
 func (e *Executors) DigestsValueCreate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -707,7 +791,23 @@ func (e *Executors) DigestsValueCreate(ctx context.Context, parameters interpole
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	digestsValueCapabilityCheck := func(sampler *control.Sampler) error {
+		if computationLocation == control.ComputationLocationCollector {
+			return nil
+		}
+
+		if !sampler.Capabilities.Digest.Enabled {
+			return fmt.Errorf("Capability not supported at sampler level. Change location parameter to collector")
+		}
+
+		if !slices.Contains(sampler.Capabilities.Digest.Types, control.DigestTypeValue) {
+			return fmt.Errorf("Capability supported at sampler level, but not for value digests")
+		}
+
+		return nil
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, digestsValueCapabilityCheck, updateGen)
 }
 
 func (e *Executors) DigestsValueUpdate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -773,7 +873,23 @@ func (e *Executors) DigestsValueUpdate(ctx context.Context, parameters interpole
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	digestsValueCapabilityCheck := func(sampler *control.Sampler) error {
+		if computationLocation == control.ComputationLocationCollector {
+			return nil
+		}
+
+		if !sampler.Capabilities.Digest.Enabled {
+			return fmt.Errorf("Capability not supported at sampler level. Change location parameter to collector")
+		}
+
+		if !slices.Contains(sampler.Capabilities.Digest.Types, control.DigestTypeValue) {
+			return fmt.Errorf("Capability supported at sampler level, but not for value digests")
+		}
+
+		return nil
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, digestsValueCapabilityCheck, updateGen)
 }
 
 func (e *Executors) DigestsDelete(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -798,7 +914,14 @@ func (e *Executors) DigestsDelete(ctx context.Context, parameters interpoler.Par
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	digestsCapabilityCheck := func(sampler *control.Sampler) error {
+		if sampler.Config.Digests[control.SamplerDigestUID(digestNameParameter.Value)].ComputationLocation == control.ComputationLocationSampler {
+			return fmt.Errorf("Capability not supported")
+		}
+		return nil
+	}
+
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, digestsCapabilityCheck, updateGen)
 }
 
 func (e *Executors) EventsList(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -820,6 +943,10 @@ func (e *Executors) EventsList(ctx context.Context, parameters interpoler.Parame
 		writer.WriteStringf("\n\nWarn: internal state was not updated because %s, results could be outdated\n", err)
 	}
 
+	return nil
+}
+
+func eventsCapabilityCheck(sampler *control.Sampler) error {
 	return nil
 }
 
@@ -871,7 +998,7 @@ func (e *Executors) EventsCreate(ctx context.Context, parameters interpoler.Para
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, eventsCapabilityCheck, updateGen)
 }
 
 func (e *Executors) EventsUpdate(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -921,7 +1048,7 @@ func (e *Executors) EventsUpdate(ctx context.Context, parameters interpoler.Para
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, eventsCapabilityCheck, updateGen)
 }
 
 func (e *Executors) EventsDelete(ctx context.Context, parameters interpoler.ParametersWithValue, writer *internal.Writer) error {
@@ -946,5 +1073,5 @@ func (e *Executors) EventsDelete(ctx context.Context, parameters interpoler.Para
 		}, nil
 	}
 
-	return e.setMultipleSamplersConfig(ctx, parameters, writer, updateGen)
+	return e.setMultipleSamplersConfig(ctx, parameters, writer, eventsCapabilityCheck, updateGen)
 }

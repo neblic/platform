@@ -48,12 +48,13 @@ func NewSamplerRegistry(logger logging.Logger, notifyDirty chan struct{}, storag
 
 	// Populate registry data using storage data
 	samplers := map[defs.SamplerIdentifier]*defs.Sampler{}
-	err := storageInstance.RangeSamplers(func(resource string, sampler string, config control.SamplerConfig) {
-		samplers[defs.NewSamplerIdentifier(resource, sampler)] = &defs.Sampler{
-			Resource:  resource,
-			Name:      sampler,
-			Config:    config,
-			Instances: map[control.SamplerUID]*defs.SamplerInstance{},
+	err := storageInstance.RangeSamplers(func(entry storage.SamplerEntry) {
+		samplers[defs.NewSamplerIdentifier(entry.Resource, entry.Name)] = &defs.Sampler{
+			Resource:     entry.Resource,
+			Name:         entry.Name,
+			Capabilities: entry.Capabilities,
+			Config:       entry.Config,
+			Instances:    map[control.SamplerUID]*defs.SamplerInstance{},
 		}
 	})
 	if err != nil {
@@ -84,7 +85,12 @@ func (sr *SamplerRegistry) setSampler(resource string, name string, sampler *def
 	sr.samplers[samplerIdentifier] = sampler
 
 	// Store sampler in the storage
-	err := sr.storage.SetSampler(resource, name, sampler.Config)
+	err := sr.storage.SetSampler(storage.SamplerEntry{
+		Resource:     resource,
+		Name:         name,
+		Config:       sampler.Config,
+		Capabilities: sampler.Capabilities,
+	})
 
 	return err
 }
@@ -141,19 +147,17 @@ func (sr *SamplerRegistry) RangeSamplers(fn func(sampler *defs.Sampler) (carryon
 	}
 }
 
-// RangeRegisteredInstances locks the registry until all the instances have been processed
+// RangeInstances locks the registry until all the instances have been processed
 // CAUTION: do not perform any action that may require registry access or it may cause a deadlock
-func (sr *SamplerRegistry) RangeRegisteredInstances(fn func(sampler *defs.Sampler, instance *defs.SamplerInstance) (carryon bool)) {
+func (sr *SamplerRegistry) RangeInstances(fn func(sampler *defs.Sampler, instance *defs.SamplerInstance) (carryon bool)) {
 	sr.m.Lock()
 	defer sr.m.Unlock()
 
 	for _, sampler := range sr.samplers {
 		for _, instance := range sampler.Instances {
-			if instance.Status == defs.RegisteredStatus {
-				carryon := fn(sampler, instance)
-				if !carryon {
-					return
-				}
+			carryon := fn(sampler, instance)
+			if !carryon {
+				return
 			}
 		}
 	}
@@ -175,8 +179,52 @@ func (sr *SamplerRegistry) GetRegisteredInstances() []*defs.SamplerInstance {
 	return instances
 }
 
+func (sr *SamplerRegistry) createSampler(resource string, name string, tags control.Tags, capabilities control.Capabilities, config control.SamplerConfig) *defs.Sampler {
+	// Create sampler
+	sampler := defs.NewSampler(resource, name)
+	sampler.Tags = tags
+	sampler.Capabilities = capabilities
+	sampler.Config = config
+
+	return sampler
+}
+
+// UpdateSamplerStats updates the statistics of a sampler. If the sampler does not exist, a new
+// one will be auomatically created with the default implict sampler configuration and capabilities.
+func (sr *SamplerRegistry) UpdateSamplerStats(resource string, name string, SamplesCollected uint64) error {
+	sr.m.Lock()
+	defer sr.m.Unlock()
+
+	sampler, err := sr.getSampler(resource, name)
+	if err != nil {
+		if err != ErrUnknownSampler {
+			return fmt.Errorf("unknown error happened when getting the sampler")
+		}
+
+		tags := []control.Tag{}
+		capabilities := control.NewImplicitSamplerCapabilities()
+		implicitConfig := control.NewImplicitSamplerConfig()
+
+		sampler = sr.createSampler(resource, name, tags, capabilities, *implicitConfig)
+	}
+
+	sampler.CollectorStats.Add(SamplesCollected)
+
+	// Store sampler
+	err = sr.setSampler(resource, name, sampler)
+
+	return err
+}
+
+func (sr *SamplerRegistry) updateSampler(sampler *defs.Sampler, tags []control.Tag, capabilities control.Capabilities) {
+	// Update sampler tags
+	sampler.Tags = tags
+	sampler.Capabilities = capabilities
+}
+
 func (sr *SamplerRegistry) Register(resource string, name string,
-	tags []control.Tag, initialConfig control.SamplerConfig,
+	tags []control.Tag, capabilities control.Capabilities,
+	initialConfig control.SamplerConfig,
 	uid control.SamplerUID, conn defs.SamplerConn,
 ) error {
 	sr.m.Lock()
@@ -189,10 +237,9 @@ func (sr *SamplerRegistry) Register(resource string, name string,
 			return fmt.Errorf("unknown error happened when getting the sampler")
 		}
 
-		sampler = defs.NewSampler(resource, name)
-		sampler.Tags = tags
-		sampler.Config = initialConfig
+		sampler = sr.createSampler(resource, name, tags, capabilities, initialConfig)
 	}
+	sr.updateSampler(sampler, tags, capabilities)
 
 	// Get instance if exists, create it otherwise
 	instance, ok := sampler.GetInstance(uid)

@@ -66,9 +66,14 @@ func (p *Sampler) streamStateChangeCb(state defs.Status, uid control.SamplerUID,
 	case defs.RegisteredStatus:
 		initialConfig := control.NewSamplerConfig()
 		initialConfig.Merge(control.NewSamplerConfigUpdateFromProto(req.GetRegisterReq().GetInitialConfig()))
-		if err := p.samplerRegistry.Register(req.Resouce, req.Name,
-			control.NewTagsFromProto(req.GetRegisterReq().GetTags()), *initialConfig,
-			uid, p,
+		if err := p.samplerRegistry.Register(
+			req.Resouce,
+			req.Name,
+			control.NewTagsFromProto(req.GetRegisterReq().GetTags()),
+			control.NewCapabilitiesFromProto(req.GetRegisterReq().GetCapabilities()),
+			*initialConfig,
+			uid,
+			p,
 		); err != nil {
 			return err
 		}

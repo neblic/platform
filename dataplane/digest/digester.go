@@ -227,13 +227,13 @@ func (w *worker) buildDigestSample(digestData []byte) dpsample.OTLPLogs {
 		digestOtlpLog := samplerOtlpLogs.AppendStructDigestOTLPLog()
 		digestOtlpLog.SetUID(w.digestUID)
 		digestOtlpLog.SetTimestamp(time.Now())
-		digestOtlpLog.SetStreams([]control.SamplerStreamUID{w.streamUID})
+		digestOtlpLog.SetStreamUIDs([]control.SamplerStreamUID{w.streamUID})
 		digestOtlpLog.SetSampleRawData(dpsample.JSONEncoding, digestData)
 	case control.ValueDigestSampleType:
 		digestOtlpLog := samplerOtlpLogs.AppendValueDigestOTLPLog()
 		digestOtlpLog.SetUID(w.digestUID)
 		digestOtlpLog.SetTimestamp(time.Now())
-		digestOtlpLog.SetStreams([]control.SamplerStreamUID{w.streamUID})
+		digestOtlpLog.SetStreamUIDs([]control.SamplerStreamUID{w.streamUID})
 		digestOtlpLog.SetSampleRawData(dpsample.JSONEncoding, digestData)
 	default:
 		panic(fmt.Errorf("unknown digest sample type %s", w.digest.SampleType()))

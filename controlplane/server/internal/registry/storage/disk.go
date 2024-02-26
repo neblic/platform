@@ -9,15 +9,8 @@ import (
 	"sync"
 
 	"github.com/google/renameio/v2"
-	"github.com/neblic/platform/controlplane/control"
 	"gopkg.in/yaml.v3"
 )
-
-type SamplerEntry struct {
-	Resource string
-	Name     string
-	Config   control.SamplerConfig
-}
 
 type ConfigDocument struct {
 	Samplers []SamplerEntry
@@ -84,7 +77,7 @@ func findSampler(samplers []SamplerEntry, resource string, sampler string) int {
 	})
 }
 
-func (d *Disk) RangeSamplers(fn func(resource string, sampler string, config control.SamplerConfig)) error {
+func (d *Disk) RangeSamplers(fn func(entry SamplerEntry)) error {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 
@@ -96,32 +89,32 @@ func (d *Disk) RangeSamplers(fn func(resource string, sampler string, config con
 
 	// Range samplers
 	for _, sampler := range configDocument.Samplers {
-		fn(sampler.Resource, sampler.Name, sampler.Config)
+		fn(sampler)
 	}
 
 	return nil
 }
 
-func (d *Disk) GetSampler(resource string, sampler string) (control.SamplerConfig, error) {
+func (d *Disk) GetSampler(resource string, sampler string) (SamplerEntry, error) {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 
 	// Read data
 	configDocument, err := readConfigDocument(d.path)
 	if err != nil {
-		return control.SamplerConfig{}, err
+		return SamplerEntry{}, err
 	}
 
 	// Find sampler
 	index := findSampler(configDocument.Samplers, resource, sampler)
 	if index == -1 {
-		return control.SamplerConfig{}, ErrUnknownSampler
+		return SamplerEntry{}, ErrUnknownSampler
 	}
 
-	return configDocument.Samplers[index].Config, nil
+	return configDocument.Samplers[index], nil
 }
 
-func (d *Disk) SetSampler(resource string, sampler string, config control.SamplerConfig) error {
+func (d *Disk) SetSampler(entry SamplerEntry) error {
 	d.mutex.RLock()
 	defer d.mutex.RUnlock()
 
@@ -132,15 +125,12 @@ func (d *Disk) SetSampler(resource string, sampler string, config control.Sample
 	}
 
 	// Find sampler and replace config
-	index := findSampler(configDocument.Samplers, resource, sampler)
+	index := findSampler(configDocument.Samplers, entry.Resource, entry.Name)
 	if index == -1 {
-		configDocument.Samplers = append(configDocument.Samplers, SamplerEntry{
-			Resource: resource,
-			Name:     sampler,
-			Config:   config,
-		})
+		configDocument.Samplers = append(configDocument.Samplers, entry)
 	} else {
-		configDocument.Samplers[index].Config = config
+		configDocument.Samplers[index].Config = entry.Config
+		configDocument.Samplers[index].Capabilities = entry.Capabilities
 	}
 
 	// Write data

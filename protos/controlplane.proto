@@ -162,6 +162,8 @@ message Sampler {
     map<string, string> attrs = 2;
   }
 
+  message CollectorStats { uint64 samples_collected = 1; }
+
   // Identifies a single Sampler
   string uid = 1;
   // User-friendly and user-defined name to identify a Sampler.
@@ -175,12 +177,17 @@ message Sampler {
   // There are known tags that can be used to identify the Sampler type
   // and may be used by the platform to provide additional functionality.
   repeated Tag tags = 7;
+  // Sampler capabilities defines what features can be performed by the
+  // sampler
+  Capabilities capabilities = 8;
   // Sampler schema information.
   Schema schema = 4;
   // The Sampler configuration,
   SamplerConfig config = 5;
   // Statistics related to the Sampler sampling.
   SamplerSamplingStats sampling_stats = 6;
+  // Statistics related to the sampler in the collector context
+  CollectorStats collector_stats = 9;
 }
 
 /** service **/
@@ -251,6 +258,7 @@ message SamplerStatsMsg { SamplerSamplingStats sampling_stats = 2; }
 message SamplerRegisterReq {
   ClientSamplerConfigUpdate initial_config = 1;
   repeated Sampler.Tag tags = 2;
+  Capabilities capabilities = 3;
 }
 
 message SamplerRegisterRes { Status status = 1; }
@@ -276,6 +284,39 @@ message ClientSamplerStats {
 message ClientSamplerStatsMsg { repeated ClientSamplerStats sampler_stats = 1; }
 
 // register
+
+message StreamCapabilities { bool enabled = 1; }
+
+message LimiterCapabilities { bool enabled = 1; }
+
+message SamplingCapabilities {
+  enum Type {
+    UNKNOWN = 0;
+    DETERMINISTIC = 1;
+  }
+
+  bool enabled = 1;
+  repeated Type types = 2;
+}
+
+message DigestCapabilities {
+  enum Type {
+    UNKNOWN = 0;
+    STRUCT = 1;
+    VALUE = 2;
+  }
+
+  bool enabled = 1;
+  repeated Type types = 2;
+}
+
+message Capabilities {
+  StreamCapabilities stream = 1;
+  LimiterCapabilities limiter_in = 3;
+  SamplingCapabilities sampling_in = 4;
+  LimiterCapabilities limiter_out = 5;
+  DigestCapabilities digest = 2;
+}
 
 message ClientRegisterReq { map<string, string> tags = 1; }
 

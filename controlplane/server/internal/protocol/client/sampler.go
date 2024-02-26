@@ -8,20 +8,26 @@ import (
 	"github.com/neblic/platform/controlplane/server/internal/defs"
 )
 
-func validateUID() {
-
-}
-
 func (c *Client) handleListSamplersReq(_ *protos.ClientListSamplersReq) (*protos.ServerToClient, error) {
 
 	var protoSamplers []*protos.Sampler
-	c.samplerRegistry.RangeRegisteredInstances(func(sampler *defs.Sampler, instance *defs.SamplerInstance) (carryon bool) {
+	c.samplerRegistry.RangeSamplers(func(sampler *defs.Sampler) (carryon bool) {
+		samplingStats := control.SamplerSamplingStats{}
+		for _, instance := range sampler.Instances {
+			samplingStats.SamplesEvaluated += instance.Stats.SamplesEvaluated
+			samplingStats.SamplesExported += instance.Stats.SamplesExported
+			samplingStats.SamplesDigested += instance.Stats.SamplesDigested
+
+		}
 		protoSamplers = append(protoSamplers, &protos.Sampler{
-			Name:          sampler.Name,
-			Resource:      sampler.Resource,
-			Uid:           string(instance.UID),
-			Config:        sampler.Config.ToProto(),
-			SamplingStats: instance.Stats.ToProto(),
+			Uid:            "",
+			Resource:       sampler.Resource,
+			Name:           sampler.Name,
+			Tags:           sampler.Tags.ToProto(),
+			Capabilities:   sampler.Capabilities.ToProto(),
+			Config:         sampler.Config.ToProto(),
+			SamplingStats:  samplingStats.ToProto(),
+			CollectorStats: sampler.CollectorStats.ToProto(),
 		})
 
 		// We want to carry on until all the registered instances have been processed

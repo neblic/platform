@@ -64,3 +64,36 @@ Check [this guide](../how-to/data-from-go-svc.md) for an example of how to use i
 %}
  
 Check [this guide](../how-to/data-from-kafka.md) to learn how to use it.
+
+# Advanced
+
+## Using OpenTelemetry SDK
+
+The Neblic collector is built on top of OpenTelemetry stack, and as a result, the neblic collector is capable of understanding and processing samples encoded
+as opentelemetry logs if they are correctly formatted. Any [OpenTelemetry SDK implementation supporting logs](https://opentelemetry.io/docs/languages/#status-and-releases) can be used to generate samples that neblic
+will process.
+
+Concept match beetween OpenTelemetry and Neblic:
+
+| OpenTelemetry                                                                                    | Neblic                                              |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| [Resource](https://opentelemetry.io/docs/specs/otel/resource/sdk/)                               | Resource                                            |
+| [InstrumentationScope](https://opentelemetry.io/docs/specs/otel/glossary/#instrumentation-scope) | [Sampler](../../getting-started/concepts/#sampler)  |
+| Attribute `com.neblic.sample.stream.names`                                                       | [Stream](../../getting-started/concepts/#stream)    |
+| Attribute `com.neblic.sample.key`                                                                | [Key](../../getting-started/concepts/#keyed-stream) |
+
+!!! note
+    OpenTelemetry recommends using appenders to propagate logs, for that use case it does not work, and the Logs API is used instead.
+
+Steps to follow:
+
+- Create a [LoggerProvider](https://opentelemetry.io/docs/specs/otel/logs/bridge-api/#loggerprovider) with the desired `Resource` name.
+- Create a [Logger](https://opentelemetry.io/docs/specs/otel/logs/bridge-api/#logger) with the desired sampler name as the `InstrumentationScope` name.
+- Emit a log with:
+    - Attribute `com.neblic.sample.stream.names` with value `all`
+    - Attribute `com.neblic.sample.key` with the desired key value
+    - Attribute `com.neblic.sample.type` with value `raw`
+    - Attribute `com.neblic.sample.encoding` with value `json`
+    - Body with the serialized version of the data
+
+Once the collector receives the first sample, the sampler will appear to the controlplane as any other sampler (but with limited functionality) 

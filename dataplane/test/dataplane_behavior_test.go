@@ -74,7 +74,7 @@ var _ = Describe("DataPlane", func() {
 				logs := sample.NewOTLPLogs()
 				samplerLogs := logs.AppendSamplerOTLPLogs("resource1", "sampler1")
 				rawSampleLog := samplerLogs.AppendRawSampleOTLPLog()
-				rawSampleLog.SetStreams([]control.SamplerStreamUID{streamUID})
+				rawSampleLog.SetStreamUIDs([]control.SamplerStreamUID{streamUID})
 				rawSampleLog.SetSampleRawData(sample.JSONEncoding, []byte(`{"id": 1}`))
 
 				err := processor.Process(context.Background(), logs)
@@ -124,7 +124,7 @@ var _ = Describe("DataPlane", func() {
 				logs := sample.NewOTLPLogs()
 				samplerLogs := logs.AppendSamplerOTLPLogs("resource1", "sampler1")
 				rawSampleLog := samplerLogs.AppendRawSampleOTLPLog()
-				rawSampleLog.SetStreams([]control.SamplerStreamUID{streamUID})
+				rawSampleLog.SetStreamUIDs([]control.SamplerStreamUID{streamUID})
 				rawSampleLog.SetSampleRawData(sample.JSONEncoding, []byte(`{"id": 1}`))
 
 				err := processor.Process(context.Background(), logs)

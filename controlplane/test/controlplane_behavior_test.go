@@ -345,7 +345,7 @@ var _ = Describe("ControlPlane", func() {
 						},
 					}
 
-					tags := []control.Tag{{Name: "some_tag_name", Attrs: map[string]string{"some_attr_name": "some_attr_value"}}}
+					tags := control.Tags{{Name: "some_tag_name", Attrs: map[string]string{"some_attr_name": "some_attr_value"}}}
 					p := sampler.New("sampler1", "resource1",
 						sampler.WithLogger(logger),
 						sampler.WithTags(tags...),
@@ -504,14 +504,14 @@ var _ = Describe("ControlPlane", func() {
 					err := c.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
-					p1 := sampler.New("sampler1", "resource1", sampler.WithLogger(logger))
-					sampler1Registered := waitSamplerRegistered(p1)
-					err = p1.Connect(s.Addr().String())
+					p0 := sampler.New("sampler1", "resource1", sampler.WithLogger(logger))
+					sampler1Registered := waitSamplerRegistered(p0)
+					err = p0.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
-					p2 := sampler.New("sampler2", "resource2", sampler.WithLogger(logger))
-					sampler2Registered := waitSamplerRegistered(p2)
-					err = p2.Connect(s.Addr().String())
+					p1 := sampler.New("sampler2", "resource2", sampler.WithLogger(logger))
+					sampler2Registered := waitSamplerRegistered(p1)
+					err = p1.Connect(s.Addr().String())
 					Expect(err).ToNot(HaveOccurred())
 
 					<-clientRegistered
@@ -522,8 +522,12 @@ var _ = Describe("ControlPlane", func() {
 					Expect(err).ToNot(HaveOccurred())
 
 					Expect(len(samplers)).To(Equal(2))
-					Expect(samplers[0].UID).To(BeElementOf(p1.UID(), p2.UID()))
-					Expect(samplers[1].UID).To(BeElementOf(p1.UID(), p2.UID()))
+					samplersMap := map[string]string{}
+					for _, s := range samplers {
+						samplersMap[s.Resource] = s.Name
+					}
+					Expect(samplersMap[p0.Resource()]).To(Equal(p0.Name()))
+					Expect(samplersMap[p1.Resource()]).To(Equal(p1.Name()))
 
 					Expect(c.Close(condTimeout)).ToNot(HaveOccurred())
 				})

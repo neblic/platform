@@ -29,12 +29,44 @@ func newSamplerConfig(stream control.SamplerStreamUID) control.SamplerConfig {
 	}
 }
 
+func newSamplerCapabilities() control.Capabilities {
+	return control.Capabilities{
+		Stream: control.StreamCapabilities{
+			Enabled: true,
+		},
+		LimiterIn: control.LimiterCapabilities{
+			Enabled: false,
+		},
+		SamplingIn: control.SamplingCapabilities{
+			Enabled: false,
+			Types:   []control.SamplingType{},
+		},
+		LimiterOut: control.LimiterCapabilities{
+			Enabled: false,
+		},
+		Digest: control.DigestCapabilities{
+			Enabled: false,
+			Types:   []control.DigestType{},
+		},
+	}
+}
+
 func initializeStorage(storage Storage) error {
-	err := storage.SetSampler("resource1", "sampler1", newSamplerConfig("stream1"))
+	err := storage.SetSampler(SamplerEntry{
+		Resource:     "resource1",
+		Name:         "sampler1",
+		Config:       newSamplerConfig("stream1"),
+		Capabilities: newSamplerCapabilities(),
+	})
 	if err != nil {
 		return err
 	}
-	err = storage.SetSampler("resource3", "sampler3", newSamplerConfig("stream3"))
+	err = storage.SetSampler(SamplerEntry{
+		Resource:     "resource3",
+		Name:         "sampler3",
+		Config:       newSamplerConfig("stream3"),
+		Capabilities: newSamplerCapabilities(),
+	})
 	if err != nil {
 		return err
 	}
@@ -51,7 +83,7 @@ func StorageGetSamplerSuite(t *testing.T, storageProvider func() Storage) {
 	tests := []struct {
 		name    string
 		args    args
-		want    control.SamplerConfig
+		want    SamplerEntry
 		wantErr error
 	}{
 		{
@@ -60,7 +92,12 @@ func StorageGetSamplerSuite(t *testing.T, storageProvider func() Storage) {
 				resource: "resource1",
 				sampler:  "sampler1",
 			},
-			want:    newSamplerConfig("stream1"),
+			want: SamplerEntry{
+				Resource:     "resource1",
+				Name:         "sampler1",
+				Config:       newSamplerConfig("stream1"),
+				Capabilities: newSamplerCapabilities(),
+			},
 			wantErr: nil,
 		},
 		{
@@ -69,7 +106,7 @@ func StorageGetSamplerSuite(t *testing.T, storageProvider func() Storage) {
 				resource: "resource2",
 				sampler:  "sampler2",
 			},
-			want:    control.SamplerConfig{},
+			want:    SamplerEntry{},
 			wantErr: ErrUnknownSampler,
 		},
 	}
@@ -87,8 +124,8 @@ func StorageGetSamplerSuite(t *testing.T, storageProvider func() Storage) {
 				t.Errorf("Storage.GetSampler() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Storage.GetSampler() = %v, want %v", got, tt.want)
+			if !reflect.DeepEqual(got.Capabilities, tt.want.Capabilities) {
+				t.Errorf("Storage.GetSampler() = %v, want %v", got.Capabilities, tt.want.Capabilities)
 			}
 		})
 	}
@@ -98,14 +135,24 @@ func StorageRangeSamplersSuite(t *testing.T, storageProvider func() Storage) {
 
 	tests := []struct {
 		name    string
-		want    map[defs.SamplerIdentifier]control.SamplerConfig
+		want    map[defs.SamplerIdentifier]SamplerEntry
 		wantErr error
 	}{
 		{
 			name: "successful range",
-			want: map[defs.SamplerIdentifier]control.SamplerConfig{
-				{Resource: "resource1", Name: "sampler1"}: newSamplerConfig("stream1"),
-				{Resource: "resource3", Name: "sampler3"}: newSamplerConfig("stream3"),
+			want: map[defs.SamplerIdentifier]SamplerEntry{
+				{Resource: "resource1", Name: "sampler1"}: {
+					Resource:     "resource1",
+					Name:         "sampler1",
+					Config:       newSamplerConfig("stream1"),
+					Capabilities: newSamplerCapabilities(),
+				},
+				{Resource: "resource3", Name: "sampler3"}: {
+					Resource:     "resource3",
+					Name:         "sampler3",
+					Config:       newSamplerConfig("stream3"),
+					Capabilities: newSamplerCapabilities(),
+				},
 			},
 			wantErr: nil,
 		},
@@ -114,9 +161,9 @@ func StorageRangeSamplersSuite(t *testing.T, storageProvider func() Storage) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			s := storageProvider()
-			got := map[defs.SamplerIdentifier]control.SamplerConfig{}
-			err := s.RangeSamplers(func(resource string, sampler string, config control.SamplerConfig) {
-				got[defs.NewSamplerIdentifier(resource, sampler)] = config
+			got := map[defs.SamplerIdentifier]SamplerEntry{}
+			err := s.RangeSamplers(func(entry SamplerEntry) {
+				got[defs.NewSamplerIdentifier(entry.Resource, entry.Name)] = entry
 			})
 			if err != tt.wantErr {
 				t.Errorf("Storage.RangeSamplers() error = %v, wantErr %v", err, tt.wantErr)
@@ -132,31 +179,43 @@ func StorageRangeSamplersSuite(t *testing.T, storageProvider func() Storage) {
 func StorageSetSamplerSuite(t *testing.T, storageProvider func() Storage) {
 
 	type args struct {
-		resource string
-		sampler  string
-		config   control.SamplerConfig
+		resource     string
+		sampler      string
+		config       control.SamplerConfig
+		capabilities control.Capabilities
 	}
 	tests := []struct {
 		name    string
 		args    args
-		want    control.SamplerConfig
+		want    SamplerEntry
 		wantErr bool
 	}{
 		{
 			name: "test setting non existing value",
 			args: args{
-				resource: "resource2",
-				sampler:  "sampler2",
-				config:   newSamplerConfig("stream2"),
+				resource:     "resource2",
+				sampler:      "sampler2",
+				config:       newSamplerConfig("stream2"),
+				capabilities: newSamplerCapabilities(),
 			},
-			want:    newSamplerConfig("stream2"),
+			want: SamplerEntry{
+				Resource:     "resource2",
+				Name:         "sampler2",
+				Config:       newSamplerConfig("stream2"),
+				Capabilities: newSamplerCapabilities(),
+			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := storageProvider()
-			err := s.SetSampler(tt.args.resource, tt.args.sampler, tt.args.config)
+			err := s.SetSampler(SamplerEntry{
+				Resource:     tt.args.resource,
+				Name:         tt.args.sampler,
+				Config:       tt.args.config,
+				Capabilities: tt.args.capabilities,
+			})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Storage.SetSampler() error = %v, wantErr %v", err, tt.wantErr)
 				return
