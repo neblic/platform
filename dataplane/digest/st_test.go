@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/neblic/platform/dataplane/protos"
+	"github.com/neblic/platform/dataplane/protos/test"
 	"github.com/neblic/platform/internal/pkg/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -521,7 +522,7 @@ func TestBuildDigest(t *testing.T) {
 		},
 		{
 			desc: "add sample from proto",
-			sample: data.NewSampleDataFromProto(&protos.TestSample{
+			sample: data.NewSampleDataFromProto(&test.TestSample{
 				Int32: 1,
 			}),
 			wantDigest: &protos.StructureDigest{

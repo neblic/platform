@@ -43,9 +43,16 @@ gen-proto:
 	--go_opt=module=github.com/neblic/platform/controlplane --go_out=${PWD}/controlplane \
 	--go-grpc_opt=module=github.com/neblic/platform/controlplane --go-grpc_out=${PWD}/controlplane \
 	${PWD}/protos/controlplane.proto
-
 	docker run --rm -v${PWD}:${PWD} -w${PWD} otel/build-protobuf \
 	-I/usr/include/google/protobuf --proto_path=${PWD} \
 	--go_opt=module=github.com/neblic/platform/dataplane --go_out=${PWD}/dataplane \
 	--go-grpc_opt=module=github.com/neblic/platform/dataplane --go-grpc_out=${PWD}/dataplane \
 	${PWD}/protos/dataplane.proto
+	docker run --rm -v${PWD}:${PWD} -w${PWD} otel/build-protobuf \
+	-I/usr/include/google/protobuf --proto_path=${PWD} \
+	--go_opt=module=github.com/neblic/platform/dataplane --go_out=${PWD}/dataplane \
+	${PWD}/protos/test/test.proto
+
+.PHONY: bench
+bench:
+	go test -bench=. -benchmem -run=^$$ ./sampler/internal/sampler/ | tee sampler/test/docs/bench/results.txt
