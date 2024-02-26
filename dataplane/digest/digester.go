@@ -42,6 +42,7 @@ type Digester struct {
 
 	digestsConfig map[control.SamplerDigestUID]control.Digest
 	workers       map[control.SamplerDigestUID]*worker
+	sync          bool
 }
 
 func NewDigester(settings Settings) *Digester {
@@ -129,12 +130,20 @@ func (d *Digester) SetDigestsConfig(digestCfgs map[control.SamplerDigestUID]cont
 	d.digestsConfig = digestCfgs
 }
 
+func (d *Digester) SetSync(sync bool) {
+	d.sync = sync
+}
+
 func (d *Digester) ProcessSample(streams []control.SamplerStreamUID, sampleData *data.Data) bool {
 	processed := false
 	for _, stream := range streams {
 		for _, worker := range d.workers {
 			if worker.streamUID == stream {
-				worker.processSample(sampleData)
+				if d.sync {
+					worker.processSampleSync(sampleData)
+				} else {
+					worker.processSample(sampleData)
+				}
 				processed = true
 			}
 		}
@@ -189,6 +198,12 @@ func (w *worker) processSample(sampleData *data.Data) {
 		w.samplesToFlush++
 	default:
 		w.notifyErr(fmt.Errorf("%s buffer is full", w))
+	}
+}
+
+func (w *worker) processSampleSync(sampleData *data.Data) {
+	if err := w.digest.AddSampleData(sampleData); err != nil {
+		w.notifyErr(err)
 	}
 }
 

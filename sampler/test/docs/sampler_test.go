@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	// --8<-- [start:SamplerInitImport]
-
 	"github.com/neblic/platform/sampler"
 	"github.com/neblic/platform/sampler/sample"
 	// --8<-- [end:SamplerInitImport]
