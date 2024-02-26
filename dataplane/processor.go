@@ -93,8 +93,8 @@ func (p *Processor) configUpdater() {
 	}
 }
 
-func (p *Processor) samplerStatsUpdater() {
-	p.logger.Debug("Starting sampler stats updater routine")
+func (p *Processor) statsUpdater() {
+	p.logger.Debug("Starting stats updater routine")
 
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
@@ -136,7 +136,7 @@ func (p *Processor) setTransformer(resource string, sampler string, transformer 
 	p.transformers[samplerIdentifier] = transformer
 }
 
-func (p *Processor) propagateSamplerStats(otlpLogs sample.OTLPLogs) {
+func (p *Processor) updateStats(otlpLogs sample.OTLPLogs) {
 	sample.Range(otlpLogs, func(resource, sampler string, _ sample.OTLPLog) {
 		transformer, ok := p.getTransformer(resource, sampler)
 		if !ok {
@@ -192,7 +192,7 @@ func (p *Processor) Start() error {
 
 	p.ctx, p.ctxCancel = context.WithCancel(context.Background())
 	go p.configUpdater()
-	go p.samplerStatsUpdater()
+	go p.statsUpdater()
 
 	return nil
 }
@@ -365,7 +365,7 @@ func (p *Processor) Process(ctx context.Context, logs sample.OTLPLogs) error {
 
 	})
 
-	p.propagateSamplerStats(logs)
+	p.updateStats(logs)
 	p.computeDigests(logs)
 	p.computeEvents(logs)
 
