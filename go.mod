@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/axiomhq/hyperloglog v0.0.0-20240124082744-24bca3a5b39b
 	github.com/cenkalti/backoff v2.2.1+incompatible
+	github.com/goccy/go-json v0.10.2
 	github.com/golang/protobuf v1.5.3
 	github.com/google/cel-go v0.19.0
 	github.com/google/go-cmp v0.6.0
