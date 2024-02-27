@@ -27,7 +27,7 @@ type neblic struct {
 	processor  *dataplane.Processor
 }
 
-func newLogsProcessor(cfg *Config, logger *zap.Logger, nextConsumer consumer.Logs) (*neblic, error) {
+func newLogsConnector(cfg *Config, logger *zap.Logger, nextConsumer consumer.Logs) (*neblic, error) {
 	serverOpts := []server.Option{}
 
 	if cfg.UID == "" {

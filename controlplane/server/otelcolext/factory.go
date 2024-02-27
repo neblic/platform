@@ -4,20 +4,20 @@ import (
 	"context"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/connector"
 	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/processor"
 )
 
 const (
-	// The value of processor "type" in configuration.
+	// The value of connector "type" in configuration.
 	typeStr = "neblic"
 )
 
-func NewFactory() processor.Factory {
-	return processor.NewFactory(
+func NewFactory() connector.Factory {
+	return connector.NewFactory(
 		typeStr,
 		createDefaultConfig,
-		processor.WithLogs(createLogsProcessor, component.StabilityLevelDevelopment),
+		connector.WithLogsToLogs(createLogsProcessor, component.StabilityLevelDevelopment),
 	)
 }
 
@@ -25,6 +25,6 @@ func createDefaultConfig() component.Config {
 	return newDefaultSettings()
 }
 
-func createLogsProcessor(_ context.Context, set processor.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (processor.Logs, error) {
-	return newLogsProcessor(cfg.(*Config), set.Logger, nextConsumer)
+func createLogsProcessor(_ context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Logs, error) {
+	return newLogsConnector(cfg.(*Config), set.Logger, nextConsumer)
 }

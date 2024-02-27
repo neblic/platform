@@ -17,6 +17,7 @@ require (
 	go.opentelemetry.io/collector/component v0.94.1
 	go.opentelemetry.io/collector/config/configopaque v0.94.1
 	go.opentelemetry.io/collector/config/configtls v0.94.1
+	go.opentelemetry.io/collector/connector v0.94.1
 	go.opentelemetry.io/collector/consumer v0.94.1
 	go.opentelemetry.io/collector/exporter v0.94.1
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.94.1

@@ -369,14 +369,5 @@ func (p *Processor) Process(ctx context.Context, logs sample.OTLPLogs) error {
 	p.computeDigests(logs)
 	p.computeEvents(logs)
 
-	// Delete raw samples from exported data
-	// TODO: allow the user to configure where the raw samples should be forwarded to
-	logs.RemoveOTLPLogIf(func(otlpLog any) bool {
-		if _, ok := otlpLog.(sample.RawSampleOTLPLog); ok {
-			return true
-		}
-		return false
-	})
-
 	return p.exporter.Export(ctx, logs)
 }
