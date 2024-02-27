@@ -13,6 +13,7 @@ nav:
       - 'Collector': 'learn/collector.md'
       - 'Samplers': 'learn/samplers.md'
       - 'Protocol': 'learn/protocol.md'
+      - 'Storage': 'learn/storage.md'
     - 'How-to guides':
       - 'Get data from Go services': 'how-to/data-from-go-svc.md'
       - 'Get data from Apache Kafka': 'how-to/data-from-kafka.md'
