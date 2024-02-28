@@ -35,7 +35,7 @@ Configure Loki exporter to send data to the desired endpoint:
 ``` yaml
 exporters:
   # ...
---8<-- "./controlplane/server/otelcolext/fullconfig.yaml:LokiExporter"
+--8<-- "./controlplane/server/otelcolext/reference.yaml:LokiExporter"
   # ...
 ```
 
@@ -43,7 +43,7 @@ Elevate `Sampler` resource to a `Loki` label. After doing that, `Loki` will auto
 ``` yaml
 processors:
   # ...
---8<-- "./controlplane/server/otelcolext/fullconfig.yaml:LokiProcessor"
+--8<-- "./controlplane/server/otelcolext/reference.yaml:LokiProcessor"
   # ...
 ```
 
@@ -52,7 +52,7 @@ Configure a new pipeline that receives data from the `Neblic` connector, uses th
 service:
   pipelines:
     # ...
---8<-- "./controlplane/server/otelcolext/fullconfig.yaml:LokiPipeline"
+--8<-- "./controlplane/server/otelcolext/reference.yaml:LokiPipeline"
     # ...
 ```
 
