@@ -14,16 +14,16 @@ require (
 	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/onsi/gomega v1.31.1
 	github.com/stretchr/testify v1.8.4
-	go.opentelemetry.io/collector/component v0.94.1
+	go.opentelemetry.io/collector/component v0.95.0
 	go.opentelemetry.io/collector/config/configopaque v0.94.1
 	go.opentelemetry.io/collector/config/configtls v0.94.1
 	go.opentelemetry.io/collector/connector v0.94.1
-	go.opentelemetry.io/collector/consumer v0.94.1
+	go.opentelemetry.io/collector/consumer v0.95.0
 	go.opentelemetry.io/collector/exporter v0.94.1
 	go.opentelemetry.io/collector/exporter/otlpexporter v0.94.1
 	go.opentelemetry.io/collector/extension v0.94.1
 	go.opentelemetry.io/collector/extension/auth v0.94.1
-	go.opentelemetry.io/collector/pdata v1.1.0
+	go.opentelemetry.io/collector/pdata v1.2.0
 	go.opentelemetry.io/collector/semconv v0.94.1
 	go.opentelemetry.io/otel/metric v1.23.1
 	go.opentelemetry.io/otel/trace v1.23.1
@@ -66,16 +66,16 @@ require (
 	github.com/mostynb/go-grpc-compression v1.2.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
-	go.opentelemetry.io/collector v0.94.1 // indirect
+	go.opentelemetry.io/collector v0.95.0 // indirect
 	go.opentelemetry.io/collector/config/configauth v0.94.1 // indirect
 	go.opentelemetry.io/collector/config/configcompression v0.94.1 // indirect
 	go.opentelemetry.io/collector/config/configgrpc v0.94.1 // indirect
 	go.opentelemetry.io/collector/config/confignet v0.94.1 // indirect
 	go.opentelemetry.io/collector/config/configretry v0.94.1 // indirect
-	go.opentelemetry.io/collector/config/configtelemetry v0.94.1 // indirect
+	go.opentelemetry.io/collector/config/configtelemetry v0.95.0 // indirect
 	go.opentelemetry.io/collector/config/internal v0.94.1 // indirect
-	go.opentelemetry.io/collector/confmap v0.94.1 // indirect
-	go.opentelemetry.io/collector/featuregate v1.1.0 // indirect
+	go.opentelemetry.io/collector/confmap v0.95.0 // indirect
+	go.opentelemetry.io/collector/featuregate v1.2.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.48.0 // indirect
 	go.opentelemetry.io/otel v1.23.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
