@@ -13,10 +13,12 @@ nav:
       - 'Collector': 'learn/collector.md'
       - 'Samplers': 'learn/samplers.md'
       - 'Protocol': 'learn/protocol.md'
+      - 'Storage': 'learn/storage.md'
     - 'How-to guides':
       - 'Get data from Go services': 'how-to/data-from-go-svc.md'
       - 'Get data from Apache Kafka': 'how-to/data-from-kafka.md'
       - 'Get data from Java services': 'how-to/data-from-java-svc.md'
+      - 'Store and visualize data with Loki': 'how-to/store-and-visualize-data-with-loki.md'
       - 'Configure Samplers': 'how-to/configure-samplers-using-neblictl.md'
       - 'Build your own collector': 'how-to/build-your-own-collector.md'
     - 'Reference':

@@ -12,10 +12,16 @@ replaces:
 exporters:
   - gomod: go.opentelemetry.io/collector/exporter/loggingexporter v0.94.1
   - gomod: go.opentelemetry.io/collector/exporter/otlpexporter v0.94.1
+# --8<-- [start:LokiExporter]
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/lokiexporter v0.94.0
+# --8<-- [end:LokiExporter]
 processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.94.0
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.94.1
+# --8<-- [start:TransformProcessor]
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor v0.94.0
+# --8<-- [end:TransformProcessor]
+connectors:
   - import: github.com/neblic/platform/controlplane/server/otelcolext
     gomod: github.com/neblic/platform v0.0.0
 receivers:

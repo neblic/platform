@@ -8,7 +8,7 @@ There are two components that you need to set up to start using Neblic: a `Colle
 graph LR;
     Samplers--Data samples-->col[Collector]
     col--Configurations-->Samplers
-    col--Digests/Events-->neblic[Neblic Cloud]
+    col--DataSamples/Digests/Events -->Loki
     ctl[neblictl]--Configurations-->col
 ```
 

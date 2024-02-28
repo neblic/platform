@@ -8,7 +8,7 @@ The following diagram shows most of the concepts presented here and serves as a 
 graph LR;
     Samplers--Data samples-->col[Collector]
     col--Configurations-->Samplers
-    col--Digests/Events-->neblic[Neblic Cloud]
+    col--DataSamples/Digests/Events -->Loki
     ctl[neblictl]--Configurations-->col
 ```
 

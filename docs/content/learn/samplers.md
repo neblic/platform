@@ -75,12 +75,12 @@ will process.
 
 Concept match beetween OpenTelemetry and Neblic:
 
-| OpenTelemetry                                                                                    | Neblic                                              |
-| ------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| [Resource](https://opentelemetry.io/docs/specs/otel/resource/sdk/)                               | Resource                                            |
-| [InstrumentationScope](https://opentelemetry.io/docs/specs/otel/glossary/#instrumentation-scope) | [Sampler](../../getting-started/concepts/#sampler)  |
-| Attribute `com.neblic.sample.stream.names`                                                       | [Stream](../../getting-started/concepts/#stream)    |
-| Attribute `com.neblic.sample.key`                                                                | [Key](../../getting-started/concepts/#keyed-stream) |
+| OpenTelemetry                                                                                    | Neblic                                             |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| [Resource](https://opentelemetry.io/docs/specs/otel/resource/sdk/)                               | Resource                                           |
+| [InstrumentationScope](https://opentelemetry.io/docs/specs/otel/glossary/#instrumentation-scope) | [Sampler](../getting-started/concepts.md#sampler)  |
+| Attribute `com.neblic.sample.stream.names`                                                       | [Stream](../getting-started/concepts.md#stream)    |
+| Attribute `com.neblic.sample.key`                                                                | [Key](../getting-started/concepts.md#keyed-stream) |
 
 !!! note
     OpenTelemetry recommends using appenders to propagate logs, for that use case it does not work, and the Logs API is used instead.
