@@ -24,7 +24,6 @@ require (
 	go.opentelemetry.io/collector/extension v0.94.1
 	go.opentelemetry.io/collector/extension/auth v0.94.1
 	go.opentelemetry.io/collector/pdata v1.1.0
-	go.opentelemetry.io/collector/processor v0.94.1
 	go.opentelemetry.io/collector/semconv v0.94.1
 	go.opentelemetry.io/otel/metric v1.23.1
 	go.opentelemetry.io/otel/trace v1.23.1
