@@ -15,8 +15,8 @@ require (
 	github.com/onsi/gomega v1.31.1
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector/component v0.94.1
-	go.opentelemetry.io/collector/config/configopaque v0.94.1
-	go.opentelemetry.io/collector/config/configtls v0.94.1
+	go.opentelemetry.io/collector/config/configopaque v1.3.0
+	go.opentelemetry.io/collector/config/configtls v0.96.0
 	go.opentelemetry.io/collector/connector v0.94.1
 	go.opentelemetry.io/collector/consumer v0.94.1
 	go.opentelemetry.io/collector/exporter v0.94.1
@@ -74,7 +74,7 @@ require (
 	go.opentelemetry.io/collector/config/configretry v0.94.1 // indirect
 	go.opentelemetry.io/collector/config/configtelemetry v0.94.1 // indirect
 	go.opentelemetry.io/collector/config/internal v0.94.1 // indirect
-	go.opentelemetry.io/collector/confmap v0.94.1 // indirect
+	go.opentelemetry.io/collector/confmap v0.96.0 // indirect
 	go.opentelemetry.io/collector/featuregate v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.48.0 // indirect
 	go.opentelemetry.io/otel v1.23.1 // indirect
