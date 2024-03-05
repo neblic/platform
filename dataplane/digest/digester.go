@@ -27,7 +27,7 @@ type Settings struct {
 	ComputationLocation control.ComputationLocation
 
 	NotifyErr func(error)
-	Exporter  exporter.Exporter
+	Exporter  exporter.LogsExporter
 	Logger    logging.Logger
 }
 
@@ -37,7 +37,7 @@ type Digester struct {
 	computationLocation control.ComputationLocation
 
 	notifyErr func(error)
-	exporter  exporter.Exporter
+	exporter  exporter.LogsExporter
 	logger    logging.Logger
 
 	digestsConfig map[control.SamplerDigestUID]control.Digest
@@ -170,7 +170,7 @@ type workerSettings struct {
 	inChBufferSize int
 	flushPeriod    time.Duration
 	digest         Digest
-	exporter       exporter.Exporter
+	exporter       exporter.LogsExporter
 
 	notifyErr func(error)
 }

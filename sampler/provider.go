@@ -125,7 +125,7 @@ type provider struct {
 	opts        *providerOptions
 	samplersErr chan error
 
-	sampleExporter exporter.Exporter
+	sampleExporter exporter.LogsExporter
 	logger         logging.Logger
 }
 
@@ -205,7 +205,7 @@ func (p *provider) Sampler(name string, schema sample.Schema, opts ...Option) (S
 
 		InitialConfig: setOpts.initialConfig,
 		Tags:          tagsWithAttrs,
-		Exporter:      p.sampleExporter,
+		LogsExporter:  p.sampleExporter,
 
 		UpdateStatsPeriod: setOpts.updateStatsPeriod,
 

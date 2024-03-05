@@ -13,6 +13,7 @@ import (
 	"github.com/neblic/platform/dataplane/digest"
 	"github.com/neblic/platform/dataplane/event"
 	"github.com/neblic/platform/dataplane/sample"
+	"github.com/neblic/platform/internal/pkg/exporter"
 	"github.com/neblic/platform/logging"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -51,12 +52,12 @@ type Processor struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	logger    logging.Logger
-	exporter  Exporter
+	exporter  exporter.LogsExporter
 	cpServer  *server.Server
 	handlers  map[samplerIdentifier]*handler
 }
 
-func NewProcessor(logger logging.Logger, cpServer *server.Server, exporter Exporter) *Processor {
+func NewProcessor(logger logging.Logger, cpServer *server.Server, exporter exporter.LogsExporter) *Processor {
 	return &Processor{
 		ctx:      nil,
 		logger:   logger,

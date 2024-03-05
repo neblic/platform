@@ -26,7 +26,7 @@ var _ = Describe("DataPlane", func() {
 	var (
 		logger logging.Logger
 
-		exporter  *mock.Exporter
+		exporter  *mock.LogsExporter
 		processor *dataplane.Processor
 	)
 
@@ -36,7 +36,7 @@ var _ = Describe("DataPlane", func() {
 		logger, err = logging.NewZapDev()
 		Expect(err).ToNot(HaveOccurred())
 
-		exporter = mock.NewExporter()
+		exporter = mock.NewLogsExporter()
 		processor = dataplane.NewProcessor(logger, nil, exporter)
 	})
 

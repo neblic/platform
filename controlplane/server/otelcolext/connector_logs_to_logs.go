@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/neblic/platform/controlplane/server"
 	"github.com/neblic/platform/dataplane"
 	"github.com/neblic/platform/dataplane/sample"
+	"github.com/neblic/platform/internal/pkg/exporter"
 	"github.com/neblic/platform/logging"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
@@ -17,9 +17,9 @@ import (
 	"go.uber.org/zap"
 )
 
-type neblic struct {
+type logsToLogsConnector struct {
 	cfg      *Config
-	exporter *Exporter
+	exporter exporter.LogsExporter
 
 	logger     logging.Logger
 	s          *server.Server
@@ -27,16 +27,8 @@ type neblic struct {
 	processor  *dataplane.Processor
 }
 
-func newLogsConnector(cfg *Config, logger *zap.Logger, nextConsumer consumer.Logs) (*neblic, error) {
+func newLogsToLogsConnector(cfg *Config, logger *zap.Logger, nextConsumer consumer.Logs) (*logsToLogsConnector, error) {
 	serverOpts := []server.Option{}
-
-	if cfg.UID == "" {
-		cfg.UID = uuid.NewString()
-	}
-
-	if cfg.Endpoint == "" {
-		cfg.Endpoint = defaultEndpoint
-	}
 
 	if cfg.StoragePath != "" {
 		serverOpts = append(serverOpts, server.WithDiskStorage(cfg.StoragePath))
@@ -66,15 +58,15 @@ func newLogsConnector(cfg *Config, logger *zap.Logger, nextConsumer consumer.Log
 		return nil, component.ErrNilNextConsumer
 	}
 
-	return &neblic{
+	return &logsToLogsConnector{
 		cfg:        cfg,
 		logger:     logging.FromZapLogger(logger),
-		exporter:   NewExporter(nextConsumer),
+		exporter:   NewLogsExporter(nextConsumer),
 		serverOpts: serverOpts,
 	}, nil
 }
 
-func (n *neblic) Start(_ context.Context, _ component.Host) error {
+func (n *logsToLogsConnector) Start(_ context.Context, _ component.Host) error {
 	var err error
 	n.s, err = server.New(n.cfg.UID, n.serverOpts...)
 	if err != nil {
@@ -94,7 +86,7 @@ func (n *neblic) Start(_ context.Context, _ component.Host) error {
 	return nil
 }
 
-func (n *neblic) Shutdown(_ context.Context) error {
+func (n *logsToLogsConnector) Shutdown(_ context.Context) error {
 	var errs error
 	if n.s != nil {
 		err := n.s.Stop(time.Second)
@@ -109,13 +101,13 @@ func (n *neblic) Shutdown(_ context.Context) error {
 	return errs
 }
 
-func (n *neblic) Capabilities() consumer.Capabilities {
+func (n *logsToLogsConnector) Capabilities() consumer.Capabilities {
 	return consumer.Capabilities{
 		MutatesData: true,
 	}
 }
 
-func (n *neblic) ConsumeLogs(ctx context.Context, logs plog.Logs) error {
+func (n *logsToLogsConnector) ConsumeLogs(ctx context.Context, logs plog.Logs) error {
 	otlpLogs := sample.OTLPLogsFrom(logs)
 	err := n.processor.Process(ctx, otlpLogs)
 

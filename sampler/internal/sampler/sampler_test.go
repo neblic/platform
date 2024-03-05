@@ -274,7 +274,7 @@ func BenchmarkJSONSample(b *testing.B) {
 				&Settings{
 					Schema:           sample.NewDynamicSchema(),
 					ControlPlaneAddr: "localhost:8899",
-					Exporter:         newMockExporter(),
+					LogsExporter:     newMockExporter(),
 				},
 				logger,
 			)
@@ -327,7 +327,7 @@ func BenchmarkProtoSample(b *testing.B) {
 				&Settings{
 					Schema:           sample.NewProtoSchema(&test.TestSample{}),
 					ControlPlaneAddr: "localhost:8899",
-					Exporter:         newMockExporter(),
+					LogsExporter:     newMockExporter(),
 				},
 				logger,
 			)
@@ -361,7 +361,7 @@ func BenchmarkNativeSample(b *testing.B) {
 				&Settings{
 					Schema:           sample.NewDynamicSchema(),
 					ControlPlaneAddr: "localhost:8899",
-					Exporter:         newMockExporter(),
+					LogsExporter:     newMockExporter(),
 				},
 				logger,
 			)

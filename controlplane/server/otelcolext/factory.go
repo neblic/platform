@@ -17,7 +17,8 @@ func NewFactory() connector.Factory {
 	return connector.NewFactory(
 		typeStr,
 		createDefaultConfig,
-		connector.WithLogsToLogs(createLogsProcessor, component.StabilityLevelDevelopment),
+		connector.WithLogsToLogs(createLogsToLogsConnector, component.StabilityLevelDevelopment),
+		connector.WithLogsToMetrics(createLogsToMetricsConnector, component.StabilityLevelDevelopment),
 	)
 }
 
@@ -25,6 +26,10 @@ func createDefaultConfig() component.Config {
 	return newDefaultSettings()
 }
 
-func createLogsProcessor(_ context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Logs, error) {
-	return newLogsConnector(cfg.(*Config), set.Logger, nextConsumer)
+func createLogsToLogsConnector(_ context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Logs, error) {
+	return newLogsToLogsConnector(cfg.(*Config), set.Logger, nextConsumer)
+}
+
+func createLogsToMetricsConnector(_ context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Metrics) (connector.Logs, error) {
+	return newLogsToMetricsConnector(cfg.(*Config), set.Logger, nextConsumer)
 }
