@@ -14,22 +14,50 @@ const (
 )
 
 func NewFactory() connector.Factory {
+	neblicConnector := newNeblicConnector()
+	logsToLogsConnector := newLogsToMetricsConnector(neblicConnector)
+	logsToMetricsConnector := newLogsToMetricsConnector(neblicConnector)
+
+	logsToLogsCreator := func(ctx context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Logs, error) {
+		err := neblicConnector.CreateGlobal(ctx, set, cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		if nextConsumer == nil {
+			return nil, component.ErrNilNextConsumer
+		}
+
+		neblicConnector.dataPlane.SampleExporter = NewLogsExporter(nextConsumer)
+		neblicConnector.dataPlane.DigestExporter = NewLogsExporter(nextConsumer, logsToMetricsConnector)
+		neblicConnector.dataPlane.EventExporter = NewLogsExporter(nextConsumer, logsToMetricsConnector)
+
+		return logsToLogsConnector, nil
+	}
+
+	logsToMetricsCreator := func(ctx context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Metrics) (connector.Logs, error) {
+		err := neblicConnector.CreateGlobal(ctx, set, cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		if nextConsumer == nil {
+			return nil, component.ErrNilNextConsumer
+		}
+
+		neblicConnector.dataPlane.MetricExporter = NewMetricsExporter(nextConsumer)
+
+		return logsToMetricsConnector, nil
+	}
+
 	return connector.NewFactory(
 		typeStr,
 		createDefaultConfig,
-		connector.WithLogsToLogs(createLogsToLogsConnector, component.StabilityLevelDevelopment),
-		connector.WithLogsToMetrics(createLogsToMetricsConnector, component.StabilityLevelDevelopment),
+		connector.WithLogsToLogs(logsToLogsCreator, component.StabilityLevelDevelopment),
+		connector.WithLogsToMetrics(logsToMetricsCreator, component.StabilityLevelDevelopment),
 	)
 }
 
 func createDefaultConfig() component.Config {
 	return newDefaultSettings()
-}
-
-func createLogsToLogsConnector(_ context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Logs, error) {
-	return newLogsToLogsConnector(cfg.(*Config), set.Logger, nextConsumer)
-}
-
-func createLogsToMetricsConnector(_ context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Metrics) (connector.Logs, error) {
-	return newLogsToMetricsConnector(cfg.(*Config), set.Logger, nextConsumer)
 }

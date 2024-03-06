@@ -2,6 +2,7 @@ package otelcolext
 
 import (
 	"context"
+	"errors"
 
 	"github.com/neblic/platform/dataplane/metric"
 	"github.com/neblic/platform/dataplane/sample"
@@ -10,17 +11,24 @@ import (
 )
 
 type logsExporter struct {
-	consumer consumer.Logs
+	consumers []consumer.Logs
 }
 
-func NewLogsExporter(c consumer.Logs) exporter.LogsExporter {
+func NewLogsExporter(consumers ...consumer.Logs) exporter.LogsExporter {
 	return &logsExporter{
-		consumer: c,
+		consumers: consumers,
 	}
 }
 
 func (e *logsExporter) Export(ctx context.Context, otlpLogs sample.OTLPLogs) error {
-	return e.consumer.ConsumeLogs(ctx, otlpLogs.Logs())
+	var errs error
+	for _, consumer := range e.consumers {
+		err := consumer.ConsumeLogs(ctx, otlpLogs.Logs())
+		if err != nil {
+			errors.Join(errs, err)
+		}
+	}
+	return errs
 }
 
 func (e *logsExporter) Close(context.Context) error {

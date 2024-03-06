@@ -1,7 +1,6 @@
 package dataplane
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -9,21 +8,10 @@ import (
 	"github.com/neblic/platform/dataplane/metric"
 	"github.com/neblic/platform/dataplane/protos"
 	"github.com/neblic/platform/dataplane/sample"
-	"github.com/neblic/platform/logging"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-type LogsToMetricsProcessor struct {
-	logger logging.Logger
-}
-
-func NewLogsToMetricsProcessor(logger logging.Logger) *LogsToMetricsProcessor {
-	return &LogsToMetricsProcessor{
-		logger: logger,
-	}
-}
-
-func (ph *LogsToMetricsProcessor) processEvent(samplerMetrics metric.SamplerMetrics, attributes metric.DatapointAttributes, event sample.EventOTLPLog) error {
+func (p *Processor) processEvent(samplerMetrics metric.SamplerMetrics, attributes metric.DatapointAttributes, event sample.EventOTLPLog) error {
 	eventUUIDString := string(event.UID())
 	eventUUID, err := uuid.Parse(eventUUIDString)
 	if err != nil {
@@ -98,7 +86,7 @@ func generateValueDigestMetrics(samplerMetrics metric.SamplerMetrics, uid uuid.U
 	}
 }
 
-func (ph *LogsToMetricsProcessor) handleValueDigest(samplerMetrics metric.SamplerMetrics, attributes metric.DatapointAttributes, valueDigest sample.ValueDigestOTLPLog) error {
+func (p *Processor) handleValueDigest(samplerMetrics metric.SamplerMetrics, attributes metric.DatapointAttributes, valueDigest sample.ValueDigestOTLPLog) error {
 	digestUUIDString := string(valueDigest.UID())
 	digestUUID, err := uuid.Parse(digestUUIDString)
 	if err != nil {
@@ -141,7 +129,7 @@ func (ph *LogsToMetricsProcessor) handleValueDigest(samplerMetrics metric.Sample
 	return nil
 }
 
-func (ph *LogsToMetricsProcessor) Process(ctx context.Context, otlpLogs sample.OTLPLogs) (metric.Metrics, error) {
+func (p *Processor) ComputeMetrics(otlpLogs sample.OTLPLogs) (metric.Metrics, error) {
 	var errs error
 
 	metrics := metric.NewMetrics()
@@ -156,11 +144,11 @@ func (ph *LogsToMetricsProcessor) Process(ctx context.Context, otlpLogs sample.O
 			case sample.EventOTLPLog:
 				attributes = attributes.WithTs(v.Timestamp())
 				attributes = attributes.WithSampleType(v.SampleType())
-				err = ph.processEvent(samplerMetrics, attributes, v)
+				err = p.processEvent(samplerMetrics, attributes, v)
 			case sample.ValueDigestOTLPLog:
 				attributes = attributes.WithTs(v.Timestamp())
 				attributes = attributes.WithSampleType(v.SampleType())
-				err = ph.handleValueDigest(samplerMetrics, attributes, v)
+				err = p.handleValueDigest(samplerMetrics, attributes, v)
 			default:
 			}
 
