@@ -1,30 +1,32 @@
 site_name: Documentation
-copyright: Copyright &copy; 2023 - Neblic
+copyright: Copyright &copy; 2024 - Neblic
 docs_dir: content
 strict: true
 nav:
     - 'What is Neblic': index.md
     - 'Use cases':
       - 'Event-driven applications': 'use-cases/event-driven.md'
-        # - 'Event sourcing': 'use-cases/event-sourcing.md'
       - 'Real-time data streaming': 'use-cases/real-time-data-streaming.md'
       - 'API monitoring': 'use-cases/api-monitoring.md'
     - 'Quickstart':
-        - 'How does Neblic work': 'quickstart/how-does-neblic-work.md'
+      - 'How does Neblic work': 'quickstart/how-does-neblic-work.md'
+    # - 'Playground ': 'quickstart/playground.md'
     - 'Getting started': 
       - 'Concepts': 'getting-started/concepts.md'
       - 'Usage': 'getting-started/usage.md'
     - 'Learn':
-      - 'Collector': 'learn/collector.md'
+      - 'Data collection': 'learn/data-collection.md'
       - 'Samplers': 'learn/samplers.md'
-      - 'Protocol': 'learn/protocol.md'
+      - 'Collector': 'learn/collector.md'
       - 'Storage': 'learn/storage.md'
+      - 'Protocol': 'learn/protocol.md'
     - 'How-to guides':
       - 'Get data from Go services': 'how-to/data-from-go-svc.md'
-      - 'Get data from Apache Kafka': 'how-to/data-from-kafka.md'
       - 'Get data from Java services': 'how-to/data-from-java-svc.md'
+      - 'Get data from other services': 'how-to/data-from-other-svc.md'
+      - 'Get data from Apache Kafka': 'how-to/data-from-kafka.md'
+      - 'Configure Samplers using neblictl': 'how-to/configure-samplers-using-neblictl.md'
       - 'Store and visualize data with Loki': 'how-to/store-and-visualize-data-with-loki.md'
-      - 'Configure Samplers': 'how-to/configure-samplers-using-neblictl.md'
       - 'Build your own collector': 'how-to/build-your-own-collector.md'
     - 'Reference':
       - 'Rules': 'reference/rules.md'
@@ -32,6 +34,7 @@ nav:
       - 'Neblictl': 'reference/neblictl.md'
       - 'Kafka Sampler': 'reference/kafka-sampler.md'
       - 'Go Sampler': https://pkg.go.dev/github.com/neblic/platform/sampler
+      - 'Benchmarks': 'reference/benchmarks.md'
 theme: 
   name: material
   custom_dir: overrides

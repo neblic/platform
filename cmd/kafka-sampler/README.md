@@ -2,13 +2,18 @@
 
 <!--learn-start-->
 <!-- ### Kafka -->
-Neblic provides a standalone service called `kafka-sampler` capable of automatically monitoring your `Apache Kafka` topics and creating `Samplers` that will allow you to inspect all data that flows through them.
+Neblic provides a standalone service called `kafka-sampler` capable of automatically monitoring your *Apache Kafka* topics and creating *Samplers* that will allow you to inspect all data that flows through them.
 
 #### Supported encodings
 
 | Encoding          | Description                                                                                        |
 |-------------------|----------------------------------------------------------------------------------------------------|
 | JSON              | A string containing a JSON object.                                                                 |
+
+#### Instrumentation overhead (advanced)
+
+The `kafka-sampler` service is based on the `Go` *Sampler*. Check its [overhead analysis](https://docs.neblic.com/latest/learn/samplers/#instrumentation-overhead-advanced) for details.
+
 <!--learn-end-->
 
 <!--how-to-start-->
@@ -38,17 +43,17 @@ For now, only `x86-64` builds are offered. If you need another architecture you 
 
 ## Usage
 
-On startup, it will subscribe to all or a subset (based on your configuration, see the [reference](https://docs.neblic.com/latest/reference/kafka-sampler/) page) of your Kafka topics and create a `Sampler` per each one. No other actions are required since it will automatically register the `Samplers` with Neblic's `Control Plane` server and keep the list of `Samplers` updated if topics are added or removed.
+On startup, it will subscribe to all or a subset (based on your configuration, see the [reference](https://docs.neblic.com/latest/reference/kafka-sampler/) page) of your Kafka topics and create a *Sampler* per each one. No other actions are required since it will automatically register the *Samplers* with Neblic's *Control Plane* server and keep the list of *Samplers* updated if topics are added or removed.
 <!--how-to-end-->
 
 <!--ref-start-->
 ## Configuration 
 
-By default, `kafka-sampler` will look for a configuration file at `/etc/neblic/kafka-sampler/config.yaml`. This path can be changed using the `--config` flag when executing the service.
+By default, `kafka-sampler* will look for a configuration file at */etc/neblic/kafka-sampler/config.yaml`. This path can be changed using the `--config` flag when executing the service.
 
 All the options defined in the configuration file can be configured/overridden using environment variables. The environment variable name needs to be written in all caps and use `_` to divide nested objects. For example, to configure the Kafka server URL you would need to use the env variable `KAFKA_SERVERS`.
 
-Internally, `kafka-sampler` uses the [`Sarama`](https://github.com/IBM/sarama/) Go library to interact with Kafka and all its [options](https://pkg.go.dev/github.com/IBM/sarama#Config) can be configured under the `kafka.sarama` key. See the following examples section to see advanced configurations.
+Internally, `kafka-sampler` uses the [*Sarama*](https://github.com/IBM/sarama/) Go library to interact with Kafka and all its [options](https://pkg.go.dev/github.com/IBM/sarama#Config) can be configured under the `kafka.sarama` key. See the following examples section to see advanced configurations.
 
 ### Examples
 
@@ -56,7 +61,7 @@ Internally, `kafka-sampler` uses the [`Sarama`](https://github.com/IBM/sarama/) 
 
 The maximum number of topics to monitor is defined by the key `kafka.topics.max` and by default,  it will monitor the first max number of topics that match the filter rules (in no particular order), the rest will be ignored.
 
-To configure what topics are selected you can use the key `kafka.topics.filter.allow` or the key `kafka.topics.filter.deny`, using both options at the same time is not supported. The value should follow regex RE2 syntax as described in [here](https://github.com/google/re2/wiki/Syntax). For example, to only monitor `topic1` and `topic2` topics:
+To configure what topics are selected you can use the key `kafka.topics.filter.allow* or the key *kafka.topics.filter.deny`, using both options at the same time is not supported. The value should follow regex RE2 syntax as described in [here](https://github.com/google/re2/wiki/Syntax). For example, to only monitor `topic1* and *topic2` topics:
 
 | Config file YAML key              | Env var                            | Value               |
 |-----------------------------------|------------------------------------|---------------------|
