@@ -687,7 +687,7 @@ will process.</p>
 <tbody>
 <tr>
 <td><a href="https://opentelemetry.io/docs/specs/otel/resource/sdk/">Resource</a></td>
-<td>Resource</td>
+<td><code>Resource</code></td>
 </tr>
 <tr>
 <td><a href="https://opentelemetry.io/docs/specs/otel/glossary/#instrumentation-scope">InstrumentationScope</a></td>
@@ -712,10 +712,10 @@ will process.</p>
 <li>Create a <a href="https://opentelemetry.io/docs/specs/otel/logs/bridge-api/#loggerprovider">LoggerProvider</a> with the desired <em>Resource</em> name.</li>
 <li>Create a <a href="https://opentelemetry.io/docs/specs/otel/logs/bridge-api/#logger">Logger</a> with the desired sampler name as the <em>InstrumentationScope</em> name.</li>
 <li>Emit a log with:<ul>
-<li>Attribute <code>com.neblic.sample.stream.names* with value *all</code></li>
+<li>Attribute <code>com.neblic.sample.stream.names</code> with value <code>all</code></li>
 <li>Attribute <code>com.neblic.sample.key</code> with the desired key value</li>
-<li>Attribute <code>com.neblic.sample.type* with value *raw</code></li>
-<li>Attribute <code>com.neblic.sample.encoding* with value *json</code></li>
+<li>Attribute <code>com.neblic.sample.type</code> with value <code>raw</code></li>
+<li>Attribute <code>com.neblic.sample.encoding</code> with value <code>json</code></li>
 <li>Body with the serialized version of the data</li>
 </ul>
 </li>
