@@ -39,6 +39,6 @@ You can also get proactively alerted by setting up alert conditions that trigger
 The alert expression language is very powerful and allows you to set up complex rules that can catch advanced situations. 
 
 !!! note
-    Some features may be currently being developed and still not have all the capabilities described in here. Check the [porject roadmap](https://github.com/orgs/neblic/projects/3) for details about what improvements are we working on.
+    Some features may be currently being developed and still not have all the capabilities described in here. Check the [project roadmap](https://github.com/orgs/neblic/projects/3) for details about what improvements are we working on.
 
     Also, do not hesitate to suggest features, improvements or use cases by creating a [feature request](https://github.com/neblic/platform/issues/new?assignees=&labels=&projects=&template=feature_request.md&title=) in our github!

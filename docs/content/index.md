@@ -6,4 +6,6 @@
    end="<!--what-is-neblic-end-->"
 %}
 
-You can get more details on this in our [How does Neblic Work](./quickstart/how-does-neblic-work.md) section.
+## More details
+
+You can get a list of use cases that may help you better understand when to use Neblic in the next section and continue learning about Neblic in the [How does Neblic Work](./quickstart/how-does-neblic-work.md) page.

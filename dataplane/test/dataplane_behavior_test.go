@@ -93,7 +93,6 @@ var _ = Describe("DataPlane", func() {
 
 		When("there is a structure digest with sampler computation location", func() {
 			It("should export structure digest samples", func() {
-
 				streamUID := control.SamplerStreamUID(uuid.NewString())
 				digestUID := control.SamplerDigestUID(uuid.NewString())
 				processor.UpdateConfig("resource1", "sampler1", &control.SamplerConfig{

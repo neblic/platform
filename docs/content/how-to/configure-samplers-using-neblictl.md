@@ -8,4 +8,4 @@
 
 ## Documentation
 
-See the [neblictl reference](../reference/kafka-sampler.md) page to see all the available commands.
+See the [neblictl reference](../reference/neblictl.md) page to see all the available commands.

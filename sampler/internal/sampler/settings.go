@@ -29,7 +29,6 @@ type Settings struct {
 	EnableTLS        bool
 	Auth             AuthOptions
 
-	SamplingIn    control.SamplingConfig
 	InitialConfig control.SamplerConfigUpdate
 	Tags          []control.Tag
 	Exporter      exporter.Exporter

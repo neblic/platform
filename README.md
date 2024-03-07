@@ -7,39 +7,35 @@
 ## What is Neblic
 
 <!--what-is-neblic-start-->
-The purpose of the Neblic platform is to help engineering teams troubleshoot their applications by capturing, analyzing and displaying the exact data contained in the events, transactions, requests and responses that the application is processing.
+Neblic provides application observability through data. Application data is monitored continuously, and it’s done at many points of the application as a way to have an understanding of how each component behaves and how that changes across time.  
 
-This new way of troubleshooting is intended to work alongside the famous 3 pillars of observability: Metrics, logs and traces by extending that observability to the actual outputs of an application as it’s just working in real-time.
+Some of the core challenges of making data usable in a systematic way are: accessing the data, past and future, understanding the data including the business domain and its constraints, and knowing what to prioritize rather than getting overwhelmed by the sheer volume and complexity and all the possible dimensions that the data itself can take. 
 
-### What’s our story?
+To make the data practical and useful for application troubleshooting Neblic is built on analyzing the data based on three principles: Data Value Statistics, Data Structure and Business Logic and Data Validation.
 
-Neblic is born out of our experience managing complex software applications that combine data streaming pipelines, 3rd party APIs and microservices at global scale.
+### Data Values Statistics
 
-In developing for and supporting these applications, we often found that while existing Application Performance Monitoring services were critical in helping us maintain the services, they often weren’t enough to really answer What happened, where and why it happened.
+Generate statistics about the data at field level that can be tailored to what is relevant for each field within a specific application. For instance, min-max-avg to understand numerical distributions across time, cardinality to understand distinct events, and nulls and zero-values as a way to find if data is missing unexpectedly. 
 
-While answering these questions will in most cases require a person with domain knowledge to provide the final touch, Neblic’s vision is to provide the insights and the collaboration space for individuals and teams working on solving some of the most difficult questions in software development and software management.
+### Data Structure Analysis
 
-How we are solving these challenges is by creating an infrastructure to sample application-data from any application in real-time, providing the tooling to manage the data sampling infrastructure, and providing tools to filter through and see this data.
+Get field level structural digests that lets you understand the schema, field types and field presence for every period at every point of your application. This lets you visualize the actual schema seen, know the field type for each field and figure out if it has changed over time, and monitor field presence relative to each event. 
+
+### Business Logic and Data Validation
+
+Validate incoming data to get proactively alerted when something goes wrong. For instance, validate that the timestamps you’re receiving are current as a way to detect late events. Or correlate two events from two different fields or samplers to make sure they’re working correctly. 
+
+We sometimes refer to the combination of these three elements, Value Stats, Structure Analysis and, Logic/Data Validation as Telemetry, or *Data Telemetry*.
 <!--what-is-neblic-end-->
 
 ## How does Neblic Work
 
 <!--how-does-neblic-work-start-->
-The Neblic platform enables you to observe your application data and get actionable insights by using three main components:
+Neblic requires two main components, *Samplers* and a *Collector*. *Samplers* sample data from each component in your application, the *Collector* aggregates that data, detects events and creates the *Data Telemetry*. Both components are built on top of OpenTelemetry as a way to ensure vendor neutrality and support standardization across the observability stack.
 
-* Samplers, which are deployed across points of interest in your application where you want to get application data that is then sent to the collector.
-* Collector which receives data samples from all the Samplers and processes them before sending them to the Visualization engine.
-* Visualization engine is where all the samples are processed, and data is available for visualization and analysis.
+Operationally, its design allows for dynamic rule setting, dynamic control of the sampling rules and metrics generated.
 
 ![Architecture overview](./docs/content/assets/imgs/arch-overview.png)
-
-Samplers -as their name implies- sample data from the application in the points you’ve deployed them. By application data we mean the exact data contained in the events, transactions, requests and responses that the application is processing at each point.
-
-All those samples are sent to the collector which is the central point from which samples will then be forwarded to the visualization engine. However, the collector also has another key role, it’s the central point for coordinating the configuration of all the samplers.
-
-Lastly, after data is sampled and sent through the collector, you’ll want to store and visualize the data. As of this time, we recommend you use Loki and Grafana, however you can use other tools if you’re more comfortable with them.
-
-We are actively working on dedicated analysis and visualization tools for this kind of data, do reach out to us if you have some thoughts on what you’d like to achieve.
 <!--how-does-neblic-work-end-->
 
 ## Learn more

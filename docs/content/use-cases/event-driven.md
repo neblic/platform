@@ -14,7 +14,7 @@ Reliable event delivery is a critical part for the smooth operations of EDA syst
 * Lost events: To guard against losing events, you can track if the event sequence identifier is consistently increasing or compare the events received at different points within your application. This comparison helps in quickly identifying significant losses of events.
 * Duplicate events: Keep track of the number of unique elements processed so you are aware if there has been a significant number of duplicates.
 
-### Enhancing dead-letter queues
+### Enhance dead-letter queues
 
 Dead-letter queues (DLQs) are commonly used to handle messages that couldn’t be processed. They act as a holding area for these events, enabling you to look into them later to figure out the issues. However, DLQs often don't get the attention they need.
 
@@ -35,6 +35,6 @@ This allows you to easily troubleshoot the application so it is easier to identi
 You can also set up rules that proactively trigger alerts when these situations occur.
 
 !!! note
-    Some features may be currently being developed and still not have all the capabilities described in here. Check the [porject roadmap](https://github.com/orgs/neblic/projects/3) for details about what improvements are we working on.
+    Some features may be currently being developed and still not have all the capabilities described in here. Check the [project roadmap](https://github.com/orgs/neblic/projects/3) for details about what improvements are we working on.
 
     Also, do not hesitate to suggest features, improvements or use cases by creating a [feature request](https://github.com/neblic/platform/issues/new?assignees=&labels=&projects=&template=feature_request.md&title=) in our github!

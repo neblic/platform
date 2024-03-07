@@ -25,3 +25,8 @@
   --md-footer-bg-color--light: #9087A9;
   --md-footer-bg-color--dark: #1D1433;
 }
+
+/* Maximum space for text block */
+.md-grid {
+  max-width: 90%;
+}
