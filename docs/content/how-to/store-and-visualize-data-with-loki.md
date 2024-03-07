@@ -47,7 +47,7 @@ processors:
   # ...
 ```
 
-Configure a new pipeline that receives data from the *Neblic* connector, uses the `populate_loki_labels* processor and sends the data to *Loki`.
+Configure a new pipeline that receives data from the *Neblic* connector, uses the `transform/propagate_loki_labels` processor and sends the data to *Loki*.
 ``` yaml
 service:
   pipelines:

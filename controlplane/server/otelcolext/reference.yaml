@@ -33,7 +33,15 @@ processors:
         - set(attributes["loki.attribute.labels"], ["sampler", "resource", "com.neblic.sample.type", "com.neblic.sample.stream.uids", "com.neblic.sample.encoding"])
         - set(attributes["loki.format"], "raw")
 # --8<-- [end:LokiProcessor]
-
+# --8<-- [start:PrometheusProcessor]
+  transform/propagate_prometheus_labels:
+    error_mode: ignore
+    metric_statements:
+    - context: datapoint
+      statements:
+        - set(attributes["sampler"], instrumentation_scope.name)
+        - set(attributes["resource"], resource.attributes["service.name"])
+# --8<-- [end:PrometheusProcessor]
   filter/remove_raw_samples:
     error_mode: ignore
     logs:
@@ -76,6 +84,17 @@ exporters:
       instance: false
       level: false
 # --8<-- [end:LokiExporter]
+
+# --8<-- [start:PrometheusExporter]
+  prometheus:
+    endpoint: "${env:NEBLIC_DATA_PLANE_EXPORTER_PROMETHEUS_ENDPOINT}"
+    send_timestamps: false
+    metric_expiration: 5m
+    enable_open_metrics: false
+    add_metric_suffixes: false
+    resource_to_telemetry_conversion:
+      enabled: false
+# --8<-- [end:PrometheusExporter]
 
   otlp/cloud:
     endpoint: "${env:NEBLIC_DATA_PLANE_EXPORTER_ENDPOINT}"
@@ -122,6 +141,15 @@ service:
       exporters:
       - loki
 # --8<-- [end:LokiPipeline]
+# --8<-- [start:PrometheusPipeline]
+    metrics/output_prometheus:
+      receivers:
+      - neblic
+      processors:
+      - transform/propagate_prometheus_labels
+      exporters:
+      - prometheus
+# --8<-- [end:PrometheusPipeline]
   extensions:
     - health_check
     - bearertokenauth
