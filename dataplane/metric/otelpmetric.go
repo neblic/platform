@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	conventions "go.opentelemetry.io/collector/semconv/v1.9.0"
 )
@@ -44,6 +45,8 @@ func newDatapoint[T Number](metricName string, metricPath Path, datapoint pmetri
 		attributes.PutStr(OTLPSampleNameKey, metricName)
 	}
 	attributes.CopyTo(datapoint.Attributes())
+
+	datapoint.SetTimestamp(pcommon.Timestamp(datapointAttributes.tsUnixNano))
 
 	return Datapoint[T]{
 		datapoint: datapoint,

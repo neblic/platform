@@ -15,7 +15,7 @@ const (
 
 func NewFactory() connector.Factory {
 	neblicConnector := newNeblicConnector()
-	logsToLogsConnector := newLogsToMetricsConnector(neblicConnector)
+	logsToLogsConnector := newLogsToLogsConnector(neblicConnector)
 	logsToMetricsConnector := newLogsToMetricsConnector(neblicConnector)
 
 	logsToLogsCreator := func(ctx context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Logs, error) {
@@ -29,8 +29,8 @@ func NewFactory() connector.Factory {
 		}
 
 		neblicConnector.dataPlane.SampleExporter = NewLogsExporter(nextConsumer)
-		neblicConnector.dataPlane.DigestExporter = NewLogsExporter(nextConsumer, logsToMetricsConnector)
-		neblicConnector.dataPlane.EventExporter = NewLogsExporter(nextConsumer, logsToMetricsConnector)
+		neblicConnector.dataPlane.DigestExporter = NewLogsExporter(logsToMetricsConnector, nextConsumer)
+		neblicConnector.dataPlane.EventExporter = NewLogsExporter(logsToMetricsConnector, nextConsumer)
 
 		return logsToLogsConnector, nil
 	}

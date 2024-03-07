@@ -1,7 +1,6 @@
 package dataplane
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -13,12 +12,11 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/pdatatest/pmetrictest"
 )
 
-func TestLogsToMetricsProcessor_Process(t *testing.T) {
+func TestProcessor_ComputeMetrics(t *testing.T) {
 	type fields struct {
 		logger logging.Logger
 	}
 	type args struct {
-		ctx      context.Context
 		otlpLogs sample.OTLPLogs
 	}
 	tests := []struct {
@@ -31,7 +29,6 @@ func TestLogsToMetricsProcessor_Process(t *testing.T) {
 		{
 			name: "process event",
 			args: args{
-				ctx: context.Background(),
 				otlpLogs: func() sample.OTLPLogs {
 					logs := sample.NewOTLPLogs()
 					samplerLogs := logs.AppendSamplerOTLPLogs("resource1", "sampler1")
@@ -60,7 +57,6 @@ func TestLogsToMetricsProcessor_Process(t *testing.T) {
 		{
 			name: "process empty digest",
 			args: args{
-				ctx: context.Background(),
 				otlpLogs: func() sample.OTLPLogs {
 					logs := sample.NewOTLPLogs()
 					samplerLogs := logs.AppendSamplerOTLPLogs("resource1", "sampler1")
@@ -91,7 +87,6 @@ func TestLogsToMetricsProcessor_Process(t *testing.T) {
 		{
 			name: "process number digest",
 			args: args{
-				ctx: context.Background(),
 				otlpLogs: func() sample.OTLPLogs {
 					logs := sample.NewOTLPLogs()
 					samplerLogs := logs.AppendSamplerOTLPLogs("resource1", "sampler1")
@@ -164,7 +159,6 @@ func TestLogsToMetricsProcessor_Process(t *testing.T) {
 		{
 			name: "process string digest",
 			args: args{
-				ctx: context.Background(),
 				otlpLogs: func() sample.OTLPLogs {
 					logs := sample.NewOTLPLogs()
 					samplerLogs := logs.AppendSamplerOTLPLogs("resource1", "sampler1")
@@ -237,17 +231,17 @@ func TestLogsToMetricsProcessor_Process(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ph := &LogsToMetricsProcessor{
+			ph := &Processor{
 				logger: tt.fields.logger,
 			}
-			got, err := ph.Process(tt.args.ctx, tt.args.otlpLogs)
+			got, err := ph.ComputeMetrics(tt.args.otlpLogs)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("LogsToMetricsProcessor.Process() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Processor.Process() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if err := pmetrictest.CompareMetrics(got.Metrics(), tt.want.Metrics()); err != nil {
-				t.Errorf("LogsToMetricsProcessor.Process() = %v", err)
+				t.Errorf("Processor.Process() = %v", err)
 			}
 		})
 	}

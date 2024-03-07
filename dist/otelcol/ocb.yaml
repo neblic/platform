@@ -15,6 +15,7 @@ exporters:
 # --8<-- [start:LokiExporter]
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/lokiexporter v0.94.0
 # --8<-- [end:LokiExporter]
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.94.0
 processors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor v0.94.0
   - gomod: go.opentelemetry.io/collector/processor/batchprocessor v0.94.1
