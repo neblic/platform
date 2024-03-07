@@ -4,5 +4,7 @@ services:
     image: ghcr.io/neblic/otelcol:latest
     container_name: neblic-otelcol
     environment:
-      - NEBLIC_DATA_PLANE_EXPORTER_BEARER_TOKEN=<your-api-token>
+      - NEBLIC_DATA_PLANE_EXPORTER_LOKI_ENDPOINT: "http://loki:3100/loki/api/v1/push"
+      # - OTELCOL_CONFIG_PATH=/etc/neblic/otelcol/config_cloud.yaml
+      # - NEBLIC_DATA_PLANE_EXPORTER_BEARER_TOKEN=<your-api-token>
     restart: unless-stopped

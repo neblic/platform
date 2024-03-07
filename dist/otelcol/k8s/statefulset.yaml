@@ -1,3 +1,4 @@
+# Service
 apiVersion: v1
 kind: Service
 metadata:
@@ -15,6 +16,7 @@ spec:
   selector:
     app: neblic-otelcol
 ---
+# StatefulSet
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -35,11 +37,16 @@ spec:
       - name: neblic-otelcol
         image: ghcr.io/neblic/otelcol:latest
         env:
-          - name: NEBLIC_DATA_PLANE_EXPORTER_BEARER_TOKEN
-            valueFrom:
-              secretKeyRef:
-                name: neblic-otelcol
-                key: exporter-bearer-token
+          - name: NEBLIC_DATA_PLANE_EXPORTER_LOKI_ENDPOINT
+            value: "http://loki:3100/loki/api/v1/push"
+          # Beta users
+          # - name: OTELCOL_CONFIG_PATH
+          #   value: /etc/neblic/otelcol/config_cloud.yaml
+          # - name: NEBLIC_DATA_PLANE_EXPORTER_BEARER_TOKEN
+          #   valueFrom:
+          #     secretKeyRef:
+          #       name: neblic-otelcol
+          #       key: exporter-bearer-token
         volumeMounts:
           - name: config
             mountPath: /var/lib/otelcol

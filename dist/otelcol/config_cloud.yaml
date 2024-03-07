@@ -22,22 +22,21 @@ processors:
     metadata_keys: "${env:PROCESSOR_BATCH_METADATA_KEYS}"
     metadata_cardinality_limit: "${env:PROCESSOR_BATCH_METADATA_CARDINALITY_LIMIT}"
 
-  transform/propagate_loki_labels:
-    error_mode: ignore
-    log_statements:
-    - context: log
-      statements:
-        - set(attributes["sampler"], instrumentation_scope.name)
-        - set(attributes["resource"], resource.attributes["service.name"])
-        - set(attributes["loki.attribute.labels"], ["sampler", "resource", "com.neblic.sample.type", "com.neblic.sample.stream.uids", "com.neblic.sample.encoding"])
-        - set(attributes["loki.format"], "raw")
-
-  # Uncomment to enable the Neblic Cloud exporter
-  # filter/remove_raw_samples:
+  # transform/propagate_loki_labels:
   #   error_mode: ignore
-  #   logs:
-  #     log_record:
-  #       - attributes["com.neblic.sample.type"] == "raw"
+  #   log_statements:
+  #   - context: log
+  #     statements:
+  #       - set(attributes["sampler"], instrumentation_scope.name)
+  #       - set(attributes["resource"], resource.attributes["service.name"])
+  #       - set(attributes["loki.attribute.labels"], ["sampler", "resource", "com.neblic.sample.type", "com.neblic.sample.stream.uids", "com.neblic.sample.encoding"])
+  #       - set(attributes["loki.format"], "raw")
+
+  filter/remove_raw_samples:
+    error_mode: ignore
+    logs:
+      log_record:
+        - attributes["com.neblic.sample.type"] == "raw"
 
 connectors:
   neblic:
@@ -65,20 +64,19 @@ exporters:
   # Uncomment to enable simple summary messages with the amount of `Data Samples` exported
   # logging:
 
-  loki:
-    endpoint: "${env:NEBLIC_DATA_PLANE_EXPORTER_LOKI_ENDPOINT}"
-    default_labels_enabled:
-      exporter: false
-      job: false
-      instance: false
-      level: false
-  # Uncomment to enable the Neblic Cloud exporter
-  # otlp/cloud:
-  #   endpoint: "${env:NEBLIC_DATA_PLANE_EXPORTER_ENDPOINT}"
-  #   tls:
-  #     insecure: false
-  #   auth:
-  #     authenticator: bearertokenauth
+  # loki:
+  #   endpoint: ${env:NEBLIC_DATA_PLANE_EXPORTER_LOKI_ENDPOINT}
+  #   default_labels_enabled:
+  #     exporter: false
+  #     job: false
+  #     instance: false
+  #     level: false
+  otlp/cloud:
+    endpoint: "${env:NEBLIC_DATA_PLANE_EXPORTER_ENDPOINT}"
+    tls:
+      insecure: false
+    auth:
+      authenticator: bearertokenauth
 
 extensions:
   health_check:
@@ -102,21 +100,20 @@ service:
       - batch
       exporters:
       - neblic
-    # Uncomment to start sending data to the Neblic Cloud
-    # logs/output_cloud:
-    #   receivers:
-    #   - neblic
-    #   processors:
-    #   - filter/remove_raw_samples
-    #   exporters:
-    #   - otlp/cloud
-    logs/output_loki:
+    logs/output_cloud:
       receivers:
       - neblic
       processors:
-      - transform/propagate_loki_labels
+      - filter/remove_raw_samples
       exporters:
-      - loki
+      - otlp/cloud
+    # logs/output_loki:
+    #   receivers:
+    #   - neblic
+    #   processors:
+    #   - transform/propagate_loki_labels
+    #   exporters:
+    #   - loki
   extensions:
     - health_check
     - bearertokenauth
