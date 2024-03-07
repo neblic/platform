@@ -461,7 +461,7 @@
 <pre class="mermaid"><code>graph LR;
     Samplers--Data telemetry/raw data--&gt;col[Collector]
     col--Configurations--&gt;Samplers
-    col--Data telemetry--&gt;Store
+    col--Data telemetry/raw data--&gt;Store
     ctl[neblictl]--Configurations--&gt;col</code></pre>
 <h2 id="sampler">Sampler<a class="headerlink" href="#sampler" title="Permanent link">¶</a></h2>
 <p>A component or library that processes <em>Data Samples</em>. It can be thought of as a logger that specializes in logging semi-structured data (e.g. JSON) but smarter. <em>Samplers</em> connect to Neblic's <em>Control Plane</em> and <em>Data Plane</em>, so they can be dynamically configured at runtime, and their function is to generate <em>Data Telemetry</em> and forward it to the <em>Collector</em>. It may also forward <em>Data Samples</em> to the collector for further analysis.</p>

@@ -431,7 +431,7 @@
 <pre class="mermaid"><code>graph LR;
     Samplers--Data telemetry/raw data--&gt;col[Collector]
     col--Configurations--&gt;Samplers
-    col--Data telemetry --&gt;Store
+    col--Data telemetry/raw data --&gt;Store
     ctl[neblictl]--Configurations--&gt;col</code></pre>
 <h2 id="collector">Collector<a class="headerlink" href="#collector" title="Permanent link">¶</a></h2>
 <p>We provide binaries and container images. The container images run the <em>Collector</em> and contain the <em>neblictl</em> configuration CLI for easier configuration.</p>
