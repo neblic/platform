@@ -30,7 +30,6 @@ func (n *logsToMetricsConnector) ConsumeLogs(ctx context.Context, logs plog.Logs
 	if err != nil {
 		return err
 	}
-	n.dataPlane.MetricExporter.Export(ctx, metrics)
-
-	return nil
+	err = n.dataPlane.MetricExporter.Export(ctx, metrics)
+	return err
 }

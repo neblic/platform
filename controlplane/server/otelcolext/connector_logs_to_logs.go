@@ -31,6 +31,6 @@ func (n *logsToLogsConnector) ConsumeLogs(ctx context.Context, logs plog.Logs) e
 	n.dataPlane.UpdateStats(otlpLogs)
 	n.dataPlane.ComputeDigests(otlpLogs)
 	n.dataPlane.ComputeEvents(otlpLogs)
-	n.dataPlane.SampleExporter.Export(ctx, otlpLogs)
-	return nil
+	err := n.dataPlane.SampleExporter.Export(ctx, otlpLogs)
+	return err
 }

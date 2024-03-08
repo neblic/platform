@@ -25,7 +25,7 @@ func (e *logsExporter) Export(ctx context.Context, otlpLogs sample.OTLPLogs) err
 	for _, consumer := range e.consumers {
 		err := consumer.ConsumeLogs(ctx, otlpLogs.Logs())
 		if err != nil {
-			errors.Join(errs, err)
+			errs = errors.Join(errs, err)
 		}
 	}
 	return errs

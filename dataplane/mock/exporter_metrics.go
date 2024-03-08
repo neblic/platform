@@ -19,7 +19,7 @@ func NewMetricsExporter() *MetricsExporter {
 }
 
 // Consume mocks base method.
-func (m *MetricsExporter) Export(_ context.Context, metrics metric.Metrics) error {
+func (m *MetricsExporter) Export(_ context.Context, _ metric.Metrics) error {
 	return nil
 }
 
