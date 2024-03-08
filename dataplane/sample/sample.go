@@ -46,7 +46,7 @@ type MetadataKey string
 
 const (
 	EventUID  MetadataKey = "com.neblic.event.uid"
-	EventRule MetadataKey = "com.neblic.digest.rule"
+	EventRule MetadataKey = "com.neblic.event.rule"
 	DigestUID MetadataKey = "com.neblic.digest.uid"
 )
 
