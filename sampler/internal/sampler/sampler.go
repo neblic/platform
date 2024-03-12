@@ -64,7 +64,7 @@ type Sampler struct {
 
 	controlPlaneClient *csampler.Sampler
 	digester           *digest.Digester
-	exporter           exporter.Exporter
+	exporter           exporter.LogsExporter
 	ruleBuilder        *rule.Builder
 
 	forwardError func(error)
@@ -115,7 +115,7 @@ func New(
 		SamplerName:         settings.Name,
 		ComputationLocation: control.ComputationLocationSampler,
 		NotifyErr:           forwardError,
-		Exporter:            settings.Exporter,
+		Exporter:            settings.LogsExporter,
 		Logger:              logger,
 	}
 
@@ -133,7 +133,7 @@ func New(
 
 		controlPlaneClient: controlPlaneClient,
 		digester:           digester,
-		exporter:           settings.Exporter,
+		exporter:           settings.LogsExporter,
 		ruleBuilder:        ruleBuilder,
 
 		forwardError: forwardError,

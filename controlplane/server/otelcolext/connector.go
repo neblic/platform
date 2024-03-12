@@ -4,120 +4,110 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/neblic/platform/controlplane/server"
 	"github.com/neblic/platform/dataplane"
-	"github.com/neblic/platform/dataplane/sample"
 	"github.com/neblic/platform/logging"
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/pdata/plog"
-	"go.uber.org/zap"
+	"go.opentelemetry.io/collector/connector"
 )
 
-type neblic struct {
-	cfg      *Config
-	exporter *Exporter
+type neblicConnector struct {
+	onceStart           sync.Once
+	onceConfigureGlobal sync.Once
+	onceShutdown        sync.Once
 
-	logger     logging.Logger
-	s          *server.Server
-	serverOpts []server.Option
-	processor  *dataplane.Processor
+	cfg *Config
+
+	controlPlane *server.Server
+	dataPlane    *dataplane.Processor
 }
 
-func newLogsConnector(cfg *Config, logger *zap.Logger, nextConsumer consumer.Logs) (*neblic, error) {
-	serverOpts := []server.Option{}
-
-	if cfg.UID == "" {
-		cfg.UID = uuid.NewString()
+func newNeblicConnector() *neblicConnector {
+	return &neblicConnector{
+		onceStart:    sync.Once{},
+		onceShutdown: sync.Once{},
 	}
-
-	if cfg.Endpoint == "" {
-		cfg.Endpoint = defaultEndpoint
-	}
-
-	if cfg.StoragePath != "" {
-		serverOpts = append(serverOpts, server.WithDiskStorage(cfg.StoragePath))
-	}
-
-	if cfg.TLSConfig != nil {
-		serverOpts = append(serverOpts, server.WithTLS(cfg.TLSConfig.CertFile, cfg.TLSConfig.KeyFile))
-	}
-
-	if cfg.AuthConfig != nil {
-		switch cfg.AuthConfig.Type {
-		case "bearer":
-			if cfg.AuthConfig.BearerConfig == nil {
-				return nil, fmt.Errorf("bearer authentication enabled but token not configured")
-			}
-			serverOpts = append(serverOpts, server.WithAuthBearer(cfg.AuthConfig.BearerConfig.Token))
-		case "":
-			// nothing to do
-		default:
-			return nil, fmt.Errorf("invalid authentication type %s", cfg.AuthConfig.Type)
-		}
-	}
-
-	serverOpts = append(serverOpts, server.WithLogger(logging.FromZapLogger(logger)))
-
-	if nextConsumer == nil {
-		return nil, component.ErrNilNextConsumer
-	}
-
-	return &neblic{
-		cfg:        cfg,
-		logger:     logging.FromZapLogger(logger),
-		exporter:   NewExporter(nextConsumer),
-		serverOpts: serverOpts,
-	}, nil
 }
 
-func (n *neblic) Start(_ context.Context, _ component.Host) error {
+func (n *neblicConnector) CreateGlobal(_ context.Context, set connector.CreateSettings, componentCfg component.Config) error {
+
 	var err error
-	n.s, err = server.New(n.cfg.UID, n.serverOpts...)
-	if err != nil {
-		return err
-	}
-	err = n.s.Start(n.cfg.Endpoint)
-	if err != nil {
-		return err
-	}
+	n.onceConfigureGlobal.Do(func() {
+		n.cfg = componentCfg.(*Config)
 
-	n.processor = dataplane.NewProcessor(n.logger, n.s, n.exporter)
-	err = n.processor.Start()
-	if err != nil {
-		return err
-	}
+		// Create control plane
+		controlPlaneOptions := []server.Option{}
+		if n.cfg.StoragePath != "" {
+			controlPlaneOptions = append(controlPlaneOptions, server.WithDiskStorage(n.cfg.StoragePath))
+		}
+		if n.cfg.TLSConfig != nil {
+			controlPlaneOptions = append(controlPlaneOptions, server.WithTLS(n.cfg.TLSConfig.CertFile, n.cfg.TLSConfig.KeyFile))
+		}
+		if n.cfg.AuthConfig != nil {
+			switch n.cfg.AuthConfig.Type {
+			case "bearer":
+				if n.cfg.AuthConfig.BearerConfig == nil {
+					err = fmt.Errorf("bearer authentication enabled but token not configured")
+				}
+				controlPlaneOptions = append(controlPlaneOptions, server.WithAuthBearer(n.cfg.AuthConfig.BearerConfig.Token))
+			case "":
+				// nothing to do
+			default:
+				err = fmt.Errorf("invalid authentication type %s", n.cfg.AuthConfig.Type)
+				return
+			}
+		}
+		controlPlaneOptions = append(controlPlaneOptions, server.WithLogger(logging.FromZapLogger(set.Logger)))
+		n.controlPlane, err = server.New(n.cfg.UID, controlPlaneOptions...)
+		if err != nil {
+			return
+		}
 
-	return nil
-}
-
-func (n *neblic) Shutdown(_ context.Context) error {
-	var errs error
-	if n.s != nil {
-		err := n.s.Stop(time.Second)
-		errs = errors.Join(errs, err)
-	}
-
-	if n.processor != nil {
-		err := n.processor.Stop()
-		errs = errors.Join(errs, err)
-	}
-
-	return errs
-}
-
-func (n *neblic) Capabilities() consumer.Capabilities {
-	return consumer.Capabilities{
-		MutatesData: true,
-	}
-}
-
-func (n *neblic) ConsumeLogs(ctx context.Context, logs plog.Logs) error {
-	otlpLogs := sample.OTLPLogsFrom(logs)
-	err := n.processor.Process(ctx, otlpLogs)
+		// Create data plane
+		dataPlaneSettings := &dataplane.Settings{
+			Logger:       logging.FromZapLogger(set.Logger),
+			ControlPlane: n.controlPlane,
+		}
+		n.dataPlane = dataplane.NewProcessor(dataPlaneSettings)
+	})
 
 	return err
+}
+
+func (n *neblicConnector) Start(_ context.Context, _ component.Host) error {
+	var err error
+	n.onceStart.Do(func() {
+		err = n.controlPlane.Start(n.cfg.Endpoint)
+		if err != nil {
+			return
+		}
+
+		err = n.dataPlane.Start()
+		if err != nil {
+			return
+		}
+	})
+
+	return err
+}
+
+func (n *neblicConnector) Shutdown(_ context.Context) error {
+	var errs error
+
+	n.onceShutdown.Do(func() {
+		if n.controlPlane != nil {
+			err := n.controlPlane.Stop(time.Second)
+			errs = errors.Join(errs, err)
+		}
+
+		if n.dataPlane != nil {
+			err := n.dataPlane.Stop()
+			errs = errors.Join(errs, err)
+		}
+	})
+
+	return errs
 }

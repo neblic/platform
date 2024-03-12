@@ -2,7 +2,6 @@ package test_test
 
 //revive:disable:dot-imports
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -26,8 +25,11 @@ var _ = Describe("DataPlane", func() {
 	var (
 		logger logging.Logger
 
-		exporter  *mock.Exporter
-		processor *dataplane.Processor
+		eventExporter  *mock.LogsExporter
+		sampleExporter *mock.LogsExporter
+		digestExporter *mock.LogsExporter
+		metricExporter *mock.MetricsExporter
+		processor      *dataplane.Processor
 	)
 
 	BeforeEach(func() {
@@ -36,8 +38,19 @@ var _ = Describe("DataPlane", func() {
 		logger, err = logging.NewZapDev()
 		Expect(err).ToNot(HaveOccurred())
 
-		exporter = mock.NewExporter()
-		processor = dataplane.NewProcessor(logger, nil, exporter)
+		eventExporter = mock.NewLogsExporter()
+		sampleExporter = mock.NewLogsExporter()
+		digestExporter = mock.NewLogsExporter()
+		metricExporter = mock.NewMetricsExporter()
+		settings := &dataplane.Settings{
+			Logger:         logger,
+			ControlPlane:   nil,
+			EventExporter:  eventExporter,
+			SampleExporter: sampleExporter,
+			DigestExporter: digestExporter,
+			MetricExporter: metricExporter,
+		}
+		processor = dataplane.NewProcessor(settings)
 	})
 
 	Describe("Exporting digests", func() {
@@ -77,14 +90,13 @@ var _ = Describe("DataPlane", func() {
 				rawSampleLog.SetStreamUIDs([]control.SamplerStreamUID{streamUID})
 				rawSampleLog.SetSampleRawData(sample.JSONEncoding, []byte(`{"id": 1}`))
 
-				err := processor.Process(context.Background(), logs)
-				Expect(err).ToNot(HaveOccurred())
+				processor.ComputeDigests(logs)
 
 				require.Never(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						return len(exporter.StructDigests) == 1
+						return len(digestExporter.StructDigests) == 1
 					},
 					time.Millisecond*500, time.Millisecond,
 				)
@@ -126,15 +138,14 @@ var _ = Describe("DataPlane", func() {
 				rawSampleLog.SetStreamUIDs([]control.SamplerStreamUID{streamUID})
 				rawSampleLog.SetSampleRawData(sample.JSONEncoding, []byte(`{"id": 1}`))
 
-				err := processor.Process(context.Background(), logs)
-				Expect(err).ToNot(HaveOccurred())
+				processor.ComputeDigests(logs)
 
 				// wait until the receiver has received the digest
 				require.Eventually(GinkgoT(),
 					func() bool {
 						defer GinkgoRecover()
 
-						return len(exporter.StructDigests) == 1
+						return len(digestExporter.StructDigests) == 1
 					},
 					time.Second, time.Millisecond)
 			})

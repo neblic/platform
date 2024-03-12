@@ -32,6 +32,14 @@ processors:
         - set(attributes["loki.attribute.labels"], ["sampler", "resource", "com.neblic.sample.type", "com.neblic.sample.stream.uids", "com.neblic.sample.encoding"])
         - set(attributes["loki.format"], "raw")
 
+  transform/propagate_prometheus_labels:
+    error_mode: ignore
+    metric_statements:
+    - context: datapoint
+      statements:
+        - set(attributes["sampler"], instrumentation_scope.name)
+        - set(attributes["resource"], resource.attributes["service.name"])
+
   # Uncomment to enable the Neblic Cloud exporter
   # filter/remove_raw_samples:
   #   error_mode: ignore
@@ -72,13 +80,14 @@ exporters:
       job: false
       instance: false
       level: false
-  # Uncomment to enable the Neblic Cloud exporter
-  # otlp/cloud:
-  #   endpoint: "${env:NEBLIC_DATA_PLANE_EXPORTER_ENDPOINT}"
-  #   tls:
-  #     insecure: false
-  #   auth:
-  #     authenticator: bearertokenauth
+  prometheus:
+    endpoint: "${env:NEBLIC_DATA_PLANE_EXPORTER_PROMETHEUS_ENDPOINT}"
+    send_timestamps: false
+    metric_expiration: 5m
+    enable_open_metrics: false
+    add_metric_suffixes: false
+    resource_to_telemetry_conversion:
+      enabled: false
 
 extensions:
   health_check:
@@ -117,6 +126,13 @@ service:
       - transform/propagate_loki_labels
       exporters:
       - loki
+    metrics/output_prometheus:
+      receivers:
+      - neblic
+      processors:
+      - transform/propagate_prometheus_labels
+      exporters:
+      - prometheus
   extensions:
     - health_check
     - bearertokenauth

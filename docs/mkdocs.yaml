@@ -27,6 +27,7 @@ nav:
       - 'Get data from Apache Kafka': 'how-to/data-from-kafka.md'
       - 'Configure Samplers using neblictl': 'how-to/configure-samplers-using-neblictl.md'
       - 'Store and visualize data with Loki': 'how-to/store-and-visualize-data-with-loki.md'
+      - 'Store and visualize metrics with Prometheus': 'how-to/store-and-visualize-metrics-with-prometheus.md'
       - 'Build your own collector': 'how-to/build-your-own-collector.md'
     - 'Reference':
       - 'Rules': 'reference/rules.md'

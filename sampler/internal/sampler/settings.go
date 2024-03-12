@@ -31,7 +31,7 @@ type Settings struct {
 
 	InitialConfig control.SamplerConfigUpdate
 	Tags          []control.Tag
-	Exporter      exporter.Exporter
+	LogsExporter  exporter.LogsExporter
 
 	UpdateStatsPeriod time.Duration
 

@@ -13,6 +13,7 @@ import (
 	"github.com/neblic/platform/dataplane/digest"
 	"github.com/neblic/platform/dataplane/event"
 	"github.com/neblic/platform/dataplane/sample"
+	"github.com/neblic/platform/internal/pkg/exporter"
 	"github.com/neblic/platform/logging"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -47,29 +48,44 @@ func newHandler(logger logging.Logger, resource string, sampler string) *handler
 	}
 }
 
-type Processor struct {
-	ctx       context.Context
-	ctxCancel context.CancelFunc
-	logger    logging.Logger
-	exporter  Exporter
-	cpServer  *server.Server
-	handlers  map[samplerIdentifier]*handler
+type Settings struct {
+	Logger         logging.Logger
+	ControlPlane   *server.Server
+	EventExporter  exporter.LogsExporter
+	SampleExporter exporter.LogsExporter
+	DigestExporter exporter.LogsExporter
+	MetricExporter exporter.MetricsExporter
 }
 
-func NewProcessor(logger logging.Logger, cpServer *server.Server, exporter Exporter) *Processor {
+type Processor struct {
+	ctx            context.Context
+	ctxCancel      context.CancelFunc
+	logger         logging.Logger
+	controlPlane   *server.Server
+	EventExporter  exporter.LogsExporter
+	SampleExporter exporter.LogsExporter
+	DigestExporter exporter.LogsExporter
+	MetricExporter exporter.MetricsExporter
+	handlers       map[samplerIdentifier]*handler
+}
+
+func NewProcessor(settings *Settings) *Processor {
 	return &Processor{
-		ctx:      nil,
-		logger:   logger,
-		exporter: exporter,
-		cpServer: cpServer,
-		handlers: make(map[samplerIdentifier]*handler),
+		ctx:            nil,
+		logger:         settings.Logger,
+		controlPlane:   settings.ControlPlane,
+		EventExporter:  settings.EventExporter,
+		SampleExporter: settings.SampleExporter,
+		DigestExporter: settings.DigestExporter,
+		MetricExporter: settings.MetricExporter,
+		handlers:       make(map[samplerIdentifier]*handler),
 	}
 }
 
 func (p *Processor) configUpdater() {
 	p.logger.Debug("Starting configuration updater routine")
 
-	for serverEvent := range p.cpServer.Events() {
+	for serverEvent := range p.controlPlane.Events() {
 		var logger logging.Logger
 
 		// Get config from event
@@ -109,7 +125,7 @@ func (p *Processor) statsUpdater() {
 					continue
 				}
 
-				err := p.cpServer.UpdateSamplerStats(samplerIdentifier.resource, samplerIdentifier.name, samplesCollected)
+				err := p.controlPlane.UpdateSamplerStats(samplerIdentifier.resource, samplerIdentifier.name, samplesCollected)
 				if err != nil {
 					p.logger.Error("Error updating sampler stats", "error", err)
 				}
@@ -134,55 +150,6 @@ func (p *Processor) setHandler(resource string, sampler string, handler *handler
 		name:     sampler,
 	}
 	p.handlers[samplerIdentifier] = handler
-}
-
-func (p *Processor) updateStats(otlpLogs sample.OTLPLogs) {
-	sample.Range(otlpLogs, func(resource, sampler string, _ sample.OTLPLog) {
-		handler, ok := p.getHandler(resource, sampler)
-		if !ok {
-			// create handler
-			handler = newHandler(p.logger, resource, sampler)
-			p.setHandler(resource, sampler, handler)
-		}
-		handler.samplesCollected.Add(1)
-	})
-}
-
-// computeDigests asynchronous computes the digests for the input samples, generated digests are exported
-// in the background
-func (p *Processor) computeDigests(otlpLogs sample.OTLPLogs) {
-	sample.RangeWithType[sample.RawSampleOTLPLog](otlpLogs, func(resource, sampler string, log sample.RawSampleOTLPLog) {
-		handler, ok := p.getHandler(resource, sampler)
-		if !ok || handler.digester == nil {
-			return
-		}
-
-		data, err := log.SampleData()
-		if err != nil {
-			// we use the handler logger here because it is rate limited and has context keys
-			handler.logger.Error("Error getting sample data", "error", err)
-			return
-		}
-
-		handler.digester.ProcessSample(log.StreamUIDs(), data)
-	})
-}
-
-// computeEvents appends generated events to the provided otlpLogs structure
-func (p *Processor) computeEvents(otlpLogs sample.OTLPLogs) {
-	// TODO: append to the events information about the sampler that matched it
-	sample.RangeSamplers(otlpLogs, func(resource, sampler string, samplerLogs sample.SamplerOTLPLogs) {
-		handler, ok := p.getHandler(resource, sampler)
-		if !ok || handler.eventor == nil {
-			return
-		}
-
-		err := handler.eventor.ProcessSample(samplerLogs)
-		if err != nil {
-			// we use the handler logger here because it is rate limited and has context keys
-			handler.logger.Error("Error processing sample", "error", err)
-		}
-	})
 }
 
 func (p *Processor) Start() error {
@@ -226,15 +193,14 @@ func (p *Processor) newDigester(resource, sampler string, logger logging.Logger)
 	// the digester performs async operations, so we need to make sure that errors are logged
 	notifyErr := func(err error) { logger.Error("error digesting sample", "error", err) }
 
-	return digest.NewDigester(
-		digest.Settings{
-			ResourceName:        resource,
-			SamplerName:         sampler,
-			ComputationLocation: control.ComputationLocationCollector,
-			NotifyErr:           notifyErr,
-			Exporter:            p.exporter,
-			Logger:              logger,
-		})
+	return digest.NewDigester(digest.Settings{
+		ResourceName:        resource,
+		SamplerName:         sampler,
+		ComputationLocation: control.ComputationLocationCollector,
+		NotifyErr:           notifyErr,
+		Exporter:            p.DigestExporter,
+		Logger:              logger,
+	})
 }
 
 func (p *Processor) UpdateConfig(resource, sampler string, config *control.SamplerConfig, logger logging.Logger) {
@@ -254,7 +220,7 @@ func (p *Processor) UpdateConfig(resource, sampler string, config *control.Sampl
 		configOtlpLog.SetTimestamp(time.Now())
 		configOtlpLog.SetSampleRawData(sample.JSONEncoding, configData)
 
-		err := p.exporter.Export(context.Background(), otlpLogs)
+		err := p.SampleExporter.Export(context.Background(), otlpLogs)
 		if err != nil {
 			logger.Error("Could not export configuration", "error", err)
 		} else {
@@ -335,8 +301,7 @@ func (p *Processor) UpdateConfig(resource, sampler string, config *control.Sampl
 	p.handlers[samplerIdentifier] = tr
 }
 
-func (p *Processor) Process(ctx context.Context, logs sample.OTLPLogs) error {
-	// Translate sample names to uids
+func (p *Processor) TranslateStreamNamesToUIDs(logs sample.OTLPLogs) {
 	sample.Range(logs, func(resource, sampler string, otlpLog sample.OTLPLog) {
 		// If there is no configured handler, do nothing
 		handler, ok := p.getHandler(resource, sampler)
@@ -362,12 +327,54 @@ func (p *Processor) Process(ctx context.Context, logs sample.OTLPLogs) error {
 		}
 		otlpLog.SetStreamNames([]string{})
 		otlpLog.SetStreamUIDs(streamUIDs)
-
 	})
+}
 
-	p.updateStats(logs)
-	p.computeDigests(logs)
-	p.computeEvents(logs)
+func (p *Processor) UpdateStats(otlpLogs sample.OTLPLogs) {
+	sample.Range(otlpLogs, func(resource, sampler string, _ sample.OTLPLog) {
+		handler, ok := p.getHandler(resource, sampler)
+		if !ok {
+			// create handler
+			handler = newHandler(p.logger, resource, sampler)
+			p.setHandler(resource, sampler, handler)
+		}
+		handler.samplesCollected.Add(1)
+	})
+}
 
-	return p.exporter.Export(ctx, logs)
+// ComputeDigests asynchronous computes the digests for the input samples, generated digests are exported
+// in the background
+func (p *Processor) ComputeDigests(otlpLogs sample.OTLPLogs) {
+	sample.RangeWithType[sample.RawSampleOTLPLog](otlpLogs, func(resource, sampler string, log sample.RawSampleOTLPLog) {
+		handler, ok := p.getHandler(resource, sampler)
+		if !ok || handler.digester == nil {
+			return
+		}
+
+		data, err := log.SampleData()
+		if err != nil {
+			// we use the handler logger here because it is rate limited and has context keys
+			handler.logger.Error("Error getting sample data", "error", err)
+			return
+		}
+
+		handler.digester.ProcessSample(log.StreamUIDs(), data)
+	})
+}
+
+// ComputeEvents appends generated events to the provided otlpLogs structure
+func (p *Processor) ComputeEvents(otlpLogs sample.OTLPLogs) {
+	// TODO: append to the events information about the sampler that matched it
+	sample.RangeSamplers(otlpLogs, func(resource, sampler string, samplerLogs sample.SamplerOTLPLogs) {
+		handler, ok := p.getHandler(resource, sampler)
+		if !ok || handler.eventor == nil {
+			return
+		}
+
+		err := handler.eventor.ProcessSample(samplerLogs)
+		if err != nil {
+			// we use the handler logger here because it is rate limited and has context keys
+			handler.logger.Error("Error processing sample", "error", err)
+		}
+	})
 }

@@ -14,17 +14,50 @@ const (
 )
 
 func NewFactory() connector.Factory {
+	neblicConnector := newNeblicConnector()
+	logsToLogsConnector := newLogsToLogsConnector(neblicConnector)
+	logsToMetricsConnector := newLogsToMetricsConnector(neblicConnector)
+
+	logsToLogsCreator := func(ctx context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Logs, error) {
+		err := neblicConnector.CreateGlobal(ctx, set, cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		if nextConsumer == nil {
+			return nil, component.ErrNilNextConsumer
+		}
+
+		neblicConnector.dataPlane.SampleExporter = NewLogsExporter(nextConsumer)
+		neblicConnector.dataPlane.DigestExporter = NewLogsExporter(logsToMetricsConnector, nextConsumer)
+		neblicConnector.dataPlane.EventExporter = NewLogsExporter(logsToMetricsConnector, nextConsumer)
+
+		return logsToLogsConnector, nil
+	}
+
+	logsToMetricsCreator := func(ctx context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Metrics) (connector.Logs, error) {
+		err := neblicConnector.CreateGlobal(ctx, set, cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		if nextConsumer == nil {
+			return nil, component.ErrNilNextConsumer
+		}
+
+		neblicConnector.dataPlane.MetricExporter = NewMetricsExporter(nextConsumer)
+
+		return logsToMetricsConnector, nil
+	}
+
 	return connector.NewFactory(
 		typeStr,
 		createDefaultConfig,
-		connector.WithLogsToLogs(createLogsProcessor, component.StabilityLevelDevelopment),
+		connector.WithLogsToLogs(logsToLogsCreator, component.StabilityLevelDevelopment),
+		connector.WithLogsToMetrics(logsToMetricsCreator, component.StabilityLevelDevelopment),
 	)
 }
 
 func createDefaultConfig() component.Config {
 	return newDefaultSettings()
-}
-
-func createLogsProcessor(_ context.Context, set connector.CreateSettings, cfg component.Config, nextConsumer consumer.Logs) (connector.Logs, error) {
-	return newLogsConnector(cfg.(*Config), set.Logger, nextConsumer)
 }
