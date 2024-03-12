@@ -41,45 +41,6 @@ func (p Path) String() string {
 	return string(p)
 }
 
-// type MetricAttributes struct {
-// 	attributes pcommon.Map
-// }
-
-// func NewMetricAttributes() MetricAttributes {
-// 	return MetricAttributes{
-// 		attributes: pcommon.NewMap(),
-// 	}
-// }
-
-// func (ma MetricAttributes) WithPath(path Path) MetricAttributes {
-// 	ma.attributes.PutStr(OTLPSampleFieldPathKey, path.String())
-// 	return ma
-// }
-
-// func (ma MetricAttributes) Path() (string, bool) {
-// 	pathValue, ok := ma.attributes.Get(OTLPSampleFieldPathKey)
-// 	if !ok {
-// 		return "", false
-// 	}
-
-// 	return pathValue.AsString(), true
-
-// }
-
-// func (ma MetricAttributes) WithName(name string) MetricAttributes {
-// 	ma.attributes.PutStr(OTLPSampleNameKey, name)
-// 	return ma
-// }
-
-// func (ma MetricAttributes) Name() (string, bool) {
-// 	nameValue, ok := ma.attributes.Get(OTLPSampleNameKey)
-// 	if !ok {
-// 		return "", false
-// 	}
-
-// 	return nameValue.AsString(), true
-// }
-
 type DatapointAttributes struct {
 	tsUnixNano int64
 	attributes pcommon.Map
